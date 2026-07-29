@@ -1,0 +1,861 @@
+:root {
+  --surface: #1c1b19;
+  --surface-raised: #262522;
+  --surface-hover: #32302c;
+  --border: #3d3a35;
+  --text: #ececec;
+  --text-muted: #a5a099;
+  --accent: #7fa650;
+  --accent-strong: #9dc264;
+  --danger: #b4503f;
+  --warning: #d8a13a;
+
+  /* Minimum comfortable touch target. */
+  --tap: 44px;
+
+  color-scheme: dark;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  background-color: var(--surface);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  /* Stops mobile pull-to-refresh from firing while dragging a piece. */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1 {
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
+  margin: 0;
+}
+
+h2 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 0 0.4rem;
+}
+
+/* ---------- Screen shells ----------
+   Each screen owns exactly one viewport. `dvh` tracks the mobile toolbar as it
+   collapses, which `vh` does not. */
+
+.screen {
+  height: 100vh;
+  height: 100dvh;
+  padding: 0.75rem;
+  margin: 0 auto;
+  max-width: 1200px;
+}
+
+.screen--play,
+.screen--replay {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) clamp(250px, 26vw, 330px);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+/* The board fills the space it is given rather than dictating it, so the
+   measurement it depends on can never chase its own result. */
+.board-area {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.board {
+  /* Keeps a piece drag from scrolling the page on touch devices. */
+  touch-action: none;
+}
+
+.play__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 0;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+/* ---------- Setup ---------- */
+
+.screen--setup {
+  max-width: 1100px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.setup__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+.setup__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(300px, 36vw, 420px);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.setup__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+}
+
+.setup__preview .board-area {
+  flex: 1 1 auto;
+}
+
+.setup__summary {
+  margin: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+/* Only this column scrolls, so the board and the Start button stay put. */
+.setup__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 0.15rem;
+}
+
+.setup__start {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+/* Each decision gets its own box, so the four read as four. */
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  padding: 0.6rem 0.7rem 0.7rem;
+  flex: 0 0 auto;
+}
+
+.panel__title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+  margin: 0 0 0.45rem;
+}
+
+.panel__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.2rem, 1fr));
+  gap: 0.4rem;
+}
+
+/* ---------- Controls ---------- */
+
+.button {
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--text);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.8rem;
+  min-height: 36px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.button--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #10230a;
+  font-weight: 600;
+}
+
+.button--primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.button--danger {
+  border-color: var(--danger);
+  color: #f0b6ad;
+}
+
+.button--large {
+  padding: 0.7rem 1.2rem;
+  min-height: var(--tap);
+  font-size: 1rem;
+}
+
+.input {
+  font: inherit;
+  /* Below 16px, mobile Safari and Chrome zoom the page on focus. */
+  font-size: 16px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  min-height: 38px;
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
+.choice {
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  text-align: left;
+  min-height: 40px;
+  justify-content: center;
+  color: var(--text);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.choice:hover {
+  background: var(--surface-hover);
+}
+
+.choice--selected {
+  border-color: var(--accent);
+  background: #2b3520;
+}
+
+.choice__label {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.choice__hint {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: var(--text-muted);
+}
+
+.chip {
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  min-height: 30px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.chip--selected {
+  border-color: var(--accent);
+  background: #2b3520;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ---------- Clocks ---------- */
+
+.clock-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+
+.clock-face {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  min-width: 0;
+}
+
+.clock-face--active {
+  border-color: var(--accent);
+  background: #23291c;
+}
+
+.clock-face--low .clock-face__time {
+  color: var(--warning);
+}
+
+.clock-face__name {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clock-face__time {
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: clamp(1.15rem, 3.2vw, 1.5rem);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.clock-note {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+/* ---------- Move list ---------- */
+
+.play__moves {
+  flex: 1 1 auto;
+  min-height: 4rem;
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* The move list owns its own scrolling, so following the current move never
+   disturbs the panel around it. */
+.move-list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.move-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.84rem;
+}
+
+.move-list__row {
+  display: grid;
+  grid-template-columns: 2.4rem 1fr 1fr;
+  align-items: center;
+}
+
+.move-list__number {
+  color: var(--text-muted);
+  padding-left: 0.25rem;
+}
+
+.move-list__cell {
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.move-list__cell:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.move-list__cell:disabled {
+  cursor: default;
+}
+
+.move-list__cell--current {
+  background: var(--accent);
+  color: #10230a;
+  font-weight: 700;
+}
+
+.move-list__empty {
+  margin: 0;
+  padding: 0.7rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+/* ---------- Play status ---------- */
+
+.play__status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  min-height: 1.2rem;
+  flex: 0 0 auto;
+}
+
+.play__thinking {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.play__check {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.play__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.outcome-banner__actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.outcome-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: #2b3520;
+  font-size: 0.9rem;
+  flex: 0 0 auto;
+}
+
+/* ---------- Archive ---------- */
+
+.screen--archive {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.archive__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 0 0 auto;
+}
+
+.archive__tools {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.game-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  /* The list scrolls, not the page, so search and paging stay put. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.game-list__item {
+  display: flex;
+  gap: 0.3rem;
+  align-items: stretch;
+}
+
+.game-row__delete {
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
+.game-row {
+  font: inherit;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(10rem, 1.4fr) minmax(9rem, 2fr) 3.5rem 5.5rem auto;
+  gap: 0.6rem;
+  align-items: center;
+  text-align: left;
+  color: var(--text);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  min-height: var(--tap);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.game-row:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+
+.game-row__players {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.game-row__versus {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.game-row__meta,
+.game-row__moves {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.game-row__result {
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.badge {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--accent);
+  color: var(--accent-strong);
+  white-space: nowrap;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+/* ---------- Replay ---------- */
+
+.replay__header {
+  flex: 0 0 auto;
+}
+
+.replay__header h2 {
+  font-size: 0.98rem;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+  margin: 0.4rem 0 0.2rem;
+}
+
+.replay__meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.replay__transport {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.replay__transport .button {
+  flex: 1 1 auto;
+  padding: 0.45rem 0.3rem;
+  min-height: var(--tap);
+}
+
+.replay__speed {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+.replay__scrubber {
+  width: 100%;
+  accent-color: var(--accent);
+  flex: 0 0 auto;
+  touch-action: manipulation;
+}
+
+.replay__position {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  text-align: center;
+  flex: 0 0 auto;
+}
+
+/* ---------- Notices ---------- */
+
+.notice {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+.notice--error {
+  border-color: var(--danger);
+  color: #f0b6ad;
+}
+
+/* ---------- Short screens ----------
+   Laptops at 768px tall leave roughly 600px of viewport. Trim the setup screen
+   so its Start button stays above the fold. */
+
+@media (max-height: 780px) {
+  .screen--setup {
+    gap: 0.5rem;
+  }
+
+  .choice__hint {
+    display: none;
+  }
+
+  .choice {
+    min-height: 34px;
+  }
+
+  .button--large {
+    padding: 0.55rem 1rem;
+  }
+}
+
+/* Small phones stack the setup choices into more rows, so squeeze further. */
+@media (max-height: 660px) {
+  .screen--setup {
+    gap: 0.4rem;
+  }
+
+  .screen--setup h2 {
+    margin-bottom: 0.2rem;
+  }
+
+  .choice {
+    min-height: 32px;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .button--large {
+    padding: 0.45rem 1rem;
+    min-height: 38px;
+  }
+}
+
+/* ---------- Narrow screens ---------- */
+
+@media (max-width: 860px) {
+  .screen--play,
+  .screen--replay {
+    grid-template-columns: minmax(0, 1fr);
+    /* The panel takes only the height it needs and the board absorbs the rest,
+       rather than the board being capped and leaving dead space below. */
+    grid-template-rows: minmax(120px, 1fr) auto;
+  }
+
+  /* Side by side, because vertical space is the scarce one here. */
+  .clock-panel {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .clock-face {
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  /* Its own line — beside the clocks it reads as a stray label. */
+  .clock-note {
+    flex: 1 0 100%;
+  }
+
+  .play__panel {
+    max-height: 56dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .play__moves {
+    flex: 0 0 auto;
+    max-height: 9rem;
+  }
+
+  .button,
+  .choice,
+  .game-row {
+    min-height: var(--tap);
+  }
+
+  .game-row {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.15rem;
+  }
+
+  .game-row__meta {
+    grid-column: 1 / -1;
+  }
+
+  .game-row__moves {
+    display: none;
+  }
+
+  .archive__tools {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+
+  /* Board preview on top at a reduced size, panels scrolling beneath it. */
+  .setup__body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  /* Small enough that the next panel peeks above the fold, which is what tells
+     you the column scrolls. */
+  .setup__preview .board-area {
+    flex: 0 0 auto;
+    height: min(23dvh, 46vw);
+  }
+}
+
+@media (max-width: 520px) {
+  .screen {
+    padding: 0.5rem;
+  }
+
+  .panel__options {
+    grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+  }
+
+  .replay__transport .button {
+    padding: 0.45rem 0.15rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Must follow the 520px block, which also sets this grid. Three columns of
+   time controls instead of two saves a whole row on small phones. */
+@media (max-width: 430px) {
+  .panel__options {
+    grid-template-columns: repeat(auto-fit, minmax(4.6rem, 1fr));
+  }
+}
+
+/* Landscape phones are very short; go back to side-by-side so the board keeps
+   a usable size. */
+@media (max-width: 900px) and (orientation: landscape) {
+  /* Height is the scarce dimension here, so put the board beside the panels. */
+  .setup__body {
+    grid-template-columns: minmax(0, 1fr) minmax(210px, 46vw);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .setup__preview .board-area {
+    flex: 1 1 auto;
+    height: auto;
+  }
+
+  .screen--play,
+  .screen--replay {
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 42vw);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .play__panel {
+    max-height: none;
+  }
+
+  .clock-panel {
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
+
+  .clock-face {
+    flex-direction: row;
+    align-items: baseline;
+  }
+}
+
+/* A celebrated game leads with the name people know it by. */
+.game-row__nickname {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent-strong);
+}

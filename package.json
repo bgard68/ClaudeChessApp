@@ -1,0 +1,43 @@
+{
+  "name": "claude-chess-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "prepare-assets": "node scripts/copy-engine.mjs && node scripts/fetch-games.mjs && node scripts/fetch-famous-games.mjs && node scripts/fetch-modern-championships.mjs && node scripts/build-library.mjs",
+    "predev": "npm run prepare-assets",
+    "dev": "vite",
+    "predev:host": "npm run prepare-assets",
+    "dev:host": "vite --host",
+    "prebuild": "npm run prepare-assets",
+    "build": "tsc --noEmit && vite build",
+    "copy-engine": "node scripts/copy-engine.mjs",
+    "fetch-famous": "node scripts/fetch-famous-games.mjs",
+    "fetch-modern": "node scripts/fetch-modern-championships.mjs",
+    "build-library": "node scripts/build-library.mjs",
+    "audit-library": "node scripts/audit-library.mjs",
+    "screens": "node scripts/phone-screens.mjs",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "^3.53.0-build1",
+    "chess.js": "^1.4.0",
+    "react": "^19.1.0",
+    "react-chessboard": "^4.7.3",
+    "react-dom": "^19.1.0",
+    "stockfish": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "playwright-core": "^1.62.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.1.3"
+  }
+}

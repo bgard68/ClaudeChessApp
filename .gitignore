@@ -5,3 +5,12 @@ dist/
 .vs/
 .vscode/
 *.user
+
+# Copied from node_modules by scripts/copy-engine.mjs
+public/engine/
+
+# Downloaded by scripts/fetch-games.mjs — never committed
+public/games/
+
+# Exported PGN copies for local use — never committed
+library/
