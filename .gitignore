@@ -15,5 +15,10 @@ public/games/
 # Exported PGN copies for local use — never committed
 library/
 
+# The consolidated PGN archive. Every collection in one place, kept outside the
+# worktrees so it survives them — around 100 MB of re-downloadable game scores,
+# which is not something to put in a history that cannot forget. See pgn/MANIFEST.txt.
+pgn/
+
 # Vite cache
 .vite/
