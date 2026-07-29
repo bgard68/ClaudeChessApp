@@ -20,6 +20,10 @@ export const SEARCH_FIELDS: readonly { id: SearchField; label: string }[] = [
   { id: 'year', label: 'Year' },
 ]
 
+/** Columns the list can be ordered by. */
+export type SortColumn = 'event' | 'players' | 'result' | 'year' | 'moves'
+export type SortDirection = 'asc' | 'desc'
+
 export interface ArchiveQuery {
   readonly search?: string
   /** Defaults to `all`. */
@@ -29,8 +33,23 @@ export interface ArchiveQuery {
    * Takes precedence over `search`.
    */
   readonly playerId?: string
+  /** Filters, each optional and combined with AND. */
+  readonly event?: string
+  readonly result?: string
+  readonly yearFrom?: number
+  readonly yearTo?: number
+  readonly sort?: SortColumn
+  readonly direction?: SortDirection
   readonly limit?: number
   readonly offset?: number
+}
+
+/** What the filter controls need to offer, derived from the games held. */
+export interface ArchiveFacets {
+  readonly totalGames: number
+  readonly events: readonly { readonly name: string; readonly games: number }[]
+  readonly firstYear: number | null
+  readonly lastYear: number | null
 }
 
 /** A player as one identity, with every spelling of their name folded in. */
@@ -69,4 +88,7 @@ export interface GameArchive {
    * their games.
    */
   suggestPlayers(prefix: string, limit?: number): Promise<readonly PlayerSuggestion[]>
+
+  /** Values the filters can offer, and the shape of the library as a whole. */
+  facets(): Promise<ArchiveFacets>
 }

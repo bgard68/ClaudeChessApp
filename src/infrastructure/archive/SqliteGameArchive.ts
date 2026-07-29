@@ -3,10 +3,12 @@ import type {
   ArchivePage,
   ArchiveQuery,
   GameArchive,
+  ArchiveFacets,
   ImportProgress,
   LibraryDurability,
   PlayerSuggestion,
   SearchField,
+  SortColumn,
 } from '@application/ports/GameArchive'
 import type { GameStore, RecordedGame } from '@application/ports/GameStore'
 import { parseArchivedGame } from '../pgn/parseArchivedGame'
@@ -30,6 +32,18 @@ const DEFAULT_PAGE_SIZE = 50
 /** Games per transaction when importing. Small enough to keep the worker
  *  responsive and report progress; large enough that the overhead is trivial. */
 const IMPORT_CHUNK = 500
+
+/** Longest event list a filter should offer. */
+const MAX_EVENT_OPTIONS = 250
+
+/** Sortable columns, mapped to what actually orders them. */
+const SORT_COLUMNS: Readonly<Record<SortColumn, string>> = {
+  event: 'event',
+  players: 'white_name',
+  result: 'result',
+  year: 'year',
+  moves: 'move_count',
+}
 
 /** Players per transaction when rebuilding the index. */
 const PLAYER_CHUNK = 400
@@ -75,7 +89,7 @@ export class SqliteGameArchive implements GameArchive, GameStore {
     await this.ready()
 
     const search = query.search?.trim().toLowerCase() ?? ''
-    const { where, filter } =
+    const base =
       query.playerId === undefined
         ? buildFilter(search, query.field ?? 'all')
         : {
@@ -86,6 +100,34 @@ export class SqliteGameArchive implements GameArchive, GameStore {
               ' OR black_name IN (SELECT name FROM player_alias WHERE player_id = ?)',
             filter: [query.playerId, query.playerId] as SqlValue[],
           }
+
+    // The search term and each filter narrow the result together, so the
+    // search clause is wrapped: OR inside it must not escape the AND chain.
+    const clauses: string[] = []
+    const filter: SqlValue[] = []
+
+    if (base.where !== '') {
+      clauses.push(`(${base.where.replace(/^WHERE /, '')})`)
+      filter.push(...base.filter)
+    }
+    if (query.event !== undefined && query.event !== '') {
+      clauses.push('event = ?')
+      filter.push(query.event)
+    }
+    if (query.result !== undefined && query.result !== '') {
+      clauses.push('result = ?')
+      filter.push(query.result)
+    }
+    if (query.yearFrom !== undefined) {
+      clauses.push('year >= ?')
+      filter.push(query.yearFrom)
+    }
+    if (query.yearTo !== undefined) {
+      clauses.push('year <= ?')
+      filter.push(query.yearTo)
+    }
+
+    const where = clauses.length === 0 ? '' : `WHERE ${clauses.join(' AND ')}`
 
     const total = await this.client.selectOne<{ n: number }>(
       `SELECT count(*) AS n FROM game ${where}`,
@@ -110,15 +152,20 @@ export class SqliteGameArchive implements GameArchive, GameStore {
     const relevance = ranks ? `CASE WHEN ${wholeWord(players)} THEN 0 ELSE 1 END,` : ''
     const relevanceBinding = ranks ? [`% ${search} %`] : []
 
+    // An explicit sort replaces the default entirely; otherwise your own games
+    // come first, then the celebrated ones, then the archive chronologically.
+    const ordering =
+      query.sort === undefined
+        ? `${relevance}
+           CASE source WHEN 'played' THEN 0 WHEN 'famous' THEN 1 ELSE 2 END,
+           recorded_at DESC, played_on, round`
+        : `${SORT_COLUMNS[query.sort]} ${query.direction === 'desc' ? 'DESC' : 'ASC'}, played_on`
+
     const rows = await this.client.select(
       `SELECT ${SUMMARY_COLUMNS} FROM game ${where}
-       -- Your own games first, then the celebrated ones, then the championship
-       -- archive in chronological order.
-       ORDER BY ${relevance}
-                CASE source WHEN 'played' THEN 0 WHEN 'famous' THEN 1 ELSE 2 END,
-                recorded_at DESC, played_on, round
+       ORDER BY ${ordering}
        LIMIT ? OFFSET ?`,
-      [...filter, ...relevanceBinding, limit, offset],
+      [...filter, ...(query.sort === undefined ? relevanceBinding : []), limit, offset],
     )
 
     return { games: rows.map(toSummary), total: Number(total?.n ?? 0) }
@@ -167,6 +214,31 @@ export class SqliteGameArchive implements GameArchive, GameStore {
     // The difference, not the number supplied: games already held are rejected
     // by the unique key, and saying "added 40,000" when it added none is a lie.
     return (await this.countGames()) - before
+  }
+
+  async facets(): Promise<ArchiveFacets> {
+    await this.ready()
+
+    const totals = await this.client.selectOne<{
+      n: number
+      lo: number | null
+      hi: number | null
+    }>('SELECT count(*) AS n, min(year) AS lo, max(year) AS hi FROM game')
+
+    // Capped: importing the career collections pushes this into the thousands,
+    // and a filter listing every one of them helps nobody.
+    const events = await this.client.select<{ event: string; games: number }>(
+      `SELECT event, count(*) AS games FROM game
+        GROUP BY event ORDER BY games DESC LIMIT ?`,
+      [MAX_EVENT_OPTIONS],
+    )
+
+    return {
+      totalGames: Number(totals?.n ?? 0),
+      events: events.map((row) => ({ name: String(row.event), games: Number(row.games) })),
+      firstYear: totals?.lo === null || totals === null ? null : Number(totals.lo),
+      lastYear: totals?.hi === null || totals === null ? null : Number(totals.hi),
+    }
   }
 
   async suggestPlayers(prefix: string, limit = 8): Promise<readonly PlayerSuggestion[]> {
