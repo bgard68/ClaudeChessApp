@@ -502,7 +502,9 @@ h2 {
   display: flex;
   gap: 0.4rem;
   margin-left: auto;
-  flex: 1 1 16rem;
+  /* Capped: left to grow it swallowed the whole header on a wide window and
+     crowded the Import button off the end. */
+  flex: 0 1 34rem;
   min-width: 0;
 }
 

@@ -80,14 +80,24 @@ export class SqliteGameArchive implements GameArchive, GameStore {
     const limit = Math.max(1, query.limit ?? DEFAULT_PAGE_SIZE)
     const offset = Math.max(0, query.offset ?? 0)
 
+    // When searching, games where the term names a *player* come first.
+    // Otherwise a tournament like "Bobby Fischer Memorial" buries every game
+    // actually played by someone of that name.
+    const relevance =
+      search === ''
+        ? ''
+        : `CASE WHEN lower(white_name || ' ' || black_name) LIKE ? THEN 0 ELSE 1 END,`
+    const relevanceBinding = search === '' ? [] : [`%${search}%`]
+
     const rows = await this.client.select(
       `SELECT ${SUMMARY_COLUMNS} FROM game ${where}
        -- Your own games first, then the celebrated ones, then the championship
        -- archive in chronological order.
-       ORDER BY CASE source WHEN 'played' THEN 0 WHEN 'famous' THEN 1 ELSE 2 END,
+       ORDER BY ${relevance}
+                CASE source WHEN 'played' THEN 0 WHEN 'famous' THEN 1 ELSE 2 END,
                 recorded_at DESC, played_on, round
        LIMIT ? OFFSET ?`,
-      [...filter, limit, offset],
+      [...filter, ...relevanceBinding, limit, offset],
     )
 
     return { games: rows.map(toSummary), total: Number(total?.n ?? 0) }
