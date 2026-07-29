@@ -83,11 +83,19 @@ export class SqliteGameArchive implements GameArchive, GameStore {
     // When searching everything, games where the term names a *player* come
     // first. Otherwise a tournament like "Bobby Fischer Memorial" buries every
     // game actually played by someone of that name.
-    const ranksPlayersFirst = search !== '' && (query.field ?? 'all') === 'all'
-    const relevance = ranksPlayersFirst
-      ? `CASE WHEN lower(white_name || ' ' || black_name) LIKE ? THEN 0 ELSE 1 END,`
-      : ''
-    const relevanceBinding = ranksPlayersFirst ? [`%${search}%`] : []
+    /*
+     * Two tiers of relevance, best first:
+     *   0  the term is a whole word in a player's name — Mihail *Tal*
+     *   1  it merely begins one — *Tal*vik — or matched the event instead
+     * Without this, searching a short name buries the player you meant under
+     * everyone whose name happens to start the same way.
+     */
+    const players = asWords("white_name || ' ' || black_name")
+    const relevance =
+      search === ''
+        ? ''
+        : `CASE WHEN ${wholeWord(players)} THEN 0 ELSE 1 END,`
+    const relevanceBinding = search === '' ? [] : [`% ${search} %`]
 
     const rows = await this.client.select(
       `SELECT ${SUMMARY_COLUMNS} FROM game ${where}
@@ -271,11 +279,40 @@ export class SqliteGameArchive implements GameArchive, GameStore {
   }
 }
 
+/** "1960-1970", "1960..1970", or "1960 – 1970". */
+const YEAR_RANGE = /^(\d{4})\s*(?:-|–|—|\.\.|to)\s*(\d{4})$/
+const SINGLE_YEAR = /^\d{1,4}$/
+
+/**
+ * Matches at the start of a word rather than anywhere inside one.
+ *
+ * Substring matching made short names useless: "tal" hit 60 names in this
+ * library but begins only 9 of them, burying Mihail Tal under Asztalos and
+ * Talvik. `column` must already have its punctuation reduced to spaces.
+ */
+function wordPrefix(column: string): { clause: string; patterns: (term: string) => SqlValue[] } {
+  return {
+    clause: `(${column} LIKE ? OR ${column} LIKE ?)`,
+    patterns: (term) => [`${term}%`, `% ${term}%`],
+  }
+}
+
+/** Names carry commas and dots; both must read as word separators. */
+const asWords = (column: string) => `replace(replace(lower(${column}), ',', ' '), '.', ' ')`
+
+/**
+ * True when the term appears as a complete word.
+ *
+ * Padding both sides turns "is a whole word" into one ordinary LIKE, instead
+ * of four clauses for the start, middle, end, and only-word cases.
+ */
+const wholeWord = (column: string) => `(' ' || ${column} || ' ') LIKE ?`
+
 /**
  * Turns a search term and the chosen field into a WHERE clause.
  *
- * Year is compared numerically rather than as text, so "201" cannot quietly
- * match 2010 through 2019 — a range nobody asked for.
+ * Years are compared numerically, so "201" cannot quietly match 2010 through
+ * 2019 — a range nobody asked for — while an explicit range can be given.
  */
 function buildFilter(
   search: string,
@@ -283,24 +320,33 @@ function buildFilter(
 ): { where: string; filter: SqlValue[] } {
   if (search === '') return { where: '', filter: [] }
 
-  const like = `%${search}%`
-
   switch (field) {
-    case 'player':
-      return {
-        where: "WHERE lower(white_name || ' ' || black_name) LIKE ?",
-        filter: [like],
-      }
-    case 'event':
-      return { where: 'WHERE lower(event) LIKE ?', filter: [like] }
-    case 'year': {
-      const year = Number.parseInt(search, 10)
-      // A non-numeric year matches nothing, rather than everything.
-      return Number.isFinite(year) && /^\d{1,4}$/.test(search)
-        ? { where: 'WHERE year = ?', filter: [year] }
-        : { where: 'WHERE 1 = 0', filter: [] }
+    case 'player': {
+      const { clause, patterns } = wordPrefix(asWords("white_name || ' ' || black_name"))
+      return { where: `WHERE ${clause}`, filter: patterns(search) }
     }
-    case 'all':
-      return { where: 'WHERE search_text LIKE ?', filter: [like] }
+    case 'event': {
+      const { clause, patterns } = wordPrefix(asWords('event'))
+      return { where: `WHERE ${clause}`, filter: patterns(search) }
+    }
+    case 'year': {
+      const range = YEAR_RANGE.exec(search)
+      if (range !== null) {
+        const from = Number(range[1])
+        const to = Number(range[2])
+        return {
+          where: 'WHERE year BETWEEN ? AND ?',
+          filter: [Math.min(from, to), Math.max(from, to)],
+        }
+      }
+      return SINGLE_YEAR.test(search)
+        ? { where: 'WHERE year = ?', filter: [Number.parseInt(search, 10)] }
+        : // Not a year at all: match nothing, rather than everything.
+          { where: 'WHERE 1 = 0', filter: [] }
+    }
+    case 'all': {
+      const { clause, patterns } = wordPrefix('search_text')
+      return { where: `WHERE ${clause}`, filter: patterns(search) }
+    }
   }
 }

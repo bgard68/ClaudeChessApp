@@ -6,6 +6,7 @@ import {
   type ArchivePage,
   type SearchField,
 } from '@application/ports/GameArchive'
+import { useDebounced } from '../hooks/useDebounced'
 import { useServices } from '../ServicesContext'
 
 const PAGE_SIZE = 40
@@ -20,7 +21,7 @@ const SEARCH_PLACEHOLDERS: Readonly<Record<SearchField, string>> = {
   all: 'Search players, events, and years',
   player: 'Search by player name',
   event: 'Search by tournament or match',
-  year: 'Search by year, e.g. 1972',
+  year: 'Year or range, e.g. 1972 or 1960-1970',
 }
 
 const FIELD_NAMES: Readonly<Record<SearchField, string>> = {
@@ -73,6 +74,8 @@ interface ArchiveScreenProps {
 export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
   const { services } = useServices()
   const [search, setSearch] = useState('')
+  // The box updates instantly; the query waits for a pause in typing.
+  const query = useDebounced(search)
   const [field, setField] = useState<SearchField>('all')
   const [offset, setOffset] = useState(0)
   const [page, setPage] = useState<ArchivePage | null>(null)
@@ -88,7 +91,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
     setLoading(true)
 
     services.archive
-      .list({ search, field, offset, limit: PAGE_SIZE })
+      .list({ search: query, field, offset, limit: PAGE_SIZE })
       .then((result) => {
         if (cancelled) return
         setPage(result)
@@ -105,7 +108,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
     return () => {
       cancelled = true
     }
-  }, [services.archive, search, field, offset, reloadToken])
+  }, [services.archive, query, field, offset, reloadToken])
 
   const importFile = async (file: File) => {
     setError(null)
@@ -197,7 +200,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
         </div>
       </header>
 
-      <h2 className="archive__heading">{describeResults(total, search, field, isLoading)}</h2>
+      <h2 className="archive__heading">{describeResults(total, query, field, isLoading || query !== search)}</h2>
 
       {importing !== null ? (
         <p className="notice">

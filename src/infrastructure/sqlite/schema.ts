@@ -15,7 +15,7 @@
  * adding a table. Forgetting to means existing databases never create it, and
  * the first query against it fails on startup.
  */
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 5
 
 /**
  * Bump when the bundled PGN collections change.
@@ -71,10 +71,16 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
      pgn             TEXT    NOT NULL,
      recorded_at     TEXT,
 
+     -- Commas and dots become spaces so that every part of a name starts a
+     -- word: "Anderssen,Adolf" must be findable by "adolf". That is what lets
+     -- searching match word beginnings instead of anywhere in the string, so
+     -- "tal" stops matching "Asztalos".
      search_text     TEXT GENERATED ALWAYS AS (
-                       lower(white_name || ' ' || black_name || ' ' ||
-                             event || ' ' || played_on || ' ' || round ||
-                             ' ' || coalesce(nickname, ''))
+                       replace(replace(lower(
+                         white_name || ' ' || black_name || ' ' ||
+                         event || ' ' || played_on || ' ' || round ||
+                         ' ' || coalesce(nickname, '')
+                       ), ',', ' '), '.', ' ')
                      ) STORED
    )`,
 
