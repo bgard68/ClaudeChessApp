@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# Quality gate: typecheck and tests must pass before a commit is written.
+#
+# Enable it once per clone — git will not do this for you:
+#
+#     git config core.hooksPath .githooks
+#
+# The hook lives in the repository rather than .git/hooks so that it is
+# versioned and reviewable like any other file; git never tracks .git/hooks.
+#
+# `git commit --no-verify` skips it, for when you mean to.
+
+set -e
+
+# Hooks run from the top of whichever worktree is committing, and every
+# worktree installs its own node_modules. Fail rather than skip: a gate that
+# quietly does nothing is worse than no gate, because you stop expecting it to
+# catch anything.
+if [ ! -d node_modules ]; then
+  printf 'pre-commit: node_modules is missing in %s\n' "$(pwd)" >&2
+  printf 'pre-commit: run "npm install" here first, or commit with --no-verify.\n' >&2
+  exit 1
+fi
+
+# --no-install matters: without it npx silently downloads a tool it cannot find
+# locally, so a missing dependency would be checked by some other version of
+# TypeScript than the one this project pins.
+printf 'pre-commit: typecheck\n'
+npx --no-install tsc --noEmit
+
+printf 'pre-commit: tests\n'
+npx --no-install vitest run
+
+printf 'pre-commit: passed\n'

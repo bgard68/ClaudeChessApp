@@ -1,0 +1,8 @@
+# Shell scripts must keep LF endings.
+#
+# This machine has core.autocrlf=true, which rewrites checked-out files to CRLF.
+# A hook checked out that way does not merely misbehave — it never runs: sh
+# reads the trailing \r as part of the interpreter path and reports
+# "bad interpreter: /bin/sh^M". Pin the endings so the gate survives a checkout.
+.githooks/* text eol=lf
+*.sh text eol=lf
