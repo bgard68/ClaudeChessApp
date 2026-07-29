@@ -15,7 +15,7 @@
  * adding a table. Forgetting to means existing databases never create it, and
  * the first query against it fails on startup.
  */
-export const SCHEMA_VERSION = 5
+export const SCHEMA_VERSION = 6
 
 /**
  * Bump when the bundled PGN collections change.
@@ -87,6 +87,32 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   // Makes duplicates impossible rather than merely unlikely: a re-import is
   // rejected by the database itself. SQLite permits many NULLs here, which is
   // what leaves your own games out of the constraint.
+  `CREATE TABLE IF NOT EXISTS player (
+     id          INTEGER PRIMARY KEY AUTOINCREMENT,
+     -- The fullest spelling found, used for display.
+     canonical   TEXT    NOT NULL,
+     -- Surname plus first initial: what decides that two spellings are one
+     -- person. "Anand,V" and "Anand, Viswanathan" share it; "Fischer,Gert"
+     -- and "Fischer, Robert James" do not.
+     sort_key    TEXT    NOT NULL,
+     game_count  INTEGER NOT NULL DEFAULT 0,
+     first_year  INTEGER,
+     last_year   INTEGER,
+     peak_elo    INTEGER
+   )`,
+
+  `CREATE UNIQUE INDEX IF NOT EXISTS player_sort_key ON player (sort_key)`,
+  `CREATE INDEX IF NOT EXISTS player_by_games ON player (game_count DESC)`,
+
+  // Every raw spelling that resolves to a player, so a search can find all of
+  // someone's games without knowing which variant a given file used.
+  `CREATE TABLE IF NOT EXISTS player_alias (
+     name      TEXT    NOT NULL PRIMARY KEY,
+     player_id INTEGER NOT NULL
+   )`,
+
+  `CREATE INDEX IF NOT EXISTS alias_by_player ON player_alias (player_id)`,
+
   `CREATE UNIQUE INDEX IF NOT EXISTS game_key_unique ON game (game_key)`,
 
   `CREATE INDEX IF NOT EXISTS game_by_source_year ON game (source, year DESC)`,

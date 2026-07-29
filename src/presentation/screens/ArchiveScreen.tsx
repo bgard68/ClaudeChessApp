@@ -4,8 +4,10 @@ import { federationOf } from '@domain/archive/playerCountry'
 import {
   SEARCH_FIELDS,
   type ArchivePage,
+  type PlayerSuggestion,
   type SearchField,
 } from '@application/ports/GameArchive'
+import { PlayerSearch } from '../components/PlayerSearch'
 import { useDebounced } from '../hooks/useDebounced'
 import { useServices } from '../ServicesContext'
 
@@ -77,6 +79,8 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
   // The box updates instantly; the query waits for a pause in typing.
   const query = useDebounced(search)
   const [field, setField] = useState<SearchField>('all')
+  // Set when a player is chosen from the suggestions; clears on any new typing.
+  const [chosen, setChosen] = useState<PlayerSuggestion | null>(null)
   const [offset, setOffset] = useState(0)
   const [page, setPage] = useState<ArchivePage | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -91,7 +95,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
     setLoading(true)
 
     services.archive
-      .list({ search: query, field, offset, limit: PAGE_SIZE })
+      .list({ search: query, field, playerId: chosen?.id, offset, limit: PAGE_SIZE })
       .then((result) => {
         if (cancelled) return
         setPage(result)
@@ -108,7 +112,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
     return () => {
       cancelled = true
     }
-  }, [services.archive, query, field, offset, reloadToken])
+  }, [services.archive, query, field, chosen, offset, reloadToken])
 
   const importFile = async (file: File) => {
     setError(null)
@@ -164,6 +168,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value)
+                setChosen(null)
                 setOffset(0)
               }}
             />
@@ -182,6 +187,16 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
                 </option>
               ))}
             </select>
+            {field === 'player' && chosen === null ? (
+              <PlayerSearch
+                term={search}
+                onChoose={(player) => {
+                  setChosen(player)
+                  setSearch(player.name)
+                  setOffset(0)
+                }}
+              />
+            ) : null}
           </div>
           <button type="button" className="button" onClick={() => fileInput.current?.click()}>
             Import PGN
@@ -200,7 +215,9 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
         </div>
       </header>
 
-      <h2 className="archive__heading">{describeResults(total, query, field, isLoading || query !== search)}</h2>
+      <h2 className="archive__heading">{chosen !== null
+          ? `${total.toLocaleString()} games by ${chosen.name}`
+          : describeResults(total, query, field, isLoading || query !== search)}</h2>
 
       {importing !== null ? (
         <p className="notice">

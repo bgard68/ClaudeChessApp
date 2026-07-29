@@ -5,6 +5,7 @@ import type {
   GameArchive,
   ImportProgress,
   LibraryDurability,
+  PlayerSuggestion,
   SearchField,
 } from '@application/ports/GameArchive'
 import type { GameStore, RecordedGame } from '@application/ports/GameStore'
@@ -15,6 +16,7 @@ import { LIBRARY_VERSION, SCHEMA_STATEMENTS, SCHEMA_VERSION } from '../sqlite/sc
 import type { SqliteClient } from '../sqlite/SqliteClient'
 import type { SqlStatement, SqlValue } from '../sqlite/protocol'
 import { insertStatement, SUMMARY_COLUMNS, toSummary, type GameSource } from './gameRow'
+import { mergePlayers, type NameCount } from './playerIdentity'
 import type { PgnSource } from './PgnSource'
 
 /** A PGN file shipped with the app, and what kind of games it holds. */
@@ -28,6 +30,9 @@ const DEFAULT_PAGE_SIZE = 50
 /** Games per transaction when importing. Small enough to keep the worker
  *  responsive and report progress; large enough that the overhead is trivial. */
 const IMPORT_CHUNK = 500
+
+/** Players per transaction when rebuilding the index. */
+const PLAYER_CHUNK = 400
 
 /**
  * The game library, backed by SQLite.
@@ -70,7 +75,17 @@ export class SqliteGameArchive implements GameArchive, GameStore {
     await this.ready()
 
     const search = query.search?.trim().toLowerCase() ?? ''
-    const { where, filter } = buildFilter(search, query.field ?? 'all')
+    const { where, filter } =
+      query.playerId === undefined
+        ? buildFilter(search, query.field ?? 'all')
+        : {
+            // Every spelling of the chosen player, so none of their games is
+            // missed because one file wrote the name differently.
+            where:
+              'WHERE white_name IN (SELECT name FROM player_alias WHERE player_id = ?)' +
+              ' OR black_name IN (SELECT name FROM player_alias WHERE player_id = ?)',
+            filter: [query.playerId, query.playerId] as SqlValue[],
+          }
 
     const total = await this.client.selectOne<{ n: number }>(
       `SELECT count(*) AS n FROM game ${where}`,
@@ -91,11 +106,9 @@ export class SqliteGameArchive implements GameArchive, GameStore {
      * everyone whose name happens to start the same way.
      */
     const players = asWords("white_name || ' ' || black_name")
-    const relevance =
-      search === ''
-        ? ''
-        : `CASE WHEN ${wholeWord(players)} THEN 0 ELSE 1 END,`
-    const relevanceBinding = search === '' ? [] : [`% ${search} %`]
+    const ranks = search !== '' && query.playerId === undefined
+    const relevance = ranks ? `CASE WHEN ${wholeWord(players)} THEN 0 ELSE 1 END,` : ''
+    const relevanceBinding = ranks ? [`% ${search} %`] : []
 
     const rows = await this.client.select(
       `SELECT ${SUMMARY_COLUMNS} FROM game ${where}
@@ -149,9 +162,117 @@ export class SqliteGameArchive implements GameArchive, GameStore {
       onProgress?.(Math.min(index + IMPORT_CHUNK, games.length), games.length)
     }
 
+    await this.rebuildPlayerIndex()
+
     // The difference, not the number supplied: games already held are rejected
     // by the unique key, and saying "added 40,000" when it added none is a lie.
     return (await this.countGames()) - before
+  }
+
+  async suggestPlayers(prefix: string, limit = 8): Promise<readonly PlayerSuggestion[]> {
+    await this.ready()
+
+    const term = prefix.trim().toLowerCase()
+    if (term === '') return []
+
+    const rows = await this.client.select<{
+      id: number
+      canonical: string
+      game_count: number
+      first_year: number | null
+      last_year: number | null
+      peak_elo: number | null
+    }>(
+      `SELECT id, canonical, game_count, first_year, last_year, peak_elo
+         FROM player
+        WHERE sort_key LIKE ? OR lower(canonical) LIKE ?
+        ORDER BY game_count DESC
+        LIMIT ?`,
+      [`${term}%`, `${term}%`, limit],
+    )
+
+    return rows.map((row) => ({
+      id: String(row.id),
+      name: String(row.canonical),
+      games: Number(row.game_count),
+      firstYear: row.first_year === null ? null : Number(row.first_year),
+      lastYear: row.last_year === null ? null : Number(row.last_year),
+      peakElo: row.peak_elo === null ? null : Number(row.peak_elo),
+    }))
+  }
+
+  /**
+   * Rebuilds the player index from the games now stored.
+   *
+   * Derived rather than maintained incrementally: it is one pass over roughly
+   * thirteen thousand distinct names, and a table rebuilt from scratch cannot
+   * drift out of step with the games it describes.
+   */
+  private async rebuildPlayerIndex(): Promise<void> {
+    const rows = await this.client.select<{
+      name: string
+      games: number
+      first_year: number | null
+      last_year: number | null
+      peak_elo: number | null
+    }>(
+      `SELECT name,
+              count(*)  AS games,
+              min(year) AS first_year,
+              max(year) AS last_year,
+              max(elo)  AS peak_elo
+         FROM (SELECT white_name AS name, year, white_elo AS elo FROM game
+               UNION ALL
+               SELECT black_name, year, black_elo FROM game)
+        WHERE name IS NOT NULL
+        GROUP BY name`,
+    )
+
+    const players = mergePlayers(
+      rows.map(
+        (row): NameCount => ({
+          name: String(row.name),
+          games: Number(row.games),
+          firstYear: row.first_year === null ? null : Number(row.first_year),
+          lastYear: row.last_year === null ? null : Number(row.last_year),
+          peakElo: row.peak_elo === null ? null : Number(row.peak_elo),
+        }),
+      ),
+    )
+
+    await this.client.execBatch([
+      { sql: 'DELETE FROM player_alias' },
+      { sql: 'DELETE FROM player' },
+    ])
+
+    // Written in batches: a hundred thousand statements in one message would
+    // hold the worker far longer than the inserts themselves take.
+    for (let index = 0; index < players.length; index += PLAYER_CHUNK) {
+      const statements: SqlStatement[] = []
+      for (const player of players.slice(index, index + PLAYER_CHUNK)) {
+        statements.push({
+          sql: `INSERT INTO player (canonical, sort_key, game_count, first_year, last_year, peak_elo)
+                VALUES (?,?,?,?,?,?)
+                ON CONFLICT(sort_key) DO UPDATE SET game_count = game_count + excluded.game_count`,
+          bind: [
+            player.canonical,
+            player.sortKey,
+            player.games,
+            player.firstYear,
+            player.lastYear,
+            player.peakElo,
+          ],
+        })
+        for (const alias of player.aliases) {
+          statements.push({
+            sql: `INSERT OR REPLACE INTO player_alias (name, player_id)
+                  VALUES (?, (SELECT id FROM player WHERE sort_key = ?))`,
+            bind: [alias, player.sortKey],
+          })
+        }
+      }
+      await this.client.execBatch(statements)
+    }
   }
 
   private async countGames(): Promise<number> {
@@ -266,6 +387,8 @@ export class SqliteGameArchive implements GameArchive, GameStore {
         console.warn(`${collection.source.name} could not be imported.`, error)
       }
     }
+
+    await this.rebuildPlayerIndex()
 
     // Recorded only after a clean run, so a failed import is retried next time
     // rather than being mistaken for an up-to-date library.

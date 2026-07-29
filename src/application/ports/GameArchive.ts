@@ -24,8 +24,23 @@ export interface ArchiveQuery {
   readonly search?: string
   /** Defaults to `all`. */
   readonly field?: SearchField
+  /**
+   * Restricts to one player's games, under every spelling of their name.
+   * Takes precedence over `search`.
+   */
+  readonly playerId?: string
   readonly limit?: number
   readonly offset?: number
+}
+
+/** A player as one identity, with every spelling of their name folded in. */
+export interface PlayerSuggestion {
+  readonly id: string
+  readonly name: string
+  readonly games: number
+  readonly firstYear: number | null
+  readonly lastYear: number | null
+  readonly peakElo: number | null
 }
 
 export interface ArchivePage {
@@ -45,4 +60,13 @@ export interface GameArchive {
   importPgn(pgnText: string, sourceName: string, onProgress?: ImportProgress): Promise<number>
   /** Resolves once the library is open, so the UI can warn before a game is lost. */
   durability(): Promise<LibraryDurability>
+
+  /**
+   * Players whose name begins with `prefix`, most-played first.
+   *
+   * Exists because the same person is spelled several ways in these archives,
+   * so picking a player from a list is the only reliable way to ask for all of
+   * their games.
+   */
+  suggestPlayers(prefix: string, limit?: number): Promise<readonly PlayerSuggestion[]>
 }
