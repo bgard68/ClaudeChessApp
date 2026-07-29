@@ -66,7 +66,11 @@ describe.skipIf(files.length === 0)('bundled game library', () => {
       const chess = new Chess()
       try {
         chess.loadPgn(pgn, { strict: false })
-        if (chess.history().length === 0) {
+        // A forfeit is a real game with nothing played in it — Kramnik's
+        // no-show in 2006 stands as 0-1 with an empty move list. Only an empty
+        // record with no result is broken.
+        const forfeited = ['1-0', '0-1'].includes(tagOf(pgn, 'Result'))
+        if (chess.history().length === 0 && !forfeited) {
           unplayable.push(`${file}: ${tagOf(pgn, 'White')} v ${tagOf(pgn, 'Black')} (no moves)`)
         }
       } catch (error) {

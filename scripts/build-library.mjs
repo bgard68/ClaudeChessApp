@@ -13,9 +13,11 @@
  * Run with `npm run build-library`.
  */
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { availableParallelism } from 'node:os'
+import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads'
 import { Chess } from 'chess.js'
 
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -89,8 +91,14 @@ const compactMoves = (game) => moveTextOf(game).replace(/\s+/g, '').toLowerCase(
  * opening-based test merges genuinely different games. Requiring a prefix
  * relationship cannot: two different games diverge, and after that neither is a
  * prefix of the other.
+ *
+ * An empty move list is the exception that has to be spelled out, because the
+ * empty string is a prefix of everything. A forfeited game has no moves, so
+ * without this it matches the first game by the same players in the same year
+ * and is swallowed as a truncated copy of it.
  */
 function isSameGame(longer, shorter) {
+  if (longer === '' || shorter === '') return longer === shorter
   return longer.startsWith(shorter)
 }
 
@@ -120,16 +128,81 @@ function score(game, playedMoves) {
   return points
 }
 
-/** Replays the game. Returns the number of moves, or null if it will not play. */
+/**
+ * Replays the game. Returns the number of moves played, or null if the record
+ * will not play out.
+ *
+ * No moves is not automatically a failure. A forfeited game is a real result
+ * with nothing played in it: Kramnik did not appear for game 5 of the 2006 title
+ * match and it stands in the record as 0-1 with an empty move list. Rejecting
+ * every empty game cost the library a genuine World Championship game.
+ *
+ * A decisive result is what separates that from an empty record — a stub with no
+ * moves and no result is still dropped.
+ */
 function validate(game) {
   const chess = new Chess()
   try {
     chess.loadPgn(game, { strict: false })
     const moves = chess.history().length
-    return moves > 0 ? moves : null
+    if (moves > 0) return moves
+
+    const result = tagOf(game, 'Result')
+    return result === '1-0' || result === '0-1' ? 0 : null
   } catch {
     return null
   }
+}
+
+/**
+ * Replaying is almost all of the cost here — roughly a hundred and fifty
+ * thousand games, every move of each through the rules engine, which on one core
+ * runs for a quarter of an hour. Each game is independent and only a move count
+ * comes back, so it fans out across a worker pool instead.
+ *
+ * Workers read the file and take every Nth game rather than being handed game
+ * text: posting tens of megabytes of strings between threads costs more than the
+ * parsing it would save. `splitGames` is shared, so a worker's index for a game
+ * is the same index the main thread has.
+ */
+if (!isMainThread) {
+  const { path, stride, offset } = workerData
+  const games = splitGames(readFileSync(path, 'utf8'))
+
+  const counts = []
+  for (let index = offset; index < games.length; index += stride) {
+    const moves = validate(games[index])
+    counts.push(moves === null ? -1 : moves)
+  }
+
+  parentPort.postMessage({ offset, counts })
+}
+
+const POOL = Math.max(1, Number(process.env.WORKERS) || Math.max(1, availableParallelism() - 1))
+
+/** Move count per game in file order; -1 where the record will not play. */
+function validateInParallel(path, gameCount) {
+  const stride = Math.min(POOL, Math.max(1, gameCount))
+
+  return Promise.all(
+    Array.from({ length: stride }, (_unused, offset) =>
+      new Promise((resolve, reject) => {
+        const worker = new Worker(new URL(import.meta.url), {
+          workerData: { path, stride, offset },
+        })
+        worker.once('message', resolve)
+        worker.once('error', reject)
+      }),
+    ),
+  ).then((parts) => {
+    const moves = new Array(gameCount)
+    for (const { offset, counts } of parts) {
+      counts.forEach((count, position) => {
+        moves[offset + position * stride] = count
+      })
+    }
+    return moves
+  })
 }
 
 async function main() {
@@ -159,24 +232,25 @@ async function main() {
 
   for (const file of ordered) {
     const optional = CAREER_FILES.test(file)
-    for (const game of splitGames(await readFile(join(rawDir, file), 'utf8'))) {
-      candidates.push({ game, file, optional })
-    }
+    const path = join(rawDir, file)
+    const games = splitGames(await readFile(path, 'utf8'))
+
+    process.stdout.write(
+      `  ${file}: replaying ${games.length.toLocaleString()} games across ${POOL} workers…\n`,
+    )
+    const moveCounts = await validateInParallel(path, games.length)
+
+    games.forEach((game, index) => {
+      candidates.push({ game, file, optional, moves: moveCounts[index] })
+    })
   }
-  process.stdout.write(`Reading ${candidates.length.toLocaleString()} games…\n`)
+  process.stdout.write(`Read ${candidates.length.toLocaleString()} games\n`)
 
   const groups = new Map()
   let invalid = 0
 
-  let checked = 0
-  for (const { game, optional } of candidates) {
-    checked += 1
-    if (checked % 20_000 === 0) {
-      process.stdout.write(`    ${checked.toLocaleString()} / ${candidates.length.toLocaleString()}
-`)
-    }
-    const moves = validate(game)
-    if (moves === null) {
+  for (const { game, optional, moves } of candidates) {
+    if (moves === -1) {
       invalid += 1
       continue
     }
@@ -286,7 +360,10 @@ function buildReadme(files, total) {
   ].join('\n')
 }
 
-main().catch((error) => {
-  console.error(error)
-  process.exit(1)
-})
+// Guarded: workers import this same module, and must not each run a build.
+if (isMainThread) {
+  main().catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+}
