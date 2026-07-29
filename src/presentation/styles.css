@@ -500,7 +500,10 @@ h2 {
   --surface-raised: #161a2d;
   --surface-hover: #212743;
   --border: #2b3252;
-  --text: #e9eaf4;
+  /* Deliberately not white. On a navy this dark, #e9eaf4 glares across a table
+     of three thousand rows; this still clears AAA against the surface without
+     the page appearing to be lit from behind. */
+  --text: #c9cfe3;
   --text-muted: #9298b8;
   --accent: #7c5cff;
   --accent-strong: #9d84ff;
@@ -511,10 +514,10 @@ h2 {
 
   /* A result pill takes the colour of the side that won, so it needs no key:
      a light pill is White, a dark one is Black, violet is a draw. */
-  --result-white-bg: #e9eaf4;
-  --result-white-fg: #14182b;
+  --result-white-bg: #b9c2da;
+  --result-white-fg: #12162a;
   --result-black-bg: #12162a;
-  --result-black-fg: #cdd2e8;
+  --result-black-fg: #bcc3da;
   --result-draw-bg: #2a2550;
   --result-draw-fg: #b7abf0;
 
