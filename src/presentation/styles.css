@@ -1030,3 +1030,14 @@ h2 {
   color: var(--text-muted);
   white-space: nowrap;
 }
+
+.player__title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--accent-strong);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 0.05rem 0.22rem;
+  flex: 0 0 auto;
+}

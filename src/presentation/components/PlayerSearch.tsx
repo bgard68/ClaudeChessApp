@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { PlayerSuggestion } from '@application/ports/GameArchive'
-import { federationOf } from '@domain/archive/playerCountry'
+import { useFederations } from '../hooks/useFederations'
 import { useDebounced } from '../hooks/useDebounced'
 import { useServices } from '../ServicesContext'
 
@@ -19,6 +19,7 @@ interface PlayerSearchProps {
 export function PlayerSearch({ term, onChoose }: PlayerSearchProps) {
   const { services } = useServices()
   const query = useDebounced(term)
+  const lookup = useFederations()
   const [suggestions, setSuggestions] = useState<readonly PlayerSuggestion[]>([])
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export function PlayerSearch({ term, onChoose }: PlayerSearchProps) {
   return (
     <ul className="player-suggestions">
       {suggestions.map((player) => {
-        const federation = federationOf(player.name)
+        const federation = lookup(player.name)
         return (
           <li key={player.id}>
             <button
@@ -55,6 +56,9 @@ export function PlayerSearch({ term, onChoose }: PlayerSearchProps) {
               className="player-suggestion"
               onClick={() => onChoose(player)}
             >
+              {federation?.title ? (
+                <span className="player__title">{federation.title}</span>
+              ) : null}
               {federation !== null ? (
                 <span className="player__flag">{federation.code}</span>
               ) : null}

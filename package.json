@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "prepare-assets": "node scripts/copy-engine.mjs && node scripts/fetch-games.mjs && node scripts/fetch-famous-games.mjs && node scripts/fetch-modern-championships.mjs && node scripts/build-library.mjs",
+    "prepare-assets": "node scripts/copy-engine.mjs && node scripts/fetch-games.mjs && node scripts/fetch-famous-games.mjs && node scripts/fetch-modern-championships.mjs && node scripts/build-library.mjs && node scripts/fetch-federations.mjs",
     "predev": "npm run prepare-assets",
     "dev": "vite",
     "predev:host": "npm run prepare-assets",
@@ -14,7 +14,8 @@
     "copy-engine": "node scripts/copy-engine.mjs",
     "fetch-famous": "node scripts/fetch-famous-games.mjs",
     "fetch-modern": "node scripts/fetch-modern-championships.mjs",
-    "build-library": "node scripts/build-library.mjs",
+    "fetch-federations": "node scripts/fetch-federations.mjs",
+    "build-library": "node scripts/build-library.mjs && node scripts/fetch-federations.mjs",
     "audit-library": "node scripts/audit-library.mjs",
     "screens": "node scripts/phone-screens.mjs",
     "preview": "vite preview",

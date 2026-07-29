@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { displayYear, type ArchivedGameSummary } from '@domain/archive/ArchivedGame'
-import { federationOf } from '@domain/archive/playerCountry'
+import { useFederations } from '../hooks/useFederations'
 import {
   SEARCH_FIELDS,
   type ArchivePage,
@@ -51,14 +51,23 @@ function describeResults(
     : `${games} matching “${search}”${scope}`
 }
 
-/** One side of a game: federation when known, name, rating when recorded. */
-function Player({ name, elo }: { name: string; elo: number | null }) {
-  const federation = federationOf(name)
+/** One side of a game: title and federation when known, name, rating when recorded. */
+function Player({
+  name,
+  elo,
+  lookup,
+}: {
+  name: string
+  elo: number | null
+  lookup: (name: string) => { code: string; country: string; title: string | null } | null
+}) {
+  const federation = lookup(name)
 
   return (
     <span className="player">
+      {federation?.title ? <span className="player__title">{federation.title}</span> : null}
       {federation !== null ? (
-        <abbr className="player__flag" title={federation.name}>
+        <abbr className="player__flag" title={federation.country}>
           {federation.code}
         </abbr>
       ) : null}
@@ -75,6 +84,7 @@ interface ArchiveScreenProps {
 
 export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
   const { services } = useServices()
+  const lookup = useFederations()
   const [search, setSearch] = useState('')
   // The box updates instantly; the query waits for a pause in typing.
   const query = useDebounced(search)
@@ -248,6 +258,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
             game={game}
             onOpen={() => onOpenGame(game.id)}
             onDelete={game.origin === 'played' ? () => void deleteGame(game.id) : undefined}
+            lookup={lookup}
           />
         ))}
       </ol>
@@ -283,9 +294,11 @@ function GameRow({
   game,
   onOpen,
   onDelete,
+  lookup,
 }: {
   game: ArchivedGameSummary
   onOpen: () => void
+  lookup: (name: string) => { code: string; country: string; title: string | null } | null
   /** Only your own games can be removed; history is not yours to delete. */
   onDelete?: () => void
 }) {
@@ -296,9 +309,9 @@ function GameRow({
           {game.nickname !== null ? (
             <span className="game-row__nickname">{game.nickname}</span>
           ) : null}
-          <Player name={game.white} elo={game.whiteElo} />
+          <Player name={game.white} elo={game.whiteElo} lookup={lookup} />
           <span className="game-row__versus">vs</span>
-          <Player name={game.black} elo={game.blackElo} />
+          <Player name={game.black} elo={game.blackElo} lookup={lookup} />
         </span>
         <span className="game-row__meta">
           {game.event} · round {game.round} · {displayYear(game.date)}
