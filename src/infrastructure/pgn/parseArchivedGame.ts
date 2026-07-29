@@ -12,7 +12,7 @@ import { Position } from '@domain/chess/Position'
 import { toSquare } from '@domain/chess/Square'
 import { promotionPieceFromSymbol } from '../chess/pieceMapping'
 import { parseClockComment } from './clockComment'
-import { headerOr, summarise } from './pgnHeaders'
+import { summarise } from './pgnHeaders'
 import { parseTimeControlTag } from './timeControlTag'
 
 /**
@@ -61,7 +61,6 @@ export function parseArchivedGame(pgn: string, id: string): ArchivedGame | null 
     // have actually been played out.
     moveCount: Math.ceil(moves.length / 2),
     hasRecordedClocks: clockByFen.size > 0,
-    site: headerOr(headers, 'Site', 'Unknown'),
     eco: headers['ECO'] ?? null,
     opening: headers['Opening'] ?? null,
     outcome: outcomeFrom(chess, summary.result, headers['Termination']),
