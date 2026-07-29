@@ -862,23 +862,7 @@ h2 {
   color: var(--accent-strong);
 }
 
-/* ---------- Archive search scope ---------- */
-
-.archive__scope {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  flex: 0 0 auto;
-}
-
-.archive__scope-label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-muted);
-  margin-right: 0.15rem;
-}
+/* ---------- Archive search ---------- */
 
 .archive__heading {
   font-size: 0.9rem;
@@ -887,4 +871,105 @@ h2 {
   color: var(--text);
   margin: 0;
   flex: 0 0 auto;
+}
+
+/* Field and scope in one container, the scope pinned to the right end. */
+.search-bar {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.search-bar:focus-within {
+  border-color: var(--accent);
+}
+
+.search-bar__input {
+  font: inherit;
+  /* 16px, or mobile browsers zoom the page when it takes focus. */
+  font-size: 16px;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  padding: 0.4rem 0.7rem;
+  min-height: 38px;
+}
+
+.search-bar__input:focus {
+  outline: none;
+}
+
+.search-bar__scope {
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text);
+  /* Explicit background: a transparent select inherits the OS light palette
+     for its dropdown, which renders the options white on white. */
+  background: var(--surface-raised);
+  border: 0;
+  border-left: 1px solid var(--border);
+  padding: 0 1.6rem 0 0.7rem;
+  cursor: pointer;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position: right 0.85rem center, right 0.6rem center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.search-bar__scope option {
+  /* Set on the options too, or the dropdown list ignores the dark theme. */
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+/* ---------- Player in a game row ---------- */
+
+.player {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.player__flag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.05rem 0.22rem;
+  text-decoration: none;
+  flex: 0 0 auto;
+}
+
+.player__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player__elo {
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+.game-row__players {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-width: 0;
 }

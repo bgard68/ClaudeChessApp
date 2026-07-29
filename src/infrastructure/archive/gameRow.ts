@@ -64,7 +64,7 @@ export function insertStatement(
 
 /** Columns the archive list needs — deliberately not the PGN itself. */
 export const SUMMARY_COLUMNS =
-  'id, source, white_name, black_name, event, played_on, round, result, move_count, has_clock_times, nickname'
+  'id, source, white_name, black_name, white_elo, black_elo, event, played_on, round, result, move_count, has_clock_times, nickname'
 
 export function toSummary(row: SqlRow): ArchivedGameSummary {
   return {
@@ -72,6 +72,8 @@ export function toSummary(row: SqlRow): ArchivedGameSummary {
     origin: String(row['source']) as GameSource,
     white: String(row['white_name']),
     black: String(row['black_name']),
+    whiteElo: row['white_elo'] === null ? null : Number(row['white_elo']),
+    blackElo: row['black_elo'] === null ? null : Number(row['black_elo']),
     event: String(row['event']),
     date: String(row['played_on']),
     round: String(row['round']),

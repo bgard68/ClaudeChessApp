@@ -33,6 +33,8 @@ export function summarise(pgn: string, id: string): ArchivedGameSummary {
     origin: 'championship',
     white: headerOr(headers, 'White', 'Unknown'),
     black: headerOr(headers, 'Black', 'Unknown'),
+    whiteElo: toElo(headers['WhiteElo']),
+    blackElo: toElo(headers['BlackElo']),
     event: headerOr(headers, 'Event', 'Unknown event'),
     date: headerOr(headers, 'Date', '????.??.??'),
     round: headerOr(headers, 'Round', '-'),
@@ -41,6 +43,11 @@ export function summarise(pgn: string, id: string): ArchivedGameSummary {
     hasRecordedClocks: pgn.includes('%clk'),
     nickname: headers['Nickname'] ?? null,
   }
+}
+
+function toElo(value: string | undefined): number | null {
+  const parsed = Number.parseInt(value ?? '', 10)
+  return Number.isFinite(parsed) ? parsed : null
 }
 
 /** Highest move number in the movetext — close enough for a list column. */

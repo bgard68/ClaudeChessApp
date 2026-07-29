@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { displayYear, type ArchivedGameSummary } from '@domain/archive/ArchivedGame'
+import { federationOf } from '@domain/archive/playerCountry'
 import {
   SEARCH_FIELDS,
   type ArchivePage,
@@ -45,6 +46,23 @@ function describeResults(
   return total === 0
     ? `No games matching “${search}”${scope}`
     : `${games} matching “${search}”${scope}`
+}
+
+/** One side of a game: federation when known, name, rating when recorded. */
+function Player({ name, elo }: { name: string; elo: number | null }) {
+  const federation = federationOf(name)
+
+  return (
+    <span className="player">
+      {federation !== null ? (
+        <abbr className="player__flag" title={federation.name}>
+          {federation.code}
+        </abbr>
+      ) : null}
+      <span className="player__name">{name}</span>
+      {elo !== null ? <span className="player__elo">{elo}</span> : null}
+    </span>
+  )
 }
 
 interface ArchiveScreenProps {
@@ -133,16 +151,35 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
         </button>
         <h1>Championship games</h1>
         <div className="archive__tools">
-          <input
-            type="search"
-            className="input"
-            placeholder={SEARCH_PLACEHOLDERS[field]}
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value)
-              setOffset(0)
-            }}
-          />
+          {/* Field and scope share one bordered container, so they read as a
+              single control rather than two that happen to sit together. */}
+          <div className="search-bar">
+            <input
+              type="search"
+              className="search-bar__input"
+              placeholder={SEARCH_PLACEHOLDERS[field]}
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value)
+                setOffset(0)
+              }}
+            />
+            <select
+              className="search-bar__scope"
+              aria-label="Search within"
+              value={field}
+              onChange={(event) => {
+                setField(event.target.value as SearchField)
+                setOffset(0)
+              }}
+            >
+              {SEARCH_FIELDS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
           <button type="button" className="button" onClick={() => fileInput.current?.click()}>
             Import PGN
           </button>
@@ -159,24 +196,6 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
           />
         </div>
       </header>
-
-      <div className="archive__scope" role="group" aria-label="Search within">
-        <span className="archive__scope-label">Search in</span>
-        {SEARCH_FIELDS.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            className={`chip${field === option.id ? ' chip--selected' : ''}`}
-            aria-pressed={field === option.id}
-            onClick={() => {
-              setField(option.id)
-              setOffset(0)
-            }}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
 
       <h2 className="archive__heading">{describeResults(total, search, field, isLoading)}</h2>
 
@@ -257,7 +276,9 @@ function GameRow({
           {game.nickname !== null ? (
             <span className="game-row__nickname">{game.nickname}</span>
           ) : null}
-          {game.white} <span className="game-row__versus">vs</span> {game.black}
+          <Player name={game.white} elo={game.whiteElo} />
+          <span className="game-row__versus">vs</span>
+          <Player name={game.black} elo={game.blackElo} />
         </span>
         <span className="game-row__meta">
           {game.event} · round {game.round} · {displayYear(game.date)}

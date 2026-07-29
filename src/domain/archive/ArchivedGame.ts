@@ -47,6 +47,9 @@ export interface ArchivedGameSummary {
   readonly origin: GameOrigin
   readonly white: string
   readonly black: string
+  /** From the PGN Elo tags, absent in about a sixth of games. */
+  readonly whiteElo: number | null
+  readonly blackElo: number | null
   readonly event: string
   readonly date: string
   readonly round: string
