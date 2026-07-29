@@ -5,6 +5,7 @@ import type {
   GameArchive,
   ImportProgress,
   LibraryDurability,
+  SearchField,
 } from '@application/ports/GameArchive'
 import type { GameStore, RecordedGame } from '@application/ports/GameStore'
 import { parseArchivedGame } from '../pgn/parseArchivedGame'
@@ -12,7 +13,7 @@ import { splitPgnGames } from '../pgn/splitPgnGames'
 import { writePgn } from '../pgn/writePgn'
 import { LIBRARY_VERSION, SCHEMA_STATEMENTS, SCHEMA_VERSION } from '../sqlite/schema'
 import type { SqliteClient } from '../sqlite/SqliteClient'
-import type { SqlStatement } from '../sqlite/protocol'
+import type { SqlStatement, SqlValue } from '../sqlite/protocol'
 import { insertStatement, SUMMARY_COLUMNS, toSummary, type GameSource } from './gameRow'
 import type { PgnSource } from './PgnSource'
 
@@ -69,8 +70,7 @@ export class SqliteGameArchive implements GameArchive, GameStore {
     await this.ready()
 
     const search = query.search?.trim().toLowerCase() ?? ''
-    const where = search === '' ? '' : 'WHERE search_text LIKE ?'
-    const filter = search === '' ? [] : [`%${search}%`]
+    const { where, filter } = buildFilter(search, query.field ?? 'all')
 
     const total = await this.client.selectOne<{ n: number }>(
       `SELECT count(*) AS n FROM game ${where}`,
@@ -80,14 +80,14 @@ export class SqliteGameArchive implements GameArchive, GameStore {
     const limit = Math.max(1, query.limit ?? DEFAULT_PAGE_SIZE)
     const offset = Math.max(0, query.offset ?? 0)
 
-    // When searching, games where the term names a *player* come first.
-    // Otherwise a tournament like "Bobby Fischer Memorial" buries every game
-    // actually played by someone of that name.
-    const relevance =
-      search === ''
-        ? ''
-        : `CASE WHEN lower(white_name || ' ' || black_name) LIKE ? THEN 0 ELSE 1 END,`
-    const relevanceBinding = search === '' ? [] : [`%${search}%`]
+    // When searching everything, games where the term names a *player* come
+    // first. Otherwise a tournament like "Bobby Fischer Memorial" buries every
+    // game actually played by someone of that name.
+    const ranksPlayersFirst = search !== '' && (query.field ?? 'all') === 'all'
+    const relevance = ranksPlayersFirst
+      ? `CASE WHEN lower(white_name || ' ' || black_name) LIKE ? THEN 0 ELSE 1 END,`
+      : ''
+    const relevanceBinding = ranksPlayersFirst ? [`%${search}%`] : []
 
     const rows = await this.client.select(
       `SELECT ${SUMMARY_COLUMNS} FROM game ${where}
@@ -268,5 +268,39 @@ export class SqliteGameArchive implements GameArchive, GameStore {
         [String(LIBRARY_VERSION)],
       )
     }
+  }
+}
+
+/**
+ * Turns a search term and the chosen field into a WHERE clause.
+ *
+ * Year is compared numerically rather than as text, so "201" cannot quietly
+ * match 2010 through 2019 — a range nobody asked for.
+ */
+function buildFilter(
+  search: string,
+  field: SearchField,
+): { where: string; filter: SqlValue[] } {
+  if (search === '') return { where: '', filter: [] }
+
+  const like = `%${search}%`
+
+  switch (field) {
+    case 'player':
+      return {
+        where: "WHERE lower(white_name || ' ' || black_name) LIKE ?",
+        filter: [like],
+      }
+    case 'event':
+      return { where: 'WHERE lower(event) LIKE ?', filter: [like] }
+    case 'year': {
+      const year = Number.parseInt(search, 10)
+      // A non-numeric year matches nothing, rather than everything.
+      return Number.isFinite(year) && /^\d{1,4}$/.test(search)
+        ? { where: 'WHERE year = ?', filter: [year] }
+        : { where: 'WHERE 1 = 0', filter: [] }
+    }
+    case 'all':
+      return { where: 'WHERE search_text LIKE ?', filter: [like] }
   }
 }

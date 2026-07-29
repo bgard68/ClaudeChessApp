@@ -10,9 +10,20 @@ export type LibraryDurability =
   | { readonly kind: 'durable' }
   | { readonly kind: 'temporary'; readonly reason: 'no-storage' | 'another-tab' }
 
+/** What a search term is matched against. */
+export type SearchField = 'all' | 'player' | 'event' | 'year'
+
+export const SEARCH_FIELDS: readonly { id: SearchField; label: string }[] = [
+  { id: 'all', label: 'Anything' },
+  { id: 'player', label: 'Player' },
+  { id: 'event', label: 'Event' },
+  { id: 'year', label: 'Year' },
+]
+
 export interface ArchiveQuery {
-  /** Free text matched against players, event, and round. */
   readonly search?: string
+  /** Defaults to `all`. */
+  readonly field?: SearchField
   readonly limit?: number
   readonly offset?: number
 }

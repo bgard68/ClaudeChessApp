@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { GameFactory } from '@composition/GameFactory'
-import { createAppServices, type AppServices } from '@composition/services'
+import { getAppServices, type AppServices } from '@composition/services'
 
 interface ServicesValue {
   readonly services: AppServices
@@ -18,7 +18,9 @@ const ServicesContext = createContext<ServicesValue | null>(null)
  */
 export function ServicesProvider({ children }: { children: ReactNode }) {
   const value = useMemo<ServicesValue>(() => {
-    const services = createAppServices()
+    // `getAppServices` is idempotent, so a second render — StrictMode does
+    // exactly that — cannot open a second database connection.
+    const services = getAppServices()
     return { services, factory: new GameFactory(services) }
   }, [])
 

@@ -861,3 +861,30 @@ h2 {
   letter-spacing: 0.02em;
   color: var(--accent-strong);
 }
+
+/* ---------- Archive search scope ---------- */
+
+.archive__scope {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+
+.archive__scope-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-right: 0.15rem;
+}
+
+.archive__heading {
+  font-size: 0.9rem;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+  margin: 0;
+  flex: 0 0 auto;
+}

@@ -63,7 +63,10 @@ describe('bundled game library', () => {
     }
 
     expect(unplayable.slice(0, 5)).toEqual([])
-  })
+    // Explicit budget: replaying several hundred games sits close to the 5s
+    // default on its own, and tips over it when the suite competes for CPU.
+    // It was failing on timing, never on a bad game.
+  }, 30_000)
 
   it('holds no game twice, within a file or across them', () => {
     const seen = new Map<string, string>()

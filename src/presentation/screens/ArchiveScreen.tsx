@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { displayYear, type ArchivedGameSummary } from '@domain/archive/ArchivedGame'
-import type { ArchivePage } from '@application/ports/GameArchive'
+import {
+  SEARCH_FIELDS,
+  type ArchivePage,
+  type SearchField,
+} from '@application/ports/GameArchive'
 import { useServices } from '../ServicesContext'
 
 const PAGE_SIZE = 40
@@ -11,6 +15,38 @@ interface ImportState {
   readonly name: string
 }
 
+const SEARCH_PLACEHOLDERS: Readonly<Record<SearchField, string>> = {
+  all: 'Search players, events, and years',
+  player: 'Search by player name',
+  event: 'Search by tournament or match',
+  year: 'Search by year, e.g. 1972',
+}
+
+const FIELD_NAMES: Readonly<Record<SearchField, string>> = {
+  all: '',
+  player: 'players',
+  event: 'events',
+  year: 'years',
+}
+
+/** States plainly what is on screen and why, rather than leaving a bare list. */
+function describeResults(
+  total: number,
+  search: string,
+  field: SearchField,
+  isLoading: boolean,
+): string {
+  if (isLoading) return 'Searching…'
+
+  const games = `${total.toLocaleString()} game${total === 1 ? '' : 's'}`
+  if (search.trim() === '') return `All games · ${games}`
+
+  const scope = field === 'all' ? '' : ` in ${FIELD_NAMES[field]}`
+  return total === 0
+    ? `No games matching “${search}”${scope}`
+    : `${games} matching “${search}”${scope}`
+}
+
 interface ArchiveScreenProps {
   readonly onOpenGame: (id: string) => void
   readonly onBack: () => void
@@ -19,6 +55,7 @@ interface ArchiveScreenProps {
 export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
   const { services } = useServices()
   const [search, setSearch] = useState('')
+  const [field, setField] = useState<SearchField>('all')
   const [offset, setOffset] = useState(0)
   const [page, setPage] = useState<ArchivePage | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +70,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
     setLoading(true)
 
     services.archive
-      .list({ search, offset, limit: PAGE_SIZE })
+      .list({ search, field, offset, limit: PAGE_SIZE })
       .then((result) => {
         if (cancelled) return
         setPage(result)
@@ -50,7 +87,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
     return () => {
       cancelled = true
     }
-  }, [services.archive, search, offset, reloadToken])
+  }, [services.archive, search, field, offset, reloadToken])
 
   const importFile = async (file: File) => {
     setError(null)
@@ -99,7 +136,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
           <input
             type="search"
             className="input"
-            placeholder="Search player, event, or year"
+            placeholder={SEARCH_PLACEHOLDERS[field]}
             value={search}
             onChange={(event) => {
               setSearch(event.target.value)
@@ -123,6 +160,26 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
         </div>
       </header>
 
+      <div className="archive__scope" role="group" aria-label="Search within">
+        <span className="archive__scope-label">Search in</span>
+        {SEARCH_FIELDS.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            className={`chip${field === option.id ? ' chip--selected' : ''}`}
+            aria-pressed={field === option.id}
+            onClick={() => {
+              setField(option.id)
+              setOffset(0)
+            }}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <h2 className="archive__heading">{describeResults(total, search, field, isLoading)}</h2>
+
       {importing !== null ? (
         <p className="notice">
           {importing.total === 0
@@ -144,7 +201,6 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
         </p>
       ) : null}
 
-      {isLoading ? <p className="notice">Loading…</p> : null}
 
       <ol className="game-list">
         {games.map((game) => (

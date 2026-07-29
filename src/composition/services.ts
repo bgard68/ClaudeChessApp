@@ -39,7 +39,23 @@ export interface AppServices {
  * its own clock and its own search process, and disposing one must not silently
  * break the next.
  */
-export function createAppServices(): AppServices {
+let shared: AppServices | null = null
+
+/**
+ * The one set of services this page uses.
+ *
+ * Deliberately module-level rather than created inside a React hook. OPFS
+ * grants its exclusive file handles to a single connection, so a second client
+ * — which a double-invoked `useMemo` will happily construct in StrictMode —
+ * loses the lock, silently falls back to an in-memory database, and takes the
+ * user's imported games with it.
+ */
+export function getAppServices(): AppServices {
+  shared ??= createAppServices()
+  return shared
+}
+
+function createAppServices(): AppServices {
   // Exactly one client: OPFS grants its exclusive access handles to a single
   // connection, so a second would silently lose persistence.
   // Three files that do not overlap, so nothing is stored twice even before the
