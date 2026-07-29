@@ -14,3 +14,6 @@ public/games/
 
 # Exported PGN copies for local use — never committed
 library/
+
+# Vite cache
+.vite/
