@@ -1,0 +1,321 @@
+[Event "London 'Immortal game'"]
+[Nickname "The Immortal Game"]
+[Site "London"]
+[Date "1851.??.??"]
+[Round "?"]
+[White "Anderssen, Adolf"]
+[Black "Kieseritzky, Lionel"]
+[Result "1-0"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "C33"]
+
+1.e4 e5 2.f4 exf4 3.Bc4 Qh4+ 4.Kf1 b5 5.Bxb5 Nf6 6.Nf3 Qh6 7.d3 Nh5 8.Nh4 Qg5
+9.Nf5 c6 10.g4 Nf6 11.Rg1 cxb5 12.h4 Qg6 13.h5 Qg5 14.Qf3 Ng8 15.Bxf4 Qf6
+16.Nc3 Bc5 17.Nd5 Qxb2 18.Bd6 Bxg1 19.e5 Qxa1+ 20.Ke2 Na6 21.Nxg7+ Kd8 22.Qf6+ Nxf6
+23.Be7+  1-0
+
+[Event "Berlin 'Evergreen'"]
+[Nickname "The Evergreen Game"]
+[Site "Berlin"]
+[Date "1852.??.??"]
+[Round "?"]
+[White "Anderssen, Adolf"]
+[Black "Dufresne, Jean"]
+[Result "1-0"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "C52"]
+
+1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.b4 Bxb4 5.c3 Ba5 6.d4 exd4 7.O-O d3 8.Qb3 Qf6
+9.e5 Qg6 10.Re1 Nge7 11.Ba3 b5 12.Qxb5 Rb8 13.Qa4 Bb6 14.Nbd2 Bb7 15.Ne4 Qf5
+16.Bxd3 Qh5 17.Nf6+ gxf6 18.exf6 Rg8 19.Rad1 Qxf3 20.Rxe7+ Nxe7 21.Qxd7+ Kxd7
+22.Bf5+ Ke8 23.Bd7+ Kf8 24.Bxe7+  1-0
+
+[Event "Paris it"]
+[Nickname "The Opera Game"]
+[Site "Paris"]
+[Date "1858.??.??"]
+[Round "?"]
+[White "Morphy, Paul "]
+[Black "Duke Karl Count Isouard"]
+[Result "1-0"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "C41"]
+
+1.e4 e5 2.Nf3 d6 3.d4 Bg4 4.dxe5 Bxf3 5.Qxf3 dxe5 6.Bc4 Nf6 7.Qb3 Qe7 8.Nc3 c6
+9.Bg5 b5 10.Nxb5 cxb5 11.Bxb5+ Nbd7 12.O-O-O Rd8 13.Rxd7 Rxd7 14.Rd1 Qe6
+15.Bxd7+ Nxd7 16.Qb8+ Nxb8 17.Rd8+  1-0
+
+[Event "Hastings"]
+[Nickname "Steinitz's King Hunt"]
+[Site "Hastings"]
+[Date "1895.??.??"]
+[Round "?"]
+[White "Steinitz, William"]
+[Black "Von Bardeleben, Curt"]
+[Result "1-0"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "C54"]
+
+1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.c3 Nf6 5.d4 exd4 6.cxd4 Bb4+ 7.Nc3 d5 8.exd5 Nxd5
+9.O-O Be6 10.Bg5 Be7 11.Bxd5 Bxd5 12.Nxd5 Qxd5 13.Bxe7 Nxe7 14.Re1 f6 15.Qe2 Qd7
+16.Rac1 c6 17.d5 cxd5 18.Nd4 Kf7 19.Ne6 Rhc8 20.Qg4 g6 21.Ng5+ Ke8 22.Rxe7+ Kf8
+23.Rf7+ Kg8 24.Rg7+ Kh8 25.Rxh7+  1-0
+
+[Event "Lodz1"]
+[Nickname "Rubinstein's Immortal"]
+[Site "Lodz"]
+[Date "1907.??.??"]
+[Round "?"]
+[White "Rotlewi, Georg A"]
+[Black "Rubinstein, Akiba"]
+[Result "0-1"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "D40"]
+
+1.d4 d5 2.Nf3 e6 3.e3 c5 4.c4 Nc6 5.Nc3 Nf6 6.dxc5 Bxc5 7.a3 a6 8.b4 Bd6
+9.Bb2 O-O 10.Qd2 Qe7 11.Bd3 dxc4 12.Bxc4 b5 13.Bd3 Rd8 14.Qe2 Bb7 15.O-O Ne5
+16.Nxe5 Bxe5 17.f4 Bc7 18.e4 Rac8 19.e5 Bb6+ 20.Kh1 Ng4 21.Be4 Qh4 22.g3 Rxc3
+23.gxh4 Rd2 24.Qxd2 Bxe4+ 25.Qg2 Rh3  0-1
+
+[Event "DSB-18.Kongress"]
+[Nickname "The Gold Coins Game"]
+[Site "Breslau"]
+[Date "1912.??.??"]
+[Round "6"]
+[White "Levitsky, Stepan M"]
+[Black "Marshall, Frank James"]
+[Result "0-1"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "B40"]
+
+1.e4 e6 2.d4 d5 3.Nc3 c5 4.Nf3 Nc6 5.exd5 exd5 6.Be2 Nf6 7.O-O Be7 8.Bg5 O-O
+9.dxc5 Be6 10.Nd4 Bxc5 11.Nxe6 fxe6 12.Bg4 Qd6 13.Bh3 Rae8 14.Qd2 Bb4 15.Bxf6 Rxf6
+16.Rad1 Qc5 17.Qe2 Bxc3 18.bxc3 Qxc3 19.Rxd5 Nd4 20.Qh5 Ref8 21.Re5 Rh6 22.Qg5 Rxh3
+23.Rc5 Qg3  0-1
+
+[Event "St Petersburg f"]
+[Nickname "Lasker – Capablanca, St Petersburg"]
+[Site "St Petersburg"]
+[Date "1914.??.??"]
+[Round "?"]
+[White "Lasker, Emanuel"]
+[Black "Capablanca, Jose Raul"]
+[Result "1-0"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "C68"]
+
+1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 4.Bxc6 dxc6 5.d4 exd4 6.Qxd4 Qxd4 7.Nxd4 Bd6 8.Nc3 Ne7
+9.O-O O-O 10.f4 Re8 11.Nb3 f6 12.f5 b6 13.Bf4 Bb7 14.Bxd6 cxd6 15.Nd4 Rad8
+16.Ne6 Rd7 17.Rad1 Nc8 18.Rf2 b5 19.Rfd2 Rde7 20.b4 Kf7 21.a3 Ba8 22.Kf2 Ra7
+23.g4 h6 24.Rd3 a5 25.h4 axb4 26.axb4 Rae7 27.Kf3 Rg8 28.Kf4 g6 29.Rg3 g5+
+30.Kf3 Nb6 31.hxg5 hxg5 32.Rh3 Rd7 33.Kg3 Ke8 34.Rdh1 Bb7 35.e5 dxe5 36.Ne4 Nd5
+37.N6c5 Bc8 38.Nxd7 Bxd7 39.Rh7 Rf8 40.Ra1 Kd8 41.Ra8+ Bc8 42.Nc5  1-0
+
+[Event "New York"]
+[Nickname "The Marshall Attack"]
+[Site "New York"]
+[Date "1918.??.??"]
+[Round "?"]
+[White "Capablanca, Jose Raul"]
+[Black "Marshall, Frank James"]
+[Result "1-0"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "C89"]
+
+1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 4.Ba4 Nf6 5.O-O Be7 6.Re1 b5 7.Bb3 O-O 8.c3 d5
+9.exd5 Nxd5 10.Nxe5 Nxe5 11.Rxe5 Nf6 12.Re1 Bd6 13.h3 Ng4 14.Qf3 Qh4 15.d4 Nxf2
+16.Re2 Bg4 17.hxg4 Bh2+ 18.Kf1 Bg3 19.Rxf2 Qh1+ 20.Ke2 Bxf2 21.Bd2 Bh4 22.Qh3 Rae8+
+23.Kd3 Qf1+ 24.Kc2 Bf2 25.Qf3 Qg1 26.Bd5 c5 27.dxc5 Bxc5 28.b4 Bd6 29.a4 a5
+30.axb5 axb4 31.Ra6 bxc3 32.Nxc3 Bb4 33.b6 Bxc3 34.Bxc3 h6 35.b7 Re3 36.Bxf7+  1-0
+
+[Event "AVRO"]
+[Nickname "Botvinnik – Capablanca, AVRO"]
+[Site "Amsterdam"]
+[Date "1938.??.??"]
+[Round "?"]
+[White "Botvinnik, Mikhail"]
+[Black "Capablanca, Jose Raul"]
+[Result "1-0"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "E49"]
+
+1.d4 Nf6 2.c4 e6 3.Nc3 Bb4 4.e3 d5 5.a3 Bxc3+ 6.bxc3 c5 7.cxd5 exd5 8.Bd3 O-O
+9.Ne2 b6 10.O-O Ba6 11.Bxa6 Nxa6 12.Bb2 Qd7 13.a4 Rfe8 14.Qd3 c4 15.Qc2 Nb8
+16.Rae1 Nc6 17.Ng3 Na5 18.f3 Nb3 19.e4 Qxa4 20.e5 Nd7 21.Qf2 g6 22.f4 f5
+23.exf6 Nxf6 24.f5 Rxe1 25.Rxe1 Re8 26.Re6 Rxe6 27.fxe6 Kg7 28.Qf4 Qe8 29.Qe5 Qe7
+30.Ba3 Qxa3 31.Nh5+ gxh5 32.Qg5+ Kf8 33.Qxf6+ Kg8 34.e7 Qc1+ 35.Kf2 Qc2+
+36.Kg3 Qd3+ 37.Kh4 Qe4+ 38.Kxh5 Qe2+ 39.Kh4 Qe4+ 40.g4 Qe1+ 41.Kh5  1-0
+
+[Event "Candidats Tournament"]
+[Nickname "Averbakh – Kotov, Zurich"]
+[Site "Zuerich"]
+[Date "1953.??.??"]
+[Round "14"]
+[White "Averbakh, Yuri L"]
+[Black "Kotov, Alexander"]
+[Result "0-1"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "A55"]
+
+1.d4 Nf6 2.c4 d6 3.Nf3 Nbd7 4.Nc3 e5 5.e4 Be7 6.Be2 O-O 7.O-O c6 8.Qc2 Re8
+9.Rd1 Bf8 10.Rb1 a5 11.d5 Nc5 12.Be3 Qc7 13.h3 Bd7 14.Rbc1 g6 15.Nd2 Rab8
+16.Nb3 Nxb3 17.Qxb3 c5 18.Kh2 Kh8 19.Qc2 Ng8 20.Bg4 Nh6 21.Bxd7 Qxd7 22.Qd2 Ng8
+23.g4 f5 24.f3 Be7 25.Rg1 Rf8 26.Rcf1 Rf7 27.gxf5 gxf5 28.Rg2 f4 29.Bf2 Rf6
+30.Ne2 Qxh3+ 31.Kxh3 Rh6+ 32.Kg4 Nf6+ 33.Kf5 Nd7 34.Rg5 Rf8+ 35.Kg4 Nf6+
+36.Kf5 Ng8+ 37.Kg4 Nf6+ 38.Kf5 Nxd5+ 39.Kg4 Nf6+ 40.Kf5 Ng8+ 41.Kg4 Nf6+
+42.Kf5 Ng8+ 43.Kg4 Bxg5 44.Kxg5 Rf7 45.Bh4 Rg6+ 46.Kh5 Rfg7 47.Bg5 Rxg5+
+48.Kh4 Nf6 49.Ng3 Rxg3 50.Qxd6 R3g6 51.Qb8+ Rg8  0-1
+
+[Event "Candidats Tournament"]
+[Nickname "Geller – Euwe, Zurich"]
+[Site "Zuerich"]
+[Date "1953.??.??"]
+[Round "2"]
+[White "Geller, Efim P"]
+[Black "Euwe, Max"]
+[Result "0-1"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "E28"]
+
+1.d4 Nf6 2.c4 e6 3.Nc3 Bb4 4.e3 c5 5.a3 Bxc3+ 6.bxc3 b6 7.Bd3 Bb7 8.f3 Nc6
+9.Ne2 O-O 10.O-O Na5 11.e4 Ne8 12.Ng3 cxd4 13.cxd4 Rc8 14.f4 Nxc4 15.f5 f6
+16.Rf4 b5 17.Rh4 Qb6 18.e5 Nxe5 19.fxe6 Nxd3 20.Qxd3 Qxe6 21.Qxh7+ Kf7 22.Bh6 Rh8
+23.Qxh8 Rc2 24.Rc1 Rxg2+ 25.Kf1 Qb3 26.Ke1 Qf3  0-1
+
+[Event "New York Rosenwald"]
+[Nickname "The Game of the Century"]
+[Site "New York"]
+[Date "1956.??.??"]
+[Round "?"]
+[White "Byrne, Donald"]
+[Black "Fischer, Robert James"]
+[Result "0-1"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "D97"]
+
+1.Nf3 Nf6 2.c4 g6 3.Nc3 Bg7 4.d4 O-O 5.Bf4 d5 6.Qb3 dxc4 7.Qxc4 c6 8.e4 Nbd7
+9.Rd1 Nb6 10.Qc5 Bg4 11.Bg5 Na4 12.Qa3 Nxc3 13.bxc3 Nxe4 14.Bxe7 Qb6 15.Bc4 Nxc3
+16.Bc5 Rfe8+ 17.Kf1 Be6 18.Bxb6 Bxc4+ 19.Kg1 Ne2+ 20.Kf1 Nxd4+ 21.Kg1 Ne2+
+22.Kf1 Nc3+ 23.Kg1 axb6 24.Qb4 Ra4 25.Qxb6 Nxd1 26.h3 Rxa2 27.Kh2 Nxf2 28.Re1 Rxe1
+29.Qd8+ Bf8 30.Nxe1 Bd5 31.Nf3 Ne4 32.Qb8 b5 33.h4 h5 34.Ne5 Kg7 35.Kg1 Bc5+
+36.Kf1 Ng3+ 37.Ke1 Bb4+ 38.Kd1 Bb3+ 39.Kc1 Ne2+ 40.Kb1 Nc3+ 41.Kc1 Rc2+  0-1
+
+[Event "Sochi"]
+[Nickname "Polugaevsky – Nezhmetdinov"]
+[Site "Sochi"]
+[Date "1958.??.??"]
+[Round "?"]
+[White "Polugaevsky, Lev"]
+[Black "Nezhmetdinov, Rashid"]
+[Result "0-1"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "A53"]
+
+1.d4 Nf6 2.c4 d6 3.Nc3 e5 4.e4 exd4 5.Qxd4 Nc6 6.Qd2 g6 7.b3 Bg7 8.Bb2 O-O
+9.Bd3 Ng4 10.Nge2 Qh4 11.Ng3 Nge5 12.O-O f5 13.f3 Bh6 14.Qd1 f4 15.Nge2 g5
+16.Nd5 g4 17.g3 fxg3 18.hxg3 Qh3 19.f4 Be6 20.Bc2 Rf7 21.Kf2 Qh2+ 22.Ke3 Bxd5
+23.cxd5 Nb4 24.Rh1 Rxf4 25.Rxh2 Rf3+ 26.Kd4 Bg7 27.a4 c5+ 28.dxc6 bxc6 29.Bd3 Nexd3+
+30.Kc4 d5+ 31.exd5 cxd5+ 32.Kb5 Rb8+ 33.Ka5 Nc6+  0-1
+
+[Event "URS-ch27"]
+[Nickname "Spassky – Bronstein"]
+[Site "Leningrad"]
+[Date "1960.??.??"]
+[Round "?"]
+[White "Spassky, Boris V"]
+[Black "Bronstein, David I"]
+[Result "1-0"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "C36"]
+
+1.e4 e5 2.f4 exf4 3.Nf3 d5 4.exd5 Bd6 5.Nc3 Ne7 6.d4 O-O 7.Bd3 Nd7 8.O-O h6
+9.Ne4 Nxd5 10.c4 Ne3 11.Bxe3 fxe3 12.c5 Be7 13.Bc2 Re8 14.Qd3 e2 15.Nd6 Nf8
+16.Nxf7 exf1=Q+ 17.Rxf1 Bf5 18.Qxf5 Qd7 19.Qf4 Bf6 20.N3e5 Qe7 21.Bb3 Bxe5
+22.Nxe5+ Kh7 23.Qe4+  1-0
+
+[Event "Sousse Interzonal+"]
+[Nickname "Fischer – Myagmarsuren"]
+[Site "Sousse"]
+[Date "1967.??.??"]
+[Round "3"]
+[White "Fischer, Robert James"]
+[Black "Myagmarsuren, Lhamsuren"]
+[Result "1-0"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "A08"]
+
+1.e4 e6 2.d3 d5 3.Nd2 Nf6 4.g3 c5 5.Bg2 Nc6 6.Ngf3 Be7 7.O-O O-O 8.e5 Nd7
+9.Re1 b5 10.Nf1 b4 11.h4 a5 12.Bf4 a4 13.a3 bxa3 14.bxa3 Na5 15.Ne3 Ba6 16.Bh3 d4
+17.Nf1 Nb6 18.Ng5 Nd5 19.Bd2 Bxg5 20.Bxg5 Qd7 21.Qh5 Rfc8 22.Nd2 Nc3 23.Bf6 Qe8
+24.Ne4 g6 25.Qg5 Nxe4 26.Rxe4 c4 27.h5 cxd3 28.Rh4 Ra7 29.Bg2 dxc2 30.Qh6 Qf8
+31.Qxh7+  1-0
+
+[Event "Belgrade URS-World"]
+[Nickname "Larsen – Spassky"]
+[Site "Belgrade"]
+[Date "1970.??.??"]
+[Round "2.1"]
+[White "Larsen, Bent"]
+[Black "Spassky, Boris V"]
+[Result "0-1"]
+[WhiteElo ""]
+[BlackElo ""]
+[ECO "A01"]
+
+1.b3 e5 2.Bb2 Nc6 3.c4 Nf6 4.Nf3 e4 5.Nd4 Bc5 6.Nxc6 dxc6 7.e3 Bf5 8.Qc2 Qe7
+9.Be2 O-O-O 10.f4 Ng4 11.g3 h5 12.h3 h4 13.hxg4 hxg3 14.Rg1 Rh1 15.Rxh1 g2
+16.Rf1 Qh4+ 17.Kd1 gxf1=Q+  0-1
+
+[Event "Petropolis Interzonal"]
+[Nickname "Bronstein – Ljubojevic"]
+[Site "Petropolis"]
+[Date "1973.??.??"]
+[Round "11"]
+[White "Bronstein, David I"]
+[Black "Ljubojevic, Ljubomir"]
+[Result "1-0"]
+[WhiteElo "2585"]
+[BlackElo "2570"]
+[ECO "B03"]
+
+1.e4 Nf6 2.e5 Nd5 3.d4 d6 4.c4 Nb6 5.f4 dxe5 6.fxe5 c5 7.d5 e6 8.Nc3 exd5
+9.cxd5 c4 10.Nf3 Bg4 11.Qd4 Bxf3 12.gxf3 Bb4 13.Bxc4 O-O 14.Rg1 g6 15.Bg5 Qc7
+16.Bb3 Bc5 17.Qf4 Bxg1 18.d6 Qc8 19.Ke2 Bc5 20.Ne4 N8d7 21.Rc1 Qc6 22.Rxc5 Nxc5
+23.Nf6+ Kh8 24.Qh4 Qb5+ 25.Ke3 h5 26.Nxh5 Qxb3+ 27.axb3 Nd5+ 28.Kd4 Ne6+
+29.Kxd5 Nxg5 30.Nf6+ Kg7 31.Qxg5 Rfd8 32.e6 fxe6+ 33.Kxe6 Rf8 34.d7 a5 35.Ng4 Ra6+
+36.Ke5 Rf5+ 37.Qxf5 gxf5 38.d8=Q fxg4 39.Qd7+ Kh6 40.Qxb7 Rg6 41.f4  1-0
+
+[Event "Hoogovens"]
+[Nickname "Kasparov's Immortal"]
+[Site "Wijk aan Zee"]
+[Date "1999.01.20"]
+[Round "4"]
+[White "Kasparov, Gary"]
+[Black "Topalov, Veselin"]
+[Result "1-0"]
+[WhiteElo "2812"]
+[BlackElo "2700"]
+[ECO "B07"]
+
+1.e4 d6 2.d4 Nf6 3.Nc3 g6 4.Be3 Bg7 5.Qd2 c6 6.f3 b5 7.Nge2 Nbd7 8.Bh6 Bxh6
+9.Qxh6 Bb7 10.a3 e5 11.O-O-O Qe7 12.Kb1 a6 13.Nc1 O-O-O 14.Nb3 exd4 15.Rxd4 c5
+16.Rd1 Nb6 17.g3 Kb8 18.Na5 Ba8 19.Bh3 d5 20.Qf4+ Ka7 21.Rhe1 d4 22.Nd5 Nbxd5
+23.exd5 Qd6 24.Rxd4 cxd4 25.Re7+ Kb6 26.Qxd4+ Kxa5 27.b4+ Ka4 28.Qc3 Qxd5
+29.Ra7 Bb7 30.Rxb7 Qc4 31.Qxf6 Kxa3 32.Qxa6+ Kxb4 33.c3+ Kxc3 34.Qa1+ Kd2
+35.Qb2+ Kd1 36.Bf1 Rd2 37.Rd7 Rxd7 38.Bxc4 bxc4 39.Qxh8 Rd3 40.Qa8 c3 41.Qa4+ Ke1
+42.f4 f5 43.Kc1 Rd2 44.Qa7  1-0

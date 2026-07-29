@@ -2,8 +2,10 @@
  * Downloads the World Championship game collection and merges it into the
  * single PGN file the app serves.
  *
- * Run once with `npm run fetch-games`. The result is committed, so a fresh
- * clone does not need network access to browse the library.
+ * Run once with `node scripts/fetch-games.mjs`. The download itself is not
+ * committed — public/games/raw/ is ignored — but the cleaned collections that
+ * build-library produces from it are, so a fresh clone needs no network access
+ * to browse the library. This script only runs when those are missing.
  *
  * Source: https://github.com/mainali123/Chess-Dataset (public repository of
  * World Championship match scores). Game move scores are factual records.

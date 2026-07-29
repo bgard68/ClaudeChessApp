@@ -9,8 +9,11 @@ dist/
 # Copied from node_modules by scripts/copy-engine.mjs
 public/engine/
 
-# Downloaded by scripts/fetch-games.mjs — never committed
-public/games/
+# The raw downloads, and the career archives that run to a hundred megabytes.
+# The cleaned collections in public/games/ ARE committed — they are two
+# megabytes, and committing them is what stops every clone, every dev start and
+# every deploy from depending on a third party staying up and unchanged.
+public/games/raw/
 
 # Exported PGN copies for local use — never committed
 library/

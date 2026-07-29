@@ -6,3 +6,8 @@
 # "bad interpreter: /bin/sh^M". Pin the endings so the gate survives a checkout.
 .githooks/* text eol=lf
 *.sh text eol=lf
+
+# The game collections are data, and their sha256 sums are recorded in
+# pgn/MANIFEST.txt. Line-ending conversion would rewrite them on checkout and
+# every one of those checksums would stop matching. Keep the bytes untouched.
+*.pgn -text
