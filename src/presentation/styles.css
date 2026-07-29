@@ -496,6 +496,13 @@ h2 {
    without being forked into archive-only copies. */
 
 .screen--archive {
+  /* The sidebar column and the gutter beside it. Named because the header
+     lines its title up with the results column, and doing that by eye — a
+     hardcoded margin measured against the Back button — breaks the moment the
+     button's label or font changes. */
+  --sidebar: 15rem;
+  --gutter: 0.9rem;
+
   --surface: #0e1120;
   --surface-raised: #161a2d;
   --surface-hover: #212743;
@@ -543,12 +550,19 @@ h2 {
   max-width: none;
 }
 
+/* Same first column as the body below it, so the title starts exactly where
+   "All games" does. Back sits in the sidebar's column, the title opens the
+   results column, and the tools take what is left. */
 .archive__header {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: var(--sidebar) auto minmax(0, 1fr);
+  gap: var(--gutter);
   align-items: center;
-  gap: 0.6rem;
   flex: 0 0 auto;
+}
+
+.archive__header > .button {
+  justify-self: start;
 }
 
 /* Scoped to this screen: every other title keeps the colour it had. */
@@ -560,10 +574,11 @@ h2 {
 .archive__tools {
   display: flex;
   gap: 0.4rem;
+  /* Capped and pushed right: left to grow, it swallowed the whole header on a
+     wide window and crowded the Import button off the end. */
   margin-left: auto;
-  /* Capped: left to grow it swallowed the whole header on a wide window and
-     crowded the Import button off the end. */
-  flex: 0 1 34rem;
+  width: 100%;
+  max-width: 34rem;
   min-width: 0;
 }
 
@@ -573,8 +588,8 @@ h2 {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: 15rem minmax(0, 1fr);
-  gap: 0.9rem;
+  grid-template-columns: var(--sidebar) minmax(0, 1fr);
+  gap: var(--gutter);
 }
 
 /* ---------- Filter sidebar ---------- */
@@ -1171,9 +1186,16 @@ h2 {
     width: auto;
   }
 
+  /* No sidebar to line up with down here, so the title closes up behind the
+     Back button and the tools take a row of their own. */
+  .archive__header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
   .archive__tools {
+    grid-column: 1 / -1;
     margin-left: 0;
-    flex-basis: 100%;
+    max-width: none;
   }
 
   /* Board preview on top at a reduced size, panels scrolling beneath it. */
