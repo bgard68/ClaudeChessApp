@@ -20,5 +20,8 @@ library/
 # which is not something to put in a history that cannot forget. See pgn/MANIFEST.txt.
 pgn/
 
+# Untouched copies of the generated collections, kept at their original paths.
+original/
+
 # Vite cache
 .vite/
