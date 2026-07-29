@@ -1,4 +1,4 @@
-import type { ArchivedGameSummary } from '@domain/archive/ArchivedGame'
+import { placeOrNull, type ArchivedGameSummary } from '@domain/archive/ArchivedGame'
 import type { SqlRow, SqlStatement, SqlValue } from '../sqlite/protocol'
 import { headerOr, readHeaders } from '../pgn/pgnHeaders'
 import { gameKey } from './gameKey'
@@ -64,7 +64,7 @@ export function insertStatement(
 
 /** Columns the archive list needs — deliberately not the PGN itself. */
 export const SUMMARY_COLUMNS =
-  'id, source, white_name, black_name, white_elo, black_elo, event, played_on, round, result, move_count, has_clock_times, nickname'
+  'id, source, white_name, black_name, white_elo, black_elo, event, site, played_on, round, result, move_count, has_clock_times, nickname'
 
 export function toSummary(row: SqlRow): ArchivedGameSummary {
   return {
@@ -75,6 +75,7 @@ export function toSummary(row: SqlRow): ArchivedGameSummary {
     whiteElo: row['white_elo'] === null ? null : Number(row['white_elo']),
     blackElo: row['black_elo'] === null ? null : Number(row['black_elo']),
     event: String(row['event']),
+    site: placeOrNull(row['site']),
     date: String(row['played_on']),
     round: String(row['round']),
     result: String(row['result']),

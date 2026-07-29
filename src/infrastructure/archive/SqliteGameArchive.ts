@@ -1,4 +1,5 @@
 import type { ArchivedGame } from '@domain/archive/ArchivedGame'
+import { MAX_EVENT_OPTIONS } from '@application/ports/GameArchive'
 import type {
   ArchivePage,
   ArchiveQuery,
@@ -32,9 +33,6 @@ const DEFAULT_PAGE_SIZE = 50
 /** Games per transaction when importing. Small enough to keep the worker
  *  responsive and report progress; large enough that the overhead is trivial. */
 const IMPORT_CHUNK = 500
-
-/** Longest event list a filter should offer. */
-const MAX_EVENT_OPTIONS = 250
 
 /** Sortable columns, mapped to what actually orders them. */
 const SORT_COLUMNS: Readonly<Record<SortColumn, string>> = {

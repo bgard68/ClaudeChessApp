@@ -9,6 +9,12 @@
   --accent-strong: #9dc264;
   --danger: #b4503f;
   --warning: #d8a13a;
+  /* The fill behind a selected control, and the text that sits on a solid
+     accent. Named — at the values they already had — so that one screen can
+     restate the palette without every use of it having to be hunted down. */
+  --accent-soft: #2b3520;
+  --accent-contrast: #10230a;
+  --danger-text: #f0b6ad;
 
   /* Minimum comfortable touch target. */
   --tap: 44px;
@@ -210,7 +216,7 @@ h2 {
 .button--primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #10230a;
+  color: var(--accent-contrast);
   font-weight: 600;
 }
 
@@ -220,7 +226,7 @@ h2 {
 
 .button--danger {
   border-color: var(--danger);
-  color: #f0b6ad;
+  color: var(--danger-text);
 }
 
 .button--large {
@@ -266,7 +272,7 @@ h2 {
 
 .choice--selected {
   border-color: var(--accent);
-  background: #2b3520;
+  background: var(--accent-soft);
 }
 
 .choice__label {
@@ -295,7 +301,7 @@ h2 {
 
 .chip--selected {
   border-color: var(--accent);
-  background: #2b3520;
+  background: var(--accent-soft);
 }
 
 .toggle {
@@ -421,7 +427,7 @@ h2 {
 
 .move-list__cell--current {
   background: var(--accent);
-  color: #10230a;
+  color: var(--accent-contrast);
   font-weight: 700;
 }
 
@@ -477,17 +483,50 @@ h2 {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--accent);
   border-radius: 8px;
-  background: #2b3520;
+  background: var(--accent-soft);
   font-size: 0.9rem;
   flex: 0 0 auto;
 }
 
-/* ---------- Archive ---------- */
+/* ---------- Archive ----------
+   The new palette is scoped to this screen deliberately: browsing restates the
+   theme as dark navy and violet, and every other screen keeps exactly the
+   colours it had. Overriding the variables rather than the rules is what lets
+   the shared pieces — buttons, notices, badges, the search bar — follow along
+   without being forked into archive-only copies. */
 
 .screen--archive {
+  --surface: #0e1120;
+  --surface-raised: #161a2d;
+  --surface-hover: #212743;
+  --border: #2b3252;
+  --text: #e9eaf4;
+  --text-muted: #9298b8;
+  --accent: #7c5cff;
+  --accent-strong: #9d84ff;
+  --accent-soft: #241f4d;
+  --accent-contrast: #0b0820;
+  --danger: #e0556b;
+  --danger-text: #f7b3c0;
+
+  /* A result pill takes the colour of the side that won, so it needs no key:
+     a light pill is White, a dark one is Black, violet is a draw. */
+  --result-white-bg: #e9eaf4;
+  --result-white-fg: #14182b;
+  --result-black-bg: #12162a;
+  --result-black-fg: #cdd2e8;
+  --result-draw-bg: #2a2550;
+  --result-draw-fg: #b7abf0;
+
+  color: var(--text);
+  background: var(--surface);
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  /* Full width, unlike the other screens: a sidebar plus five columns has
+     somewhere to put the space, and the 1200px cap would otherwise leave the
+     old palette showing down both edges. */
+  max-width: none;
 }
 
 .archive__header {
@@ -508,73 +547,373 @@ h2 {
   min-width: 0;
 }
 
-.game-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* Filters beside results. Only the table scrolls, so the sidebar, the header
+   and the pager all stay put while three thousand rows move under them. */
+.archive__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  gap: 0.9rem;
+}
+
+/* ---------- Filter sidebar ---------- */
+
+.filters {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  /* The list scrolls, not the page, so search and paging stay put. */
-  flex: 1 1 auto;
+  gap: 0.7rem;
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-}
-
-.game-list__item {
-  display: flex;
-  gap: 0.3rem;
-  align-items: stretch;
-}
-
-.game-row__delete {
-  flex: 0 0 auto;
-  align-self: stretch;
-}
-
-.game-row {
-  font: inherit;
-  width: 100%;
-  display: grid;
-  grid-template-columns: minmax(10rem, 1.4fr) minmax(9rem, 2fr) 3.5rem 5.5rem auto;
-  gap: 0.6rem;
-  align-items: center;
-  text-align: left;
-  color: var(--text);
+  padding: 0.8rem;
   background: var(--surface-raised);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.5rem 0.75rem;
-  min-height: var(--tap);
-  cursor: pointer;
-  touch-action: manipulation;
+  border-radius: 10px;
 }
 
-.game-row:hover {
-  background: var(--surface-hover);
+.filters__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.filters__title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.filters__reset {
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--accent-strong);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.filters__reset:disabled {
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.filter__label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.filter__control {
+  font: inherit;
+  font-size: 0.82rem;
+  width: 100%;
+  min-width: 0;
+  color: var(--text);
+  /* Explicit, or the dropdown falls back to the OS light palette and renders
+     the options white on white. */
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  min-height: 34px;
+  cursor: pointer;
+}
+
+.filter__control:focus-visible {
+  outline: none;
   border-color: var(--accent);
 }
 
-.game-row__players {
-  font-weight: 600;
-  font-size: 0.9rem;
+.filter__control option {
+  color: var(--text);
+  background: var(--surface-raised);
 }
 
-.game-row__versus {
+.filter__range {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.filter__dash {
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+/* ---------- Quick stats ---------- */
+
+.stats {
+  /* Pinned to the bottom of the sidebar, so adding a filter never shifts it. */
+  margin-top: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0.6rem;
+}
+
+.stats__title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+}
+
+.stats__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 0.4rem;
+  margin: 0;
+}
+
+.stats__cell dt {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.stats__cell dd {
+  margin: 0.1rem 0 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Results ---------- */
+
+.archive__results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+}
+
+.game-table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-raised);
+}
+
+.game-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+/* Sticky, because sorting a list this long is useless if the control that
+   sorted it scrolls away. */
+.game-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  background: var(--surface-hover);
+  border-bottom: 1px solid var(--border);
+  padding: 0;
+  white-space: nowrap;
+}
+
+.game-table__sort {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  color: var(--text-muted);
+  background: none;
+  border: 0;
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+}
+
+.game-table__sort:hover {
+  color: var(--text);
+}
+
+[aria-sort='ascending'] .game-table__sort,
+[aria-sort='descending'] .game-table__sort {
+  color: var(--accent-strong);
+}
+
+.game-table__arrow {
+  font-size: 0.62rem;
+  opacity: 0.7;
+}
+
+.game-table__row {
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.game-table__row:hover {
+  background: var(--surface-hover);
+}
+
+.game-table td {
+  padding: 0.45rem 0.7rem;
+  vertical-align: middle;
+}
+
+.game-table__open {
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: flex-start;
+  text-align: left;
+  width: 100%;
+  color: var(--text);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.game-table__open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.game-table__pair {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.game-table__versus {
   color: var(--text-muted);
   font-weight: 400;
 }
 
-.game-row__meta,
-.game-row__moves {
-  font-size: 0.78rem;
-  color: var(--text-muted);
+/* A celebrated game leads with the name people know it by. */
+.game-table__nickname {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent-strong);
 }
 
-.game-row__result {
-  font-family: 'Cascadia Mono', Consolas, monospace;
-  font-size: 0.85rem;
+.game-table__badges {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.game-table__event {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Where it was played, under the event it was played in. */
+.game-table__detail {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.col-players {
+  width: 30%;
+}
+
+.col-event {
+  width: 34%;
+  min-width: 0;
+}
+
+.col-year,
+.col-moves {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.col-result,
+.col-actions {
+  white-space: nowrap;
+}
+
+/* ---------- Result pills ----------
+   The pill takes the colour of the side that won, which is why there is no
+   legend anywhere on the screen: light is White, dark is Black, violet is a
+   draw. */
+
+.result-pill {
+  display: inline-block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.result-pill--white {
+  background: var(--result-white-bg);
+  color: var(--result-white-fg);
+}
+
+.result-pill--black {
+  background: var(--result-black-bg);
+  color: var(--result-black-fg);
+  border-color: var(--border);
+}
+
+.result-pill--draw {
+  background: var(--result-draw-bg);
+  color: var(--result-draw-fg);
+}
+
+.result-pill--unknown {
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+/* ---------- Small controls ---------- */
+
+.button--small {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  min-height: 28px;
+}
+
+.link-button {
+  font: inherit;
+  color: var(--accent-strong);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .badge {
@@ -671,7 +1010,7 @@ h2 {
 
 .notice--error {
   border-color: var(--danger);
-  color: #f0b6ad;
+  color: var(--danger-text);
 }
 
 /* ---------- Short screens ----------
@@ -758,22 +1097,50 @@ h2 {
   }
 
   .button,
-  .choice,
-  .game-row {
+  .choice {
     min-height: var(--tap);
   }
 
-  .game-row {
-    grid-template-columns: 1fr auto;
-    row-gap: 0.15rem;
+  /* Filters move above the results and lie flat, because a 15rem sidebar and a
+     table cannot both have the width here. */
+  .archive__body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
-  .game-row__meta {
-    grid-column: 1 / -1;
+  .filters {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    overflow: visible;
   }
 
-  .game-row__moves {
+  .filters__head {
+    flex: 1 0 100%;
+  }
+
+  .filter {
+    flex: 1 1 8rem;
+  }
+
+  .stats {
+    flex: 1 0 100%;
+    margin-top: 0;
+  }
+
+  /* One row of four rather than a 2×2 block. The filters already take the top
+     of a phone screen, and what is left has to be the games. */
+  .stats__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* Move count is not why anyone opens an archive; the rest still fits. */
+  .col-moves {
     display: none;
+  }
+
+  .col-players {
+    width: auto;
   }
 
   .archive__tools {
@@ -798,6 +1165,12 @@ h2 {
 @media (max-width: 520px) {
   .screen {
     padding: 0.5rem;
+  }
+
+  /* Players, result and year are what identifies a game on a phone. The event
+     goes; it is the longest column and the least distinguishing. */
+  .col-event {
+    display: none;
   }
 
   .panel__options {
@@ -851,15 +1224,6 @@ h2 {
     flex-direction: row;
     align-items: baseline;
   }
-}
-
-/* A celebrated game leads with the name people know it by. */
-.game-row__nickname {
-  display: block;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--accent-strong);
 }
 
 /* ---------- Archive search ---------- */
@@ -964,14 +1328,6 @@ h2 {
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
   flex: 0 0 auto;
-}
-
-.game-row__players {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  min-width: 0;
 }
 
 /* ---------- Player suggestions ---------- */

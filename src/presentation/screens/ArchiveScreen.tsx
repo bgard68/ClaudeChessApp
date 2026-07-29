@@ -3,11 +3,20 @@ import { displayYear, type ArchivedGameSummary } from '@domain/archive/ArchivedG
 import { useFederations } from '../hooks/useFederations'
 import {
   SEARCH_FIELDS,
+  type ArchiveFacets,
   type ArchivePage,
   type PlayerSuggestion,
   type SearchField,
+  type SortColumn,
+  type SortDirection,
 } from '@application/ports/GameArchive'
 import { PlayerSearch } from '../components/PlayerSearch'
+import {
+  ArchiveFilters,
+  isFiltering,
+  NO_FILTERS,
+  type FilterValues,
+} from '../components/ArchiveFilters'
 import { useDebounced } from '../hooks/useDebounced'
 import { useServices } from '../ServicesContext'
 
@@ -33,17 +42,37 @@ const FIELD_NAMES: Readonly<Record<SearchField, string>> = {
   year: 'years',
 }
 
+/**
+ * The sortable columns, in the order they appear.
+ *
+ * `initial` is the direction the *first* click applies: alphabetical columns
+ * read forwards, but nobody opening a chess archive by year wants 1886 first.
+ */
+const COLUMNS: readonly {
+  readonly id: SortColumn
+  readonly label: string
+  readonly className: string
+  readonly initial: SortDirection
+}[] = [
+  { id: 'players', label: 'Players', className: 'col-players', initial: 'asc' },
+  { id: 'event', label: 'Event', className: 'col-event', initial: 'asc' },
+  { id: 'result', label: 'Result', className: 'col-result', initial: 'asc' },
+  { id: 'year', label: 'Year', className: 'col-year', initial: 'desc' },
+  { id: 'moves', label: 'Moves', className: 'col-moves', initial: 'desc' },
+]
+
 /** States plainly what is on screen and why, rather than leaving a bare list. */
 function describeResults(
   total: number,
   search: string,
   field: SearchField,
   isLoading: boolean,
+  filtered: boolean,
 ): string {
   if (isLoading) return 'Searching…'
 
   const games = `${total.toLocaleString()} game${total === 1 ? '' : 's'}`
-  if (search.trim() === '') return `All games · ${games}`
+  if (search.trim() === '') return filtered ? `Filtered · ${games}` : `All games · ${games}`
 
   const scope = field === 'all' ? '' : ` in ${FIELD_NAMES[field]}`
   return total === 0
@@ -91,6 +120,12 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
   const [field, setField] = useState<SearchField>('all')
   // Set when a player is chosen from the suggestions; clears on any new typing.
   const [chosen, setChosen] = useState<PlayerSuggestion | null>(null)
+  const [filters, setFilters] = useState<FilterValues>(NO_FILTERS)
+  // Null until a header is clicked, which leaves the default relevance
+  // ordering in place rather than imposing an arbitrary column on arrival.
+  const [sort, setSort] = useState<SortColumn | null>(null)
+  const [direction, setDirection] = useState<SortDirection>('asc')
+  const [facets, setFacets] = useState<ArchiveFacets | null>(null)
   const [offset, setOffset] = useState(0)
   const [page, setPage] = useState<ArchivePage | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -100,12 +135,42 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
   const [lastImport, setLastImport] = useState<number | null>(null)
   const fileInput = useRef<HTMLInputElement | null>(null)
 
+  // Re-read after an import: it can add both events and years to filter by.
+  useEffect(() => {
+    let cancelled = false
+
+    services.archive
+      .facets()
+      .then((found) => {
+        if (!cancelled) setFacets(found)
+      })
+      .catch(() => {
+        if (!cancelled) setFacets(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [services.archive, reloadToken])
+
   useEffect(() => {
     let cancelled = false
     setLoading(true)
 
     services.archive
-      .list({ search: query, field, playerId: chosen?.id, offset, limit: PAGE_SIZE })
+      .list({
+        search: query,
+        field,
+        playerId: chosen?.id,
+        event: filters.event === '' ? undefined : filters.event,
+        result: filters.result === '' ? undefined : filters.result,
+        yearFrom: filters.yearFrom === '' ? undefined : Number(filters.yearFrom),
+        yearTo: filters.yearTo === '' ? undefined : Number(filters.yearTo),
+        sort: sort ?? undefined,
+        direction,
+        offset,
+        limit: PAGE_SIZE,
+      })
       .then((result) => {
         if (cancelled) return
         setPage(result)
@@ -122,7 +187,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
     return () => {
       cancelled = true
     }
-  }, [services.archive, query, field, chosen, offset, reloadToken])
+  }, [services.archive, query, field, chosen, filters, sort, direction, offset, reloadToken])
 
   const importFile = async (file: File) => {
     setError(null)
@@ -157,8 +222,34 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
     }
   }
 
+  /** Same column toggles direction; a new one starts the way it reads best. */
+  const applySort = (column: SortColumn, initial: SortDirection) => {
+    if (sort === column) {
+      setDirection(direction === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSort(column)
+      setDirection(initial)
+    }
+    setOffset(0)
+  }
+
+  const changeFilters = (next: FilterValues) => {
+    setFilters(next)
+    setOffset(0)
+  }
+
+  const resetFilters = () => {
+    setFilters(NO_FILTERS)
+    setSort(null)
+    setOffset(0)
+  }
+
   const games = page?.games ?? []
   const total = page?.total ?? 0
+  const filtered = isFiltering(filters)
+  // The library holding nothing at all is a different problem from a filter
+  // excluding everything, and the two need different advice.
+  const libraryIsEmpty = facets !== null && facets.totalGames === 0
 
   return (
     <div className="screen screen--archive">
@@ -225,68 +316,161 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
         </div>
       </header>
 
-      <h2 className="archive__heading">{chosen !== null
-          ? `${total.toLocaleString()} games by ${chosen.name}`
-          : describeResults(total, query, field, isLoading || query !== search)}</h2>
+      <div className="archive__body">
+        <ArchiveFilters
+          facets={facets}
+          values={filters}
+          onChange={changeFilters}
+          onReset={resetFilters}
+          matched={total}
+          isLoading={isLoading}
+        />
 
-      {importing !== null ? (
-        <p className="notice">
-          {importing.total === 0
-            ? `Reading ${importing.name}…`
-            : `Importing ${importing.name} — ${importing.done.toLocaleString()} of ${importing.total.toLocaleString()} games`}
-        </p>
-      ) : null}
+        <section className="archive__results">
+          <h2 className="archive__heading">
+            {chosen !== null
+              ? `${total.toLocaleString()} games by ${chosen.name}`
+              : describeResults(total, query, field, isLoading || query !== search, filtered)}
+          </h2>
 
-      {lastImport !== null && lastImport > 0 && importing === null ? (
-        <p className="notice">Added {lastImport.toLocaleString()} games.</p>
-      ) : null}
+          {importing !== null ? (
+            <p className="notice">
+              {importing.total === 0
+                ? `Reading ${importing.name}…`
+                : `Importing ${importing.name} — ${importing.done.toLocaleString()} of ${importing.total.toLocaleString()} games`}
+            </p>
+          ) : null}
 
-      {error ? <p className="notice notice--error">{error}</p> : null}
+          {lastImport !== null && lastImport > 0 && importing === null ? (
+            <p className="notice">Added {lastImport.toLocaleString()} games.</p>
+          ) : null}
 
-      {!isLoading && games.length === 0 ? (
-        <p className="notice">
-          No games in the library yet. Use <strong>Import PGN</strong> to load a game
-          file from your computer.
-        </p>
-      ) : null}
+          {error ? <p className="notice notice--error">{error}</p> : null}
 
+          {!isLoading && games.length === 0 ? (
+            libraryIsEmpty ? (
+              <p className="notice">
+                No games in the library yet. Use <strong>Import PGN</strong> to load a
+                game file from your computer.
+              </p>
+            ) : (
+              <p className="notice">
+                No games match what you asked for.
+                {filtered ? (
+                  <>
+                    {' '}
+                    <button type="button" className="link-button" onClick={resetFilters}>
+                      Clear the filters
+                    </button>{' '}
+                    to see the rest.
+                  </>
+                ) : null}
+              </p>
+            )
+          ) : null}
 
-      <ol className="game-list">
-        {games.map((game) => (
-          <GameRow
-            key={game.id}
-            game={game}
-            onOpen={() => onOpenGame(game.id)}
-            onDelete={game.origin === 'played' ? () => void deleteGame(game.id) : undefined}
-            lookup={lookup}
-          />
-        ))}
-      </ol>
+          {games.length > 0 ? (
+            <div className="game-table-scroll">
+              <table className="game-table">
+                <thead>
+                  <tr>
+                    {COLUMNS.map((column) => (
+                      <th
+                        key={column.id}
+                        scope="col"
+                        className={column.className}
+                        aria-sort={
+                          sort === column.id
+                            ? direction === 'asc'
+                              ? 'ascending'
+                              : 'descending'
+                            : 'none'
+                        }
+                      >
+                        <button
+                          type="button"
+                          className="game-table__sort"
+                          onClick={() => applySort(column.id, column.initial)}
+                        >
+                          <span>{column.label}</span>
+                          <span className="game-table__arrow" aria-hidden="true">
+                            {sort === column.id ? (direction === 'asc' ? '▲' : '▼') : '↕'}
+                          </span>
+                        </button>
+                      </th>
+                    ))}
+                    <th scope="col" className="col-actions" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {games.map((game) => (
+                    <GameRow
+                      key={game.id}
+                      game={game}
+                      onOpen={() => onOpenGame(game.id)}
+                      onDelete={
+                        game.origin === 'played' ? () => void deleteGame(game.id) : undefined
+                      }
+                      lookup={lookup}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
 
-      {total > PAGE_SIZE ? (
-        <nav className="pager">
-          <button
-            type="button"
-            className="button"
-            disabled={offset === 0}
-            onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-          >
-            Previous
-          </button>
-          <span>
-            {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total}
-          </span>
-          <button
-            type="button"
-            className="button"
-            disabled={offset + PAGE_SIZE >= total}
-            onClick={() => setOffset(offset + PAGE_SIZE)}
-          >
-            Next
-          </button>
-        </nav>
-      ) : null}
+          {total > PAGE_SIZE ? (
+            <nav className="pager">
+              <button
+                type="button"
+                className="button"
+                disabled={offset === 0}
+                onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+              >
+                Previous
+              </button>
+              <span>
+                {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total.toLocaleString()}
+              </span>
+              <button
+                type="button"
+                className="button"
+                disabled={offset + PAGE_SIZE >= total}
+                onClick={() => setOffset(offset + PAGE_SIZE)}
+              >
+                Next
+              </button>
+            </nav>
+          ) : null}
+        </section>
+      </div>
     </div>
+  )
+}
+
+/** How each result tag is drawn, and what it actually means when read aloud. */
+const RESULT_PILLS: Readonly<
+  Record<string, { readonly kind: string; readonly label: string; readonly title: string }>
+> = {
+  '1-0': { kind: 'white', label: '1–0', title: 'White won' },
+  '0-1': { kind: 'black', label: '0–1', title: 'Black won' },
+  '1/2-1/2': { kind: 'draw', label: '½–½', title: 'Drawn' },
+}
+
+function ResultPill({ result }: { result: string }) {
+  const pill = RESULT_PILLS[result]
+  if (pill === undefined) {
+    return (
+      <span className="result-pill result-pill--unknown" title="No result recorded">
+        —
+      </span>
+    )
+  }
+
+  return (
+    <span className={`result-pill result-pill--${pill.kind}`} title={pill.title}>
+      {pill.label}
+    </span>
   )
 }
 
@@ -302,37 +486,67 @@ function GameRow({
   /** Only your own games can be removed; history is not yours to delete. */
   onDelete?: () => void
 }) {
+  // Round tags are frequently placeholders, and "round -" is worse than silence.
+  const round = game.round === '-' || game.round === '?' || game.round === '' ? null : game.round
+  const detail = [game.site, round === null ? null : `round ${round}`]
+    .filter((part) => part !== null)
+    .join(' · ')
+
   return (
-    <li className="game-list__item">
-      <button type="button" className="game-row" onClick={onOpen}>
-        <span className="game-row__players">
-          {game.nickname !== null ? (
-            <span className="game-row__nickname">{game.nickname}</span>
-          ) : null}
-          <Player name={game.white} elo={game.whiteElo} lookup={lookup} />
-          <span className="game-row__versus">vs</span>
-          <Player name={game.black} elo={game.blackElo} lookup={lookup} />
-        </span>
-        <span className="game-row__meta">
-          {game.event} · round {game.round} · {displayYear(game.date)}
-        </span>
-        <span className="game-row__result">{game.result}</span>
-        <span className="game-row__moves">{game.moveCount} moves</span>
-        {game.origin === 'played' ? <span className="badge">yours</span> : null}
-        {game.hasRecordedClocks ? (
-          <span className="badge badge--recorded">clocks</span>
-        ) : null}
-      </button>
-      {onDelete ? (
+    <tr className="game-table__row" onClick={onOpen}>
+      <td className="col-players">
+        {/* The row is clickable for the mouse; this button is what a keyboard
+            and a screen reader actually reach. */}
         <button
           type="button"
-          className="button button--danger game-row__delete"
-          onClick={onDelete}
-          aria-label={`Delete ${game.white} vs ${game.black}`}
+          className="game-table__open"
+          onClick={(event) => {
+            event.stopPropagation()
+            onOpen()
+          }}
         >
-          Delete
+          {game.nickname !== null ? (
+            <span className="game-table__nickname">{game.nickname}</span>
+          ) : null}
+          <span className="game-table__pair">
+            <Player name={game.white} elo={game.whiteElo} lookup={lookup} />
+            <span className="game-table__versus">vs</span>
+            <Player name={game.black} elo={game.blackElo} lookup={lookup} />
+          </span>
+          {game.origin === 'played' || game.hasRecordedClocks ? (
+            <span className="game-table__badges">
+              {game.origin === 'played' ? <span className="badge">yours</span> : null}
+              {game.hasRecordedClocks ? (
+                <span className="badge badge--recorded">clocks</span>
+              ) : null}
+            </span>
+          ) : null}
         </button>
-      ) : null}
-    </li>
+      </td>
+      <td className="col-event">
+        <span className="game-table__event">{game.event}</span>
+        {detail !== '' ? <span className="game-table__detail">{detail}</span> : null}
+      </td>
+      <td className="col-result">
+        <ResultPill result={game.result} />
+      </td>
+      <td className="col-year">{displayYear(game.date)}</td>
+      <td className="col-moves">{game.moveCount}</td>
+      <td className="col-actions">
+        {onDelete ? (
+          <button
+            type="button"
+            className="button button--danger button--small"
+            onClick={(event) => {
+              event.stopPropagation()
+              onDelete()
+            }}
+            aria-label={`Delete ${game.white} vs ${game.black}`}
+          >
+            Delete
+          </button>
+        ) : null}
+      </td>
+    </tr>
   )
 }

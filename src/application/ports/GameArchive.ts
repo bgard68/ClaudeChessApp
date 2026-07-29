@@ -44,6 +44,15 @@ export interface ArchiveQuery {
   readonly offset?: number
 }
 
+/**
+ * Longest event list a filter should offer.
+ *
+ * Exported rather than kept in the adapter because the screen has to say
+ * "250+" instead of "250" once the list has been cut off, and this is the
+ * number that decides where the cut falls.
+ */
+export const MAX_EVENT_OPTIONS = 250
+
 /** What the filter controls need to offer, derived from the games held. */
 export interface ArchiveFacets {
   readonly totalGames: number

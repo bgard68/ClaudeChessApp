@@ -26,7 +26,6 @@ export interface RecordedMove {
  * progress: its moves are fixed and its result is already known.
  */
 export interface ArchivedGame extends ArchivedGameSummary {
-  readonly site: string
   readonly eco: string | null
   readonly opening: string | null
   readonly outcome: GameOutcome
@@ -51,6 +50,12 @@ export interface ArchivedGameSummary {
   readonly whiteElo: number | null
   readonly blackElo: number | null
   readonly event: string
+  /**
+   * Where it was played, from the PGN `Site` tag. Null when the tag is absent
+   * or a placeholder, so the list omits the line rather than printing "?"
+   * under an event name.
+   */
+  readonly site: string | null
   readonly date: string
   readonly round: string
   /** The PGN result tag, e.g. "1-0". */
@@ -59,6 +64,21 @@ export interface ArchivedGameSummary {
   readonly hasRecordedClocks: boolean
   /** A celebrated game's popular name, e.g. "The Immortal Game". */
   readonly nickname: string | null
+}
+
+/**
+ * A place, or nothing.
+ *
+ * PGN `Site` is filled in far more often than it is filled in *usefully*: "?"
+ * and "Unknown" are both common, and either one printed under an event name is
+ * worse than no second line at all. Takes `unknown` because both callers are
+ * normalising input from outside — a PGN tag and a database column.
+ */
+export function placeOrNull(value: unknown): string | null {
+  if (value === null || value === undefined) return null
+
+  const text = String(value).trim()
+  return text === '' || text === '?' || text.toLowerCase() === 'unknown' ? null : text
 }
 
 /** PGN dates are often partial ("1972.??.??"); show only what is known. */

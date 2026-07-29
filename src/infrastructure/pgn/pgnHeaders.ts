@@ -1,4 +1,4 @@
-import type { ArchivedGameSummary } from '@domain/archive/ArchivedGame'
+import { placeOrNull, type ArchivedGameSummary } from '@domain/archive/ArchivedGame'
 
 const HEADER_PATTERN = /^\s*\[(\w+)\s+"([^"]*)"\]/gm
 const MOVE_NUMBER_PATTERN = /(\d+)\s*\./g
@@ -36,6 +36,7 @@ export function summarise(pgn: string, id: string): ArchivedGameSummary {
     whiteElo: toElo(headers['WhiteElo']),
     blackElo: toElo(headers['BlackElo']),
     event: headerOr(headers, 'Event', 'Unknown event'),
+    site: placeOrNull(headers['Site']),
     date: headerOr(headers, 'Date', '????.??.??'),
     round: headerOr(headers, 'Round', '-'),
     result: headerOr(headers, 'Result', '*'),
