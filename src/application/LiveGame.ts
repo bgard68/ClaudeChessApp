@@ -36,6 +36,8 @@ export interface LiveGameState {
   /** Null once the game is over. */
   readonly awaiting: AwaitingTurn | null
   readonly timeControl: TimeControl
+  /** Whether there is a move to take back. */
+  readonly canUndo: boolean
 }
 
 /**
@@ -56,6 +58,14 @@ export class LiveGame {
   private playedMoves: PlayedMove[] = []
   private legalMoves: readonly LegalMove[]
   private clock: Clock
+  /**
+   * The clock as it stood after each move, the starting clock at index 0.
+   *
+   * Taking a move back has to restore the time too, and `Clock` being immutable
+   * means keeping the old value costs a reference — far cheaper, and exact,
+   * compared with trying to reverse an increment and a possible stage change.
+   */
+  private clockHistory: Clock[]
   private outcome: GameOutcome = IN_PROGRESS
   private awaiting: AwaitingTurn | null = null
   private cachedState: LiveGameState | null = null
@@ -76,6 +86,7 @@ export class LiveGame {
     this.positionHistory = [this.position]
     this.legalMoves = this.rules.legalMoves(this.position)
     this.clock = Clock.forControl(setup.timeControl)
+    this.clockHistory = [this.clock]
   }
 
   get state(): LiveGameState {
@@ -116,6 +127,54 @@ export class LiveGame {
   agreeDraw(reason: DrawReason = 'agreement'): void {
     if (isOver(this.outcome)) return
     this.finish(drawn(reason))
+  }
+
+  /**
+   * Takes back the last move — and the engine's reply with it, so the board
+   * comes back to a person rather than to a machine mid-search.
+   *
+   * Allowed after the game has ended, because losing one is exactly when a
+   * player reaches for this; the outcome is cleared and play resumes.
+   */
+  undo(): boolean {
+    if (this.disposed || this.playedMoves.length === 0) return false
+
+    // Abandons whatever was in flight. A search that resolves anyway is
+    // discarded by the generation check in the turn loop.
+    this.generation += 1
+    this.setup.white.cancel()
+    this.setup.black.cancel()
+
+    // Two plies at the very most — the move and the reply it drew. Looping
+    // until a person is on the move instead would unwind an entire game in
+    // which neither side is interactive.
+    this.takeBackOnePly()
+    if (this.playedMoves.length > 0 && !this.isInteractiveTurn()) this.takeBackOnePly()
+
+    this.outcome = IN_PROGRESS
+    this.awaiting = null
+    this.legalMoves = this.rules.legalMoves(this.position)
+
+    // Restarted from scratch: the ticker was stopped if the game had ended,
+    // and this also drops the part-spent turn rather than charging it twice.
+    this.ticker.stop()
+    if (!this.clock.isUntimed) this.ticker.start((elapsedMs) => this.onTick(elapsedMs))
+
+    this.publish()
+    void this.runTurnLoop()
+    return true
+  }
+
+  private takeBackOnePly(): void {
+    this.playedMoves.pop()
+    this.positionHistory.pop()
+    this.clockHistory.pop()
+    this.position = this.positionHistory.at(-1)!
+    this.clock = this.clockHistory.at(-1)!
+  }
+
+  private isInteractiveTurn(): boolean {
+    return isInteractive(this.opponentFor(this.position.sideToMove))
   }
 
   dispose(): void {
@@ -173,6 +232,7 @@ export class LiveGame {
     // Charged first, so the reading stored with the move is the one the player
     // actually had left after making it — increment included.
     this.clock = this.clock.completeMove(mover)
+    this.clockHistory.push(this.clock)
 
     this.playedMoves.push({
       ...result.move,
@@ -239,6 +299,7 @@ export class LiveGame {
       isCheck: this.rules.isCheck(this.position),
       awaiting: this.awaiting,
       timeControl: this.setup.timeControl,
+      canUndo: this.playedMoves.length > 0 && !this.disposed,
     }
   }
 }

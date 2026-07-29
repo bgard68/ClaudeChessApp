@@ -147,4 +147,117 @@ describe('LiveGame', () => {
     game.dispose()
     expect(ticker.isRunning).toBe(false)
   })
+
+  it('has nothing to undo before a move is played', async () => {
+    const game = new LiveGame(
+      { rules, ticker },
+      {
+        white: new HumanOpponent('A'),
+        black: new HumanOpponent('B'),
+        timeControl: UNLIMITED,
+      },
+    )
+
+    game.start()
+    await flushAsync()
+
+    expect(game.state.canUndo).toBe(false)
+    expect(game.undo()).toBe(false)
+  })
+
+  it('takes back one ply in pass-and-play and hands the turn back', async () => {
+    const game = new LiveGame(
+      { rules, ticker },
+      {
+        white: new HumanOpponent('A'),
+        black: new HumanOpponent('B'),
+        timeControl: UNLIMITED,
+      },
+    )
+
+    game.start()
+    await flushAsync()
+    game.submitMove({ from: 'e2', to: 'e4' })
+    await flushAsync()
+    expect(game.state.canUndo).toBe(true)
+
+    expect(game.undo()).toBe(true)
+    await flushAsync()
+
+    expect(game.state.history).toHaveLength(0)
+    expect(game.state.position.sideToMove).toBe('white')
+    expect(game.state.canUndo).toBe(false)
+    // The board must accept the retry, which means the loop is running again.
+    expect(game.submitMove({ from: 'd2', to: 'd4' })).toBe(true)
+    await flushAsync()
+    expect(game.state.history.map((move) => move.san)).toEqual(['d4'])
+  })
+
+  it("takes back the engine's reply too, so it is the person's turn again", async () => {
+    const human = new HumanOpponent('You')
+    const engine = new ScriptedOpponent('Computer', [
+      { from: 'e7', to: 'e5' },
+      { from: 'd7', to: 'd5' },
+    ])
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: human, black: engine, timeControl: UNLIMITED },
+    )
+
+    game.start()
+    await flushAsync()
+    game.submitMove({ from: 'e2', to: 'e4' })
+    await flushAsync(8)
+    expect(game.state.history.map((move) => move.san)).toEqual(['e4', 'e5'])
+
+    expect(game.undo()).toBe(true)
+    await flushAsync(8)
+
+    // Both plies go: stopping after one would hand the board to the engine.
+    expect(game.state.history).toHaveLength(0)
+    expect(game.state.position.sideToMove).toBe('white')
+    expect(game.state.awaiting?.kind).toBe('human')
+  })
+
+  it('gives back the time the taken-back move was charged', async () => {
+    const game = new LiveGame(
+      { rules, ticker },
+      {
+        white: new HumanOpponent('A'),
+        black: new HumanOpponent('B'),
+        timeControl: suddenDeath(5),
+      },
+    )
+
+    game.start()
+    await flushAsync()
+
+    ticker.advance(30_000)
+    await flushAsync()
+    game.submitMove({ from: 'e2', to: 'e4' })
+    await flushAsync()
+    expect(game.state.clock.whiteMs).toBe(270_000)
+
+    game.undo()
+    await flushAsync()
+
+    expect(game.state.clock.whiteMs).toBe(300_000)
+    expect(ticker.isRunning).toBe(true)
+  })
+
+  it('resurrects a finished game, clearing the outcome', async () => {
+    const white = new ScriptedOpponent('White', [FOOLS_MATE[0]!, FOOLS_MATE[2]!])
+    const black = new ScriptedOpponent('Black', [FOOLS_MATE[1]!, FOOLS_MATE[3]!])
+    const game = new LiveGame({ rules, ticker }, { white, black, timeControl: UNLIMITED })
+
+    game.start()
+    await flushAsync(12)
+    expect(game.state.outcome.status).toBe('decisive')
+
+    expect(game.undo()).toBe(true)
+    await flushAsync()
+
+    expect(game.state.outcome.status).toBe('in_progress')
+    expect(game.state.history.map((move) => move.san)).toEqual(['f3', 'e5'])
+  })
 })

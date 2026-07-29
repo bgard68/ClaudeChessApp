@@ -158,6 +158,14 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
           <button
             type="button"
             className="button"
+            disabled={!state.canUndo}
+            onClick={() => game.undo()}
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            className="button"
             disabled={gameOver}
             onClick={() => game.agreeDraw()}
           >
