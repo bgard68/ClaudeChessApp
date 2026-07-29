@@ -512,14 +512,25 @@ h2 {
   --danger: #e0556b;
   --danger-text: #f7b3c0;
 
-  /* A result pill takes the colour of the side that won, so it needs no key:
-     a light pill is White, a dark one is Black, violet is a draw. */
-  --result-white-bg: #b9c2da;
-  --result-white-fg: #12162a;
-  --result-black-bg: #12162a;
-  --result-black-fg: #bcc3da;
-  --result-draw-bg: #2a2550;
-  --result-draw-fg: #b7abf0;
+  /* The screen title. Warm, so it separates from the violet the rest of the
+     screen is accented in rather than reading as one more accent. */
+  --heading: #e0c48d;
+
+  /* Three hues rather than the light/dark pair this started as: amber for a
+     White win, violet for a Black win, teal for a draw. Warm still reads as
+     the light side and cool as the dark one, so the mnemonic survives, but a
+     draw is now told apart by hue instead of by shade — which is what it was
+     losing at a glance in a long table. Each pill also keeps its title
+     attribute, so the meaning is never carried by colour alone. */
+  --result-white-bg: #d9b779;
+  --result-white-fg: #241a08;
+  --result-white-border: #b8945a;
+  --result-black-bg: #2f2a5c;
+  --result-black-fg: #c3b8f0;
+  --result-black-border: #6b5fc4;
+  --result-draw-bg: #1f423e;
+  --result-draw-fg: #8ed0c4;
+  --result-draw-border: #3d8478;
 
   color: var(--text);
   background: var(--surface);
@@ -538,6 +549,12 @@ h2 {
   align-items: center;
   gap: 0.6rem;
   flex: 0 0 auto;
+}
+
+/* Scoped to this screen: every other title keeps the colour it had. */
+.screen--archive h1 {
+  color: var(--heading);
+  letter-spacing: 0.01em;
 }
 
 .archive__tools {
@@ -880,20 +897,28 @@ h2 {
   white-space: nowrap;
 }
 
+/* Each pill is outlined in its own hue. The two cool fills sit close enough to
+   the row behind them that the box would otherwise not read as a box at all —
+   the text was legible but the shape was invisible, which is half of what a
+   pill is for. Brightening the fills instead would have cost the warm/cool
+   split that tells a White win from a Black one. */
+
 .result-pill--white {
   background: var(--result-white-bg);
   color: var(--result-white-fg);
+  border-color: var(--result-white-border);
 }
 
 .result-pill--black {
   background: var(--result-black-bg);
   color: var(--result-black-fg);
-  border-color: var(--border);
+  border-color: var(--result-black-border);
 }
 
 .result-pill--draw {
   background: var(--result-draw-bg);
   color: var(--result-draw-fg);
+  border-color: var(--result-draw-border);
 }
 
 .result-pill--unknown {
