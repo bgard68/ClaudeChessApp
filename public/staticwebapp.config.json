@@ -1,0 +1,17 @@
+{
+  "globalHeaders": {
+    "Content-Security-Policy": "frame-ancestors 'none'",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "geolocation=(), camera=(), microphone=(), payment=(), usb=()",
+    "Cross-Origin-Resource-Policy": "same-origin"
+  },
+  "mimeTypes": {
+    ".pgn": "application/x-chess-pgn",
+    ".wasm": "application/wasm"
+  },
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/assets/*", "/engine/*", "/games/*"]
+  }
+}
