@@ -10,6 +10,7 @@ import {
   type SortColumn,
   type SortDirection,
 } from '@application/ports/GameArchive'
+import { describeOversizeImport } from '@application/importLimits'
 import { PlayerSearch } from '../components/PlayerSearch'
 import {
   ArchiveFilters,
@@ -191,6 +192,15 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
 
   const importFile = async (file: File) => {
     setError(null)
+
+    // Checked before the file is read, not after: reading it is the part that
+    // freezes the tab, so a message afterwards would arrive too late to help.
+    const tooLarge = describeOversizeImport(file)
+    if (tooLarge !== null) {
+      setError(tooLarge)
+      return
+    }
+
     setImporting({ done: 0, total: 0, name: file.name })
     try {
       const added = await services.archive.importPgn(
