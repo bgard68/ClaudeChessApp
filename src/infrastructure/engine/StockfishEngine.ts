@@ -144,7 +144,19 @@ export class StockfishEngine implements ChessEngine {
     search.resolve(intent)
   }
 
+  /**
+   * Sends one UCI command.
+   *
+   * UCI is newline-delimited, so a value carrying a newline does not corrupt a
+   * command — it appends another one. Every value interpolated here is typed or
+   * engine-generated today, which is exactly what was true of the archive's sort
+   * column before it turned out not to be. Refusing the character closes the
+   * class rather than the instance.
+   */
   private send(command: string): void {
+    if (/[\r\n]/.test(command)) {
+      throw new Error('Refusing to send a UCI command containing a line break')
+    }
     this.worker?.postMessage(command)
   }
 }

@@ -1,5 +1,6 @@
 import type { ArchivedGame } from '@domain/archive/ArchivedGame'
 import { MAX_EVENT_OPTIONS } from '@application/ports/GameArchive'
+import { MAX_IMPORT_BYTES } from '@application/importLimits'
 import type {
   ArchivePage,
   ArchiveQuery,
@@ -200,6 +201,18 @@ export class SqliteGameArchive implements GameArchive, GameStore {
     onProgress?: ImportProgress,
   ): Promise<number> {
     await this.ready()
+
+    // The screen checks the file's size before reading it, which is where the
+    // useful message lives. This is the backstop: the limit belongs to the
+    // operation, not to one caller, so a second entry point cannot lose it.
+    // Counted in characters rather than bytes — the text is already in memory,
+    // so the precise figure matters less than refusing to split a file that
+    // should never have arrived.
+    if (pgnText.length > MAX_IMPORT_BYTES) {
+      throw new Error(
+        `That PGN is too large to import (limit ${Math.round(MAX_IMPORT_BYTES / (1024 * 1024))} MB).`,
+      )
+    }
 
     const games = splitPgnGames(pgnText)
     const before = await this.countGames()
