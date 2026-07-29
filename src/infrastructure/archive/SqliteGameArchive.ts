@@ -157,7 +157,13 @@ export class SqliteGameArchive implements GameArchive, GameStore {
         ? `${relevance}
            CASE source WHEN 'played' THEN 0 WHEN 'famous' THEN 1 ELSE 2 END,
            recorded_at DESC, played_on, round`
-        : `${SORT_COLUMNS[query.sort]} ${query.direction === 'desc' ? 'DESC' : 'ASC'}, played_on`
+        : // The one value in this query that cannot be a bound parameter — SQL
+          // has no placeholder for a column name. It is therefore looked up in
+          // a fixed table and falls back rather than being trusted: an unknown
+          // key would otherwise interpolate "undefined" straight into ORDER BY.
+          `${SORT_COLUMNS[query.sort] ?? 'played_on'} ${
+            query.direction === 'desc' ? 'DESC' : 'ASC'
+          }, played_on`
 
     const rows = await this.client.select(
       `SELECT ${SUMMARY_COLUMNS} FROM game ${where}
