@@ -144,6 +144,8 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
   const [direction, setDirection] = useState<SortDirection>('asc')
   const [facets, setFacets] = useState<ArchiveFacets | null>(null)
   const [offset, setOffset] = useState(0)
+  // Normally one page; "Load all" stretches it to whatever remains.
+  const [limit, setLimit] = useState(PAGE_SIZE)
   // Pages accumulate: "load more" appends, and any change of question replaces.
   const [games, setGames] = useState<readonly ArchivedGameSummary[]>([])
   const [total, setTotal] = useState(0)
@@ -196,7 +198,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
         sort: sort ?? undefined,
         direction,
         offset,
-        limit: PAGE_SIZE,
+        limit,
       })
       .then((result) => {
         if (cancelled) return
@@ -215,7 +217,13 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
     return () => {
       cancelled = true
     }
-  }, [services.archive, query, field, chosen, filters, sort, direction, offset, reloadToken])
+  }, [services.archive, query, field, chosen, filters, sort, direction, offset, limit, reloadToken])
+
+  /** A new question starts the list over at its first page. */
+  const restartList = () => {
+    setOffset(0)
+    setLimit(PAGE_SIZE)
+  }
 
   // A narrowed list can drop the selected game; the preview must not outlive it.
   useEffect(() => {
@@ -315,7 +323,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
         // looks frozen for minutes.
         (done, totalGames) => setImporting({ done, total: totalGames, name: file.name }),
       )
-      setOffset(0)
+      restartList()
       setReloadToken((token) => token + 1)
       setLastImport(added)
       if (added === 0) {
@@ -331,7 +339,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
   const deleteGame = async (id: string) => {
     try {
       await services.store.remove(id)
-      setOffset(0)
+      restartList()
       setReloadToken((token) => token + 1)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -346,18 +354,18 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
       setSort(column)
       setDirection(initial)
     }
-    setOffset(0)
+    restartList()
   }
 
   const changeFilters = (next: FilterValues) => {
     setFilters(next)
-    setOffset(0)
+    restartList()
   }
 
   const resetFilters = () => {
     setFilters(NO_FILTERS)
     setSort(null)
-    setOffset(0)
+    restartList()
   }
 
   /**
@@ -409,7 +417,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
       clear: () => {
         setChosen(null)
         setSearch('')
-        setOffset(0)
+        restartList()
       },
     })
   }
@@ -458,7 +466,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
               onChange={(event) => {
                 setSearch(event.target.value)
                 setChosen(null)
-                setOffset(0)
+                restartList()
               }}
             />
             <select
@@ -467,7 +475,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
               value={field}
               onChange={(event) => {
                 setField(event.target.value as SearchField)
-                setOffset(0)
+                restartList()
               }}
             >
               {SEARCH_FIELDS.map((option) => (
@@ -482,7 +490,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
                 onChoose={(player) => {
                   setChosen(player)
                   setSearch(player.name)
-                  setOffset(0)
+                  restartList()
                 }}
               />
             ) : null}
@@ -677,14 +685,32 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
                 Showing {games.length.toLocaleString()} of {total.toLocaleString()}
               </span>
               {games.length < total ? (
-                <button
-                  type="button"
-                  className="button"
-                  disabled={isLoading}
-                  onClick={() => setOffset(games.length)}
-                >
-                  Load {Math.min(PAGE_SIZE, total - games.length).toLocaleString()} more
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="button"
+                    disabled={isLoading}
+                    onClick={() => {
+                      setLimit(PAGE_SIZE)
+                      setOffset(games.length)
+                    }}
+                  >
+                    Load {Math.min(PAGE_SIZE, total - games.length).toLocaleString()} more
+                  </button>
+                  <button
+                    type="button"
+                    className="button"
+                    disabled={isLoading}
+                    onClick={() => {
+                      // One request for everything left; the list keeps what
+                      // it already has and the rest arrives behind it.
+                      setLimit(total - games.length)
+                      setOffset(games.length)
+                    }}
+                  >
+                    Load all {total.toLocaleString()}
+                  </button>
+                </>
               ) : null}
             </footer>
           ) : null}
