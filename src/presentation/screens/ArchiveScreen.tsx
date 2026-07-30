@@ -1,27 +1,39 @@
 import { useEffect, useRef, useState } from 'react'
-import { displayYear, type ArchivedGameSummary } from '@domain/archive/ArchivedGame'
+import {
+  displayYear,
+  type ArchivedGame,
+  type ArchivedGameSummary,
+  type RecordedMove,
+} from '@domain/archive/ArchivedGame'
+import { STARTING_FEN } from '@domain/chess/Position'
 import { useFederations } from '../hooks/useFederations'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import {
   SEARCH_FIELDS,
   type ArchiveFacets,
-  type ArchivePage,
   type PlayerSuggestion,
   type SearchField,
   type SortColumn,
   type SortDirection,
 } from '@application/ports/GameArchive'
 import { describeOversizeImport } from '@application/importLimits'
+import { ChessBoardView } from '../components/ChessBoardView'
 import { PlayerSearch } from '../components/PlayerSearch'
 import {
   ArchiveFilters,
   isFiltering,
   NO_FILTERS,
+  RESULT_OPTIONS,
   type FilterValues,
 } from '../components/ArchiveFilters'
 import { useDebounced } from '../hooks/useDebounced'
 import { useServices } from '../ServicesContext'
 
 const PAGE_SIZE = 40
+
+/** Below this, there is no room for a third column and rows open the replay
+ *  directly; at or above it, a click previews and a second click replays. */
+const PREVIEW_LAYOUT = '(min-width: 1100px)'
 
 interface ImportState {
   readonly done: number
@@ -81,6 +93,10 @@ function describeResults(
     : `${games} matching “${search}”${scope}`
 }
 
+type FederationLookup = (
+  name: string,
+) => { code: string; country: string; title: string | null } | null
+
 /** One side of a game: title and federation when known, name, rating when recorded. */
 function Player({
   name,
@@ -89,7 +105,7 @@ function Player({
 }: {
   name: string
   elo: number | null
-  lookup: (name: string) => { code: string; country: string; title: string | null } | null
+  lookup: FederationLookup
 }) {
   const federation = lookup(name)
 
@@ -128,13 +144,23 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
   const [direction, setDirection] = useState<SortDirection>('asc')
   const [facets, setFacets] = useState<ArchiveFacets | null>(null)
   const [offset, setOffset] = useState(0)
-  const [page, setPage] = useState<ArchivePage | null>(null)
+  // Pages accumulate: "load more" appends, and any change of question replaces.
+  const [games, setGames] = useState<readonly ArchivedGameSummary[]>([])
+  const [total, setTotal] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setLoading] = useState(true)
   const [reloadToken, setReloadToken] = useState(0)
   const [importing, setImporting] = useState<ImportState | null>(null)
   const [lastImport, setLastImport] = useState<number | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const fileInput = useRef<HTMLInputElement | null>(null)
+  const menu = useRef<HTMLDivElement | null>(null)
+
+  // Master/detail: which row is chosen, and the full game behind it.
+  const hasPane = useMediaQuery(PREVIEW_LAYOUT)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [previewGame, setPreviewGame] = useState<ArchivedGame | null>(null)
+  const selectedRow = useRef<HTMLTableRowElement | null>(null)
 
   // Re-read after an import: it can add both events and years to filter by.
   useEffect(() => {
@@ -174,7 +200,8 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
       })
       .then((result) => {
         if (cancelled) return
-        setPage(result)
+        setGames((current) => (offset === 0 ? result.games : [...current, ...result.games]))
+        setTotal(result.total)
         setError(null)
       })
       .catch((cause: unknown) => {
@@ -189,6 +216,55 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
       cancelled = true
     }
   }, [services.archive, query, field, chosen, filters, sort, direction, offset, reloadToken])
+
+  // A narrowed list can drop the selected game; the preview must not outlive it.
+  useEffect(() => {
+    if (selectedId !== null && !games.some((game) => game.id === selectedId)) {
+      setSelectedId(null)
+      setPreviewGame(null)
+    }
+  }, [games, selectedId])
+
+  useEffect(() => {
+    if (!hasPane || selectedId === null) return
+    let cancelled = false
+
+    services.archive
+      .load(selectedId)
+      .then((game) => {
+        if (!cancelled) setPreviewGame(game)
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewGame(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [services.archive, selectedId, hasPane])
+
+  useEffect(() => {
+    selectedRow.current?.scrollIntoView({ block: 'nearest' })
+  }, [selectedId])
+
+  // The ⋯ menu closes the way menus close: outside click or Escape.
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDown = (event: MouseEvent) => {
+      if (menu.current !== null && !menu.current.contains(event.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [menuOpen])
 
   /**
    * Downloads the games you played or imported as one PGN file.
@@ -237,7 +313,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
         file.name,
         // Collections run to a hundred thousand games; without this the app
         // looks frozen for minutes.
-        (done, total) => setImporting({ done, total, name: file.name }),
+        (done, totalGames) => setImporting({ done, total: totalGames, name: file.name }),
       )
       setOffset(0)
       setReloadToken((token) => token + 1)
@@ -255,6 +331,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
   const deleteGame = async (id: string) => {
     try {
       await services.store.remove(id)
+      setOffset(0)
       setReloadToken((token) => token + 1)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -283,12 +360,84 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
     setOffset(0)
   }
 
-  const games = page?.games ?? []
-  const total = page?.total ?? 0
+  /**
+   * What clicking a row means depends on the layout: with a preview pane the
+   * first click selects and the second opens; without one there is nothing to
+   * select into, so a click just opens the replay.
+   */
+  const activate = (id: string) => {
+    if (!hasPane || selectedId === id) {
+      onOpenGame(id)
+      return
+    }
+    setSelectedId(id)
+  }
+
+  /** Arrow keys browse, Enter replays — a list this long earns keyboard legs. */
+  const onListKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' && selectedId !== null) {
+      event.preventDefault()
+      onOpenGame(selectedId)
+      return
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+    if (games.length === 0) return
+    event.preventDefault()
+
+    const delta = event.key === 'ArrowDown' ? 1 : -1
+    const index = games.findIndex((game) => game.id === selectedId)
+    const next =
+      index === -1
+        ? delta > 0
+          ? 0
+          : games.length - 1
+        : Math.max(0, Math.min(games.length - 1, index + delta))
+    setSelectedId(games[next]!.id)
+  }
+
   const filtered = isFiltering(filters)
   // The library holding nothing at all is a different problem from a filter
   // excluding everything, and the two need different advice.
   const libraryIsEmpty = facets !== null && facets.totalGames === 0
+
+  /** The active narrowings, each dismissible where it is shown. */
+  const chips: { readonly key: string; readonly label: string; readonly clear: () => void }[] = []
+  if (chosen !== null) {
+    chips.push({
+      key: 'player',
+      label: `Player: ${chosen.name}`,
+      clear: () => {
+        setChosen(null)
+        setSearch('')
+        setOffset(0)
+      },
+    })
+  }
+  if (filters.event !== '') {
+    chips.push({
+      key: 'event',
+      label: `Event: ${filters.event}`,
+      clear: () => changeFilters({ ...filters, event: '' }),
+    })
+  }
+  if (filters.result !== '') {
+    chips.push({
+      key: 'result',
+      label:
+        RESULT_OPTIONS.find((option) => option.value === filters.result)?.label ??
+        filters.result,
+      clear: () => changeFilters({ ...filters, result: '' }),
+    })
+  }
+  if (filters.yearFrom !== '' || filters.yearTo !== '') {
+    chips.push({
+      key: 'years',
+      label: `Years: ${filters.yearFrom === '' ? '…' : filters.yearFrom}–${filters.yearTo === '' ? '…' : filters.yearTo}`,
+      clear: () => changeFilters({ ...filters, yearFrom: '', yearTo: '' }),
+    })
+  }
+
+  const selected = games.find((game) => game.id === selectedId) ?? null
 
   return (
     <div className="screen screen--archive">
@@ -338,12 +487,45 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
               />
             ) : null}
           </div>
-          <button type="button" className="button" onClick={() => fileInput.current?.click()}>
-            Import PGN
-          </button>
-          <button type="button" className="button" onClick={() => void exportGames()}>
-            Export mine
-          </button>
+          {/* Data management, not browsing — parked behind one quiet button. */}
+          <div className="menu" ref={menu}>
+            <button
+              type="button"
+              className="button"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label="Import and export"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              ⋯
+            </button>
+            {menuOpen ? (
+              <div className="menu__popup" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="menu__item"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    fileInput.current?.click()
+                  }}
+                >
+                  Import PGN…
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="menu__item"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    void exportGames()
+                  }}
+                >
+                  Export my games
+                </button>
+              </div>
+            ) : null}
+          </div>
           <input
             ref={fileInput}
             type="file"
@@ -358,17 +540,31 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
         </div>
       </header>
 
-      <div className="archive__body">
+      <div className={`archive__body${hasPane ? ' archive__body--preview' : ''}`}>
         <ArchiveFilters
           facets={facets}
           values={filters}
           onChange={changeFilters}
           onReset={resetFilters}
-          matched={total}
-          isLoading={isLoading}
         />
 
         <section className="archive__results">
+          {chips.length > 0 ? (
+            <div className="active-filters">
+              {chips.map((chip) => (
+                <button
+                  key={chip.key}
+                  type="button"
+                  className="chip chip--selected"
+                  onClick={chip.clear}
+                  aria-label={`Remove ${chip.label}`}
+                >
+                  {chip.label} ✕
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           <h2 className="archive__heading">
             {chosen !== null
               ? `${total.toLocaleString()} games by ${chosen.name}`
@@ -392,8 +588,15 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
           {!isLoading && games.length === 0 ? (
             libraryIsEmpty ? (
               <p className="notice">
-                No games in the library yet. Use <strong>Import PGN</strong> to load a
-                game file from your computer.
+                No games in the library yet.{' '}
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => fileInput.current?.click()}
+                >
+                  Import a PGN file
+                </button>{' '}
+                from your computer to begin.
               </p>
             ) : (
               <p className="notice">
@@ -412,7 +615,12 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
           ) : null}
 
           {games.length > 0 ? (
-            <div className="game-table-scroll">
+            <div
+              className="game-table-scroll"
+              tabIndex={0}
+              aria-label="Games. Arrow keys browse, Enter opens the replay."
+              onKeyDown={onListKeyDown}
+            >
               <table className="game-table">
                 <thead>
                   <tr>
@@ -449,7 +657,9 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
                     <GameRow
                       key={game.id}
                       game={game}
-                      onOpen={() => onOpenGame(game.id)}
+                      isSelected={game.id === selectedId}
+                      rowRef={game.id === selectedId ? selectedRow : null}
+                      onActivate={() => activate(game.id)}
                       onDelete={
                         game.origin === 'played' ? () => void deleteGame(game.id) : undefined
                       }
@@ -461,33 +671,128 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
             </div>
           ) : null}
 
-          {total > PAGE_SIZE ? (
-            <nav className="pager">
-              <button
-                type="button"
-                className="button"
-                disabled={offset === 0}
-                onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-              >
-                Previous
-              </button>
+          {games.length > 0 ? (
+            <footer className="pager">
               <span>
-                {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total.toLocaleString()}
+                Showing {games.length.toLocaleString()} of {total.toLocaleString()}
               </span>
-              <button
-                type="button"
-                className="button"
-                disabled={offset + PAGE_SIZE >= total}
-                onClick={() => setOffset(offset + PAGE_SIZE)}
-              >
-                Next
-              </button>
-            </nav>
+              {games.length < total ? (
+                <button
+                  type="button"
+                  className="button"
+                  disabled={isLoading}
+                  onClick={() => setOffset(games.length)}
+                >
+                  Load {Math.min(PAGE_SIZE, total - games.length).toLocaleString()} more
+                </button>
+              ) : null}
+            </footer>
           ) : null}
         </section>
+
+        {hasPane ? (
+          <GamePreview
+            selected={selected}
+            game={previewGame}
+            lookup={lookup}
+            onReplay={onOpenGame}
+          />
+        ) : null}
       </div>
     </div>
   )
+}
+
+/** The right-hand pane: the selected game, without leaving the list. */
+function GamePreview({
+  selected,
+  game,
+  lookup,
+  onReplay,
+}: {
+  selected: ArchivedGameSummary | null
+  game: ArchivedGame | null
+  lookup: FederationLookup
+  onReplay: (id: string) => void
+}) {
+  if (selected === null) {
+    return (
+      <aside className="preview">
+        <p className="preview__empty">
+          Click a game to preview it here. Click it again — or press Enter — to replay it.
+        </p>
+      </aside>
+    )
+  }
+
+  // The pane renders from the summary at once; the board and moves fill in
+  // when the full game arrives, rather than the whole pane blinking empty.
+  const loaded = game !== null && game.id === selected.id
+  const last = loaded ? (game.moves.at(-1) ?? null) : null
+
+  const detail = [
+    selected.event,
+    selected.site,
+    displayYear(selected.date),
+  ].filter((part): part is string => part !== null && part !== '')
+
+  return (
+    <aside className="preview">
+      {selected.nickname !== null ? (
+        <p className="preview__nickname">{selected.nickname}</p>
+      ) : null}
+      <h3 className="preview__title">
+        <Player name={selected.white} elo={selected.whiteElo} lookup={lookup} />
+        <span className="game-table__versus">vs</span>
+        <Player name={selected.black} elo={selected.blackElo} lookup={lookup} />
+      </h3>
+      <p className="preview__meta">
+        {detail.join(' · ')} · <ResultPill result={selected.result} />
+      </p>
+
+      <div className="preview__board">
+        <ChessBoardView
+          fen={last?.positionAfter.fen ?? STARTING_FEN}
+          orientation="white"
+          interactive={false}
+          legalMoves={[]}
+          lastMove={last !== null ? { from: last.from, to: last.to } : null}
+        />
+      </div>
+      <p className="preview__caption">
+        {loaded ? `Final position · ${selected.moveCount} moves` : 'Loading the game…'}
+      </p>
+
+      {loaded && game.opening !== null ? (
+        <p className="preview__opening">
+          {game.eco !== null ? `${game.eco} · ` : ''}
+          {game.opening}
+        </p>
+      ) : null}
+
+      {loaded ? <div className="preview__pgn">{movetext(game.moves)}</div> : null}
+
+      <button
+        type="button"
+        className="button button--primary"
+        onClick={() => onReplay(selected.id)}
+      >
+        ▶ Replay game
+      </button>
+    </aside>
+  )
+}
+
+/** The moves as PGN movetext reads them: numbered White–Black pairs. */
+function movetext(moves: readonly RecordedMove[]): string {
+  const turns: string[] = []
+  for (let index = 0; index < moves.length; index += 2) {
+    const black = moves[index + 1]
+    turns.push(
+      `${index / 2 + 1}. ${moves[index]!.san}${black === undefined ? '' : ` ${black.san}`}`,
+    )
+  }
+  return turns.join(' ')
 }
 
 /** How each result tag is drawn, and what it actually means when read aloud. */
@@ -518,13 +823,17 @@ function ResultPill({ result }: { result: string }) {
 
 function GameRow({
   game,
-  onOpen,
+  isSelected,
+  rowRef,
+  onActivate,
   onDelete,
   lookup,
 }: {
   game: ArchivedGameSummary
-  onOpen: () => void
-  lookup: (name: string) => { code: string; country: string; title: string | null } | null
+  isSelected: boolean
+  rowRef: React.RefObject<HTMLTableRowElement | null> | null
+  onActivate: () => void
+  lookup: FederationLookup
   /** Only your own games can be removed; history is not yours to delete. */
   onDelete?: () => void
 }) {
@@ -535,7 +844,12 @@ function GameRow({
     .join(' · ')
 
   return (
-    <tr className="game-table__row" onClick={onOpen}>
+    <tr
+      className={`game-table__row${isSelected ? ' game-table__row--selected' : ''}`}
+      ref={rowRef ?? undefined}
+      aria-selected={isSelected}
+      onClick={onActivate}
+    >
       <td className="col-players">
         {/* The row is clickable for the mouse; this button is what a keyboard
             and a screen reader actually reach. */}
@@ -544,7 +858,7 @@ function GameRow({
           className="game-table__open"
           onClick={(event) => {
             event.stopPropagation()
-            onOpen()
+            onActivate()
           }}
         >
           {game.nickname !== null ? (

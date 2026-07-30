@@ -759,12 +759,31 @@ h2 {
   gap: 0.5rem;
 }
 
-.filters__title {
+/* The title doubles as the collapse toggle where the screen is narrow; on the
+   desktop sidebar the chevron hides and the body never folds. */
+.filters__toggle {
+  font: inherit;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--text-muted);
-  margin: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: default;
+}
+
+.filters__chevron {
+  display: none;
+}
+
+/* Invisible to layout on desktop: the controls stay direct children of the
+   sidebar, so the existing flex rules keep working untouched. */
+.filters__body {
+  display: contents;
 }
 
 .filters__reset {
@@ -832,41 +851,14 @@ h2 {
   flex: 0 0 auto;
 }
 
-/* ---------- Quick stats ---------- */
+/* ---------- Library stats ----------
+   One quiet line pinned to the sidebar's foot. What the current query matched
+   is stated by the results heading, right next to the results it counts. */
 
-.stats {
-  /* Pinned to the bottom of the sidebar, so adding a filter never shifts it. */
-  margin-top: auto;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 0.6rem;
-}
-
-.stats__title {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+.stats-line {
+  margin: auto 0 0;
+  font-size: 0.74rem;
   color: var(--text-muted);
-  margin: 0 0 0.5rem;
-}
-
-.stats__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem 0.4rem;
-  margin: 0;
-}
-
-.stats__cell dt {
-  font-size: 0.68rem;
-  color: var(--text-muted);
-}
-
-.stats__cell dd {
-  margin: 0.1rem 0 0;
-  font-size: 0.92rem;
-  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -946,6 +938,18 @@ h2 {
 
 .game-table__row:hover {
   background: var(--surface-hover);
+}
+
+.game-table__row--selected,
+.game-table__row--selected:hover {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* The list takes focus so the arrow keys can browse it. */
+.game-table-scroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .game-table td {
@@ -1040,6 +1044,19 @@ h2 {
   white-space: nowrap;
 }
 
+/* Numbers and pills sit flush right, where a column of them scans. */
+.col-result,
+.col-year,
+.col-moves {
+  text-align: right;
+}
+
+.col-result .game-table__sort,
+.col-year .game-table__sort,
+.col-moves .game-table__sort {
+  justify-content: flex-end;
+}
+
 /* ---------- Result pills ----------
    The pill takes the colour of the side that won, which is why there is no
    legend anywhere on the screen: light is White, dark is Black, violet is a
@@ -1123,6 +1140,148 @@ h2 {
   font-size: 0.8rem;
   color: var(--text-muted);
   flex: 0 0 auto;
+}
+
+/* ---------- Active filter chips ----------
+   Every narrowing in force, said where the results are and dismissible there. */
+
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+
+/* ---------- Import/export menu ---------- */
+
+.menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.menu__popup {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  min-width: 11rem;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.7);
+}
+
+.menu__item {
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.menu__item:hover,
+.menu__item:focus-visible {
+  background: var(--surface-hover);
+}
+
+/* ---------- Game preview pane ----------
+   Master/detail on wide screens: the list keeps your place, the pane shows the
+   game. The grid only gains this column when the JS layout check adds it. */
+
+.archive__body--preview {
+  grid-template-columns: var(--sidebar) minmax(0, 1fr) clamp(280px, 26vw, 380px);
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.8rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.preview__empty {
+  margin: auto;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.preview__nickname {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent-strong);
+}
+
+.preview__title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.preview__meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.preview__board {
+  width: 100%;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+}
+
+.preview__board .board-area {
+  width: 100%;
+  height: 100%;
+}
+
+.preview__caption {
+  margin: 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.preview__opening {
+  margin: 0;
+  font-size: 0.76rem;
+}
+
+.preview__pgn {
+  flex: 0 1 auto;
+  min-height: 3rem;
+  max-height: 9rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.74rem;
+  line-height: 1.6;
 }
 
 /* ---------- Replay ---------- */
@@ -1311,15 +1470,28 @@ h2 {
     flex: 1 1 8rem;
   }
 
-  .stats {
-    flex: 1 0 100%;
-    margin-top: 0;
+  /* Here the title really is a toggle, and closed is the default: the games
+     are what a phone screen is for, and the chips above the results still say
+     what is filtered while the controls are away. */
+  .filters__toggle {
+    cursor: pointer;
   }
 
-  /* One row of four rather than a 2×2 block. The filters already take the top
-     of a phone screen, and what is left has to be the games. */
-  .stats__grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .filters__toggle:hover {
+    color: var(--text);
+  }
+
+  .filters__chevron {
+    display: inline;
+  }
+
+  .filters--closed .filters__body {
+    display: none;
+  }
+
+  .stats-line {
+    flex: 1 0 100%;
+    margin: 0;
   }
 
   /* Move count is not why anyone opens an archive; the rest still fits. */

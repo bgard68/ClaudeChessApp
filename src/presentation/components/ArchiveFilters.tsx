@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { MAX_EVENT_OPTIONS, type ArchiveFacets } from '@application/ports/GameArchive'
 
 /**
@@ -31,7 +32,7 @@ export function isFiltering(values: FilterValues): boolean {
 }
 
 /** The result tags, named the way people say them rather than as PGN spells them. */
-const RESULTS: readonly { readonly value: string; readonly label: string }[] = [
+export const RESULT_OPTIONS: readonly { readonly value: string; readonly label: string }[] = [
   { value: '', label: 'Any result' },
   { value: '1-0', label: 'White won' },
   { value: '0-1', label: 'Black won' },
@@ -43,19 +44,12 @@ interface ArchiveFiltersProps {
   readonly values: FilterValues
   readonly onChange: (next: FilterValues) => void
   readonly onReset: () => void
-  /** Games the current query matched — search and filters together. */
-  readonly matched: number
-  readonly isLoading: boolean
 }
 
-export function ArchiveFilters({
-  facets,
-  values,
-  onChange,
-  onReset,
-  matched,
-  isLoading,
-}: ArchiveFiltersProps) {
+export function ArchiveFilters({ facets, values, onChange, onReset }: ArchiveFiltersProps) {
+  // Narrow screens fold the controls away behind the title; the desktop
+  // sidebar ignores this entirely and always shows them.
+  const [open, setOpen] = useState(false)
   const years = yearOptions(facets)
 
   /**
@@ -78,9 +72,19 @@ export function ArchiveFilters({
   }
 
   return (
-    <aside className="filters">
+    <aside className={`filters${open ? '' : ' filters--closed'}`}>
       <div className="filters__head">
-        <h2 className="filters__title">Filters</h2>
+        <button
+          type="button"
+          className="filters__toggle"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          Filters
+          <span className="filters__chevron" aria-hidden="true">
+            {open ? '▾' : '▸'}
+          </span>
+        </button>
         <button
           type="button"
           className="filters__reset"
@@ -91,95 +95,86 @@ export function ArchiveFilters({
         </button>
       </div>
 
-      <label className="filter">
-        <span className="filter__label">Event</span>
-        <select
-          className="filter__control"
-          value={values.event}
-          onChange={(event) => set({ event: event.target.value })}
-        >
-          <option value="">All events</option>
-          {facets?.events.map((event) => (
-            <option key={event.name} value={event.name}>
-              {event.name} ({event.games.toLocaleString()})
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="filter">
-        <span className="filter__label">Result</span>
-        <select
-          className="filter__control"
-          value={values.result}
-          onChange={(event) => set({ result: event.target.value })}
-        >
-          {RESULTS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <div className="filter">
-        <span className="filter__label">Year</span>
-        <div className="filter__range">
+      {/* display: contents on desktop, so collapsing exists only where the
+          screen is narrow enough to need the room back. */}
+      <div className="filters__body">
+        <label className="filter">
+          <span className="filter__label">Event</span>
           <select
             className="filter__control"
-            aria-label="Earliest year"
-            value={values.yearFrom}
-            onChange={(event) => set({ yearFrom: event.target.value })}
+            value={values.event}
+            onChange={(event) => set({ event: event.target.value })}
           >
-            <option value="">From</option>
-            {years.map((year) => (
-              <option key={year} value={year}>
-                {year}
+            <option value="">All events</option>
+            {facets?.events.map((event) => (
+              <option key={event.name} value={event.name}>
+                {event.name} ({event.games.toLocaleString()})
               </option>
             ))}
           </select>
-          <span className="filter__dash" aria-hidden="true">
-            –
-          </span>
+        </label>
+
+        <label className="filter">
+          <span className="filter__label">Result</span>
           <select
             className="filter__control"
-            aria-label="Latest year"
-            value={values.yearTo}
-            onChange={(event) => set({ yearTo: event.target.value })}
+            value={values.result}
+            onChange={(event) => set({ result: event.target.value })}
           >
-            <option value="">To</option>
-            {years.map((year) => (
-              <option key={year} value={year}>
-                {year}
+            {RESULT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
+        </label>
+
+        <div className="filter">
+          <span className="filter__label">Year</span>
+          <div className="filter__range">
+            <select
+              className="filter__control"
+              aria-label="Earliest year"
+              value={values.yearFrom}
+              onChange={(event) => set({ yearFrom: event.target.value })}
+            >
+              <option value="">From</option>
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+            <span className="filter__dash" aria-hidden="true">
+              –
+            </span>
+            <select
+              className="filter__control"
+              aria-label="Latest year"
+              value={values.yearTo}
+              onChange={(event) => set({ yearTo: event.target.value })}
+            >
+              <option value="">To</option>
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      <div className="stats">
-        <h3 className="stats__title">Quick stats</h3>
-        <dl className="stats__grid">
-          <div className="stats__cell">
-            <dt>Showing</dt>
-            <dd>{isLoading ? '…' : matched.toLocaleString()}</dd>
-          </div>
-          <div className="stats__cell">
-            <dt>In library</dt>
-            <dd>{facets === null ? '—' : facets.totalGames.toLocaleString()}</dd>
-          </div>
-          <div className="stats__cell">
-            <dt>Events</dt>
-            <dd>{eventCount(facets)}</dd>
-          </div>
-          <div className="stats__cell">
-            <dt>Years</dt>
-            <dd>{yearSpan(facets)}</dd>
-          </div>
-        </dl>
-      </div>
+      {/* One line, not a card: what the library holds overall. What the current
+          query matched is the results heading's job, next to the results. */}
+      <p className="stats-line">{describeLibrary(facets)}</p>
     </aside>
   )
+}
+
+function describeLibrary(facets: ArchiveFacets | null): string {
+  if (facets === null) return '…'
+  return `${facets.totalGames.toLocaleString()} games · ${eventCount(facets)} events · ${yearSpan(facets)}`
 }
 
 /**
@@ -188,15 +183,14 @@ export function ArchiveFilters({
  * "250+" once the list is capped, because the true number is larger than
  * anything this screen was told and printing the cap as a total is a lie.
  */
-function eventCount(facets: ArchiveFacets | null): string {
-  if (facets === null) return '—'
+function eventCount(facets: ArchiveFacets): string {
   return facets.events.length >= MAX_EVENT_OPTIONS
     ? `${MAX_EVENT_OPTIONS}+`
     : facets.events.length.toLocaleString()
 }
 
-function yearSpan(facets: ArchiveFacets | null): string {
-  if (facets === null || facets.firstYear === null || facets.lastYear === null) return '—'
+function yearSpan(facets: ArchiveFacets): string {
+  if (facets.firstYear === null || facets.lastYear === null) return '—'
   return facets.firstYear === facets.lastYear
     ? String(facets.firstYear)
     : `${facets.firstYear}–${facets.lastYear}`
