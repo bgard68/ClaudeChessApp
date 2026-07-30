@@ -39,6 +39,9 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
   const gameOver = isOver(state.outcome)
   const isHumanToMove = state.awaiting?.kind === 'human'
   const lastMove = state.history.at(-1) ?? null
+  // Watching the computer play itself: nobody at the keyboard has a game to
+  // undo, a draw to agree, or anything to resign.
+  const isWatching = configuration.opponent === 'engines'
 
   const names = seatNames(configuration)
 
@@ -49,10 +52,7 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
         recordGame(state, {
           whiteName: names.white,
           blackName: names.black,
-          event:
-            configuration.opponent === 'computer'
-              ? `Game vs computer (${configuration.difficulty.label})`
-              : 'Two-player game',
+          event: eventName(configuration),
           site: 'This device',
           at: new Date(),
         }),
@@ -155,33 +155,39 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
               Turn board each move
             </label>
           ) : null}
-          <button
-            type="button"
-            className="button"
-            disabled={!state.canUndo}
-            onClick={() => game.undo()}
-          >
-            Undo
-          </button>
-          <button
-            type="button"
-            className="button"
-            disabled={gameOver}
-            onClick={() => game.agreeDraw()}
-          >
-            Draw
-          </button>
+          {isWatching ? null : (
+            <>
+              <button
+                type="button"
+                className="button"
+                disabled={!state.canUndo}
+                onClick={() => game.undo()}
+              >
+                Undo
+              </button>
+              <button
+                type="button"
+                className="button"
+                disabled={gameOver}
+                onClick={() => game.agreeDraw()}
+              >
+                Draw
+              </button>
+            </>
+          )}
           {/* While the game runs, saving lives here; once it ends the banner
               carries it, which is the moment you actually decide. */}
           {gameOver ? null : saveButton}
-          <button
-            type="button"
-            className="button button--danger"
-            disabled={gameOver}
-            onClick={() => game.resign(state.position.sideToMove)}
-          >
-            Resign
-          </button>
+          {isWatching ? null : (
+            <button
+              type="button"
+              className="button button--danger"
+              disabled={gameOver}
+              onClick={() => game.resign(state.position.sideToMove)}
+            >
+              Resign
+            </button>
+          )}
           <button type="button" className="button" onClick={onNewGame}>
             New game
           </button>
@@ -208,8 +214,23 @@ function seatNames(configuration: GameConfiguration): Record<PieceColor, string>
   if (configuration.opponent === 'human') {
     return { white: 'White', black: 'Black' }
   }
+  if (configuration.opponent === 'engines') {
+    return { white: 'Stockfish (White)', black: 'Stockfish (Black)' }
+  }
   const computer = `Computer · ${configuration.difficulty.label}`
   return configuration.playerColor === 'white'
     ? { white: 'You', black: computer }
     : { white: computer, black: 'You' }
+}
+
+/** What the saved record calls the occasion. */
+function eventName(configuration: GameConfiguration): string {
+  switch (configuration.opponent) {
+    case 'computer':
+      return `Game vs computer (${configuration.difficulty.label})`
+    case 'engines':
+      return `Stockfish match (${configuration.difficulty.label})`
+    case 'human':
+      return 'Two-player game'
+  }
 }

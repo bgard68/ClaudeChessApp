@@ -18,24 +18,42 @@ export class GameFactory {
   constructor(private readonly services: AppServices) {}
 
   createLiveGame(configuration: GameConfiguration): LiveGame {
+    const { white, black } = this.seats(configuration)
+
+    return new LiveGame(
+      { rules: this.services.rules, ticker: this.services.createTicker() },
+      { white, black, timeControl: configuration.timeControl },
+    )
+  }
+
+  private seats(configuration: GameConfiguration): { white: Opponent; black: Opponent } {
+    // The computer playing itself: two engines, and two worker processes — each
+    // seat owns its own search, so cancelling one side never interrupts the other.
+    if (configuration.opponent === 'engines') {
+      return {
+        white: this.engineSeat(configuration, 'Stockfish (White)'),
+        black: this.engineSeat(configuration, 'Stockfish (Black)'),
+      }
+    }
+
     const playerSeat = new HumanOpponent(
       configuration.opponent === 'computer' ? 'You' : seatName(configuration.playerColor),
     )
     const otherSeat: Opponent =
       configuration.opponent === 'computer'
-        ? new EngineOpponent(
-            this.services.createEngine(),
-            configuration.difficulty.configuration,
-            `Computer · ${configuration.difficulty.label}`,
-          )
+        ? this.engineSeat(configuration, `Computer · ${configuration.difficulty.label}`)
         : new HumanOpponent(seatName(opposite(configuration.playerColor)))
 
-    const white = configuration.playerColor === 'white' ? playerSeat : otherSeat
-    const black = configuration.playerColor === 'white' ? otherSeat : playerSeat
+    return configuration.playerColor === 'white'
+      ? { white: playerSeat, black: otherSeat }
+      : { white: otherSeat, black: playerSeat }
+  }
 
-    return new LiveGame(
-      { rules: this.services.rules, ticker: this.services.createTicker() },
-      { white, black, timeControl: configuration.timeControl },
+  private engineSeat(configuration: GameConfiguration, name: string): Opponent {
+    return new EngineOpponent(
+      this.services.createEngine(),
+      configuration.difficulty.configuration,
+      name,
     )
   }
 

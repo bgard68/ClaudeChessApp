@@ -81,9 +81,15 @@ export function NewGameScreen({ onStart, onBrowseArchive }: NewGameScreenProps) 
               isSelected={opponent === 'computer'}
               onSelect={() => setOpponent('computer')}
             />
+            <Choice
+              label="Computer vs computer"
+              hint="Watch Stockfish play itself"
+              isSelected={opponent === 'engines'}
+              onSelect={() => setOpponent('engines')}
+            />
           </Panel>
 
-          {opponent === 'computer' ? (
+          {opponent !== 'human' ? (
             <Panel title="Difficulty">
               {DIFFICULTY_LEVELS.map((level) => (
                 <Choice
@@ -210,6 +216,10 @@ function summarise(
   difficultyLabel: string,
   timeLabel: string,
 ): string {
+  if (opponent === 'engines') {
+    return `Stockfish vs Stockfish · ${difficultyLabel} · ${timeLabel}`
+  }
+
   const seat =
     colour === 'random'
       ? 'Colour drawn at random'
