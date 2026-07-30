@@ -586,7 +586,8 @@ Strained:
   runs the one-time import, performs migrations, and rebuilds the player index —
   roughly 500 lines. Each piece is coherent and the comments explain why, but
   "the library" is a broad responsibility. If this file grows again, the player
-  index is the natural thing to extract.
+  index is the natural thing to extract — see V2 in §8.9 for why that wait is
+  deliberate.
 - `ArchiveScreen` holds filter state, sort state, pagination, import, and export.
   It is a screen, so some of that is inherent; it is nonetheless the largest
   component.
@@ -620,7 +621,7 @@ protocol-shaped stays in the adapter.
 `GameArchive` itself is the counter-example: `list`, `load`, `importPgn`,
 `durability`, `exportPgn`, `suggestPlayers`, `facets`. That is a wide interface,
 and a screen that only lists games depends on all of it. Splitting it further
-would be defensible; it has not earned it yet.
+would be defensible; V3 in §8.9 sets out why it is not being done.
 
 ### 8.5 Dependency Inversion (DIP) — honoured, and now enforced
 
@@ -697,13 +698,144 @@ Deliberately duplicated:
 
 | Principle | Verdict | The tradeoff |
 | --- | --- | --- |
-| SRP | Mostly held | `SqliteGameArchive` does too much; extraction deferred until it grows again |
+| SRP | Mostly held | `SqliteGameArchive` does too much; extraction deferred by design (§8.9 V2) |
 | OCP | Held where extension is likely | Screens are closed to extension by choice |
 | LSP | Held, and load-bearing | Capability check (`isInteractive`) instead of type check |
-| ISP | Held | `GameArchive` is wide; splitting not yet earned |
-| DIP | Held, and enforced | `architecture.test.ts` asserts it; one exception, listed with its reason |
+| ISP | Held | `GameArchive` is wide; splitting prevents no defect (§8.9 V3) |
+| DIP | Held, and enforced | `architecture.test.ts` asserts it; one exception, argued in §8.9 V1 |
 | Clean Arch | Dependency rule yes, taxonomy no | No use-case classes, no DI container |
 | DRY | Mostly | Game identity duplicated 2× for a real reason, and test-locked |
+
+### 8.9 Known violations left standing
+
+Three violations found by a deliberate scan are **not** being fixed. They are
+recorded here with what is actually wrong, what fixing it would cost, and why the
+trade does not pay — so that leaving them is a position rather than an oversight,
+and so the next person does not spend an afternoon on work already judged not
+worth doing.
+
+The test for each: does fixing it prevent a defect, or does it only make the
+diagram tidier?
+
+---
+
+#### V1 — `useFederations` reaches infrastructure directly (DIP, Clean Architecture)
+
+**The violation.** `src/presentation/hooks/useFederations.ts` imports
+`@infrastructure/archive/federations`. It is the only place in production code
+where presentation reaches past the composition root into infrastructure. Three
+things make it real rather than technical:
+
+- **No port exists.** Every other external dependency has one — `ChessEngine`,
+  `ChessRules`, `Ticker`, `GameArchive`, `GameStore`.
+- **`federations.ts` performs `fetch()`.** So a React hook depends directly on a
+  concrete network call.
+- **It caches in module-level mutable state** (`loading ??=`), which makes it a
+  hidden singleton: not injected, not substitutable, shared across every consumer.
+
+**What fixing it costs.** A `PlayerFederations` port in `application/ports/`, an
+adapter in `infrastructure/`, a line in `composition/services.ts`, and threading
+it through `ServicesContext` to the one hook that wants it. Four files and a new
+seam.
+
+**Why it stands.** The abstraction would buy substitutability for something that
+will never have a second implementation. It reads one static JSON file to put a
+flag beside a player's name — there is no second source of federations, no
+server-backed variant to swap in, no test that wants a fake. The port would exist
+to satisfy the diagram.
+
+**What it actually costs to leave.** Flag rendering cannot be unit-tested without
+stubbing `fetch`, and the module-level cache means a test that loads federations
+once affects later tests in the same file. Both are real and neither has bitten:
+no test currently needs to.
+
+**The condition that would change the answer.** A second source of federation
+data, a need to test flag rendering directly, or that cache causing a test to
+interfere with another. Any of those and the port pays for itself immediately.
+
+**Why it is safe to leave.** It is listed in `architecture.test.ts` beside its
+reason, so the exception is enforced as a *single* exception — a second one fails
+the build. And the test fails if the listed file stops existing, so if this is
+ever fixed the stale permission cannot linger.
+
+---
+
+#### V2 — `SqliteGameArchive` does too much (SRP)
+
+**The violation.** 590 lines, 15 methods, and at least six distinct
+responsibilities: query construction, durability reporting and the storage
+permission request, PGN import, export, the parsed-game cache, player-index
+rebuilding, schema migration, and first-run initialisation. `ArchiveScreen.tsx`
+is the same shape from the other end — 594 lines and 17 hooks holding filter
+state, sort state, pagination, import and export.
+
+**What fixing it costs.** The natural extraction is `rebuildPlayerIndex` — about
+70 lines with its own concern, name-merging, which already has its own test file
+in `playerIdentity.test.ts`. Pulling it out means a new collaborator, a
+constructor parameter, and a decision about whether it owns its own SQL or is
+handed statements to run.
+
+**Why it stands.** Nothing is *wrong* today. Every method is short, each carries a
+comment explaining the decision it encodes, and they genuinely share the same
+concern — one SQLite database and its lifecycle. Splitting now would trade a long
+cohesive file for two files plus a seam, and the reader would have to follow the
+seam to understand initialisation. Size alone is not a defect; size *plus* a
+reason to change is.
+
+**What it actually costs to leave.** The file is intimidating to a newcomer, and
+a bug in one responsibility is read in the context of five others. That is a
+comprehension cost, not a correctness one.
+
+**The condition that would change the answer.** The next time that file needs a
+non-trivial change. At that point the extraction is nearly free, because the code
+is already being read and tested — and doing it then means the split is shaped by
+a real requirement instead of guessed at now.
+
+---
+
+#### V3 — `GameArchive` is a wide interface (ISP)
+
+**The violation.** Seven methods — `list`, `load`, `importPgn`, `durability`,
+`exportPgn`, `suggestPlayers`, `facets` — and no consumer uses more than four:
+
+| Consumer | Uses |
+| --- | --- |
+| `App.tsx` | `load` |
+| `PlayerSearch.tsx` | `suggestPlayers` |
+| `useLibraryDurability.ts` | `durability` |
+| `ArchiveScreen.tsx` | `list`, `facets`, `importPgn`, `exportPgn` |
+
+Strictly, every one depends on all seven.
+
+**What fixing it costs.** Three or four narrower interfaces —
+`GameReader`, `GameImporter`, `PlayerDirectory`, `LibraryStatus` — each
+implemented by the same adapter, plus the corresponding context plumbing so a
+component receives only the one it needs.
+
+**Why it stands.** No defect is reachable through this. A component holding a
+reference it never calls cannot misuse it, and TypeScript already prevents
+calling something that is not on the interface. The one segregation that *does*
+prevent a defect already exists: `GameArchive` and `GameStore` are separate so a
+browsing screen is never handed `remove()`. That split was made because deletion
+is dangerous — the remaining methods are all reads and one import, where the
+worst outcome of over-exposure is nothing at all.
+
+**What it actually costs to leave.** A reader cannot tell from a component's type
+which parts of the library it touches. Minor, and answered by reading the
+component.
+
+**The condition that would change the answer.** A method arriving that is
+dangerous in the way `remove()` is — something destructive, expensive, or
+irreversible. Segregation earns its keep by keeping capability away from code that
+should not have it, and there is currently nothing left worth withholding.
+
+---
+
+**The through-line.** V1 is a violation with a cheap fix and no payoff. V2 is a
+real smell whose fix should be triggered by a change, not by a scan. V3 is a
+technicality that would cost plumbing and prevent nothing. Fixing all three would
+score better against a checklist and leave the app no more correct — which is the
+argument for writing down why, instead of doing it.
 
 ---
 
