@@ -586,7 +586,7 @@ Strained:
   runs the one-time import, performs migrations, and rebuilds the player index —
   roughly 500 lines. Each piece is coherent and the comments explain why, but
   "the library" is a broad responsibility. If this file grows again, the player
-  index is the natural thing to extract — see V2 in §8.9 for why that wait is
+  index is the natural thing to extract — see V2 in §8.10 for why that wait is
   deliberate.
 - `ArchiveScreen` holds filter state, sort state, pagination, import, and export.
   It is a screen, so some of that is inherent; it is nonetheless the largest
@@ -621,7 +621,7 @@ protocol-shaped stays in the adapter.
 `GameArchive` itself is the counter-example: `list`, `load`, `importPgn`,
 `durability`, `exportPgn`, `suggestPlayers`, `facets`. That is a wide interface,
 and a screen that only lists games depends on all of it. Splitting it further
-would be defensible; V3 in §8.9 sets out why it is not being done.
+would be defensible; V3 in §8.10 sets out why it is not being done.
 
 ### 8.5 Dependency Inversion (DIP) — honoured, and now enforced
 
@@ -698,15 +698,81 @@ Deliberately duplicated:
 
 | Principle | Verdict | The tradeoff |
 | --- | --- | --- |
-| SRP | Mostly held | `SqliteGameArchive` does too much; extraction deferred by design (§8.9 V2) |
+| SRP | Mostly held | `SqliteGameArchive` does too much; extraction deferred by design (§8.10 V2) |
 | OCP | Held where extension is likely | Screens are closed to extension by choice |
 | LSP | Held, and load-bearing | Capability check (`isInteractive`) instead of type check |
-| ISP | Held | `GameArchive` is wide; splitting prevents no defect (§8.9 V3) |
-| DIP | Held, and enforced | `architecture.test.ts` asserts it; one exception, argued in §8.9 V1 |
+| ISP | Held | `GameArchive` is wide; splitting prevents no defect (§8.10 V3) |
+| DIP | Held, and enforced | `architecture.test.ts` asserts it; one exception, argued in §8.10 V1 |
 | Clean Arch | Dependency rule yes, taxonomy no | No use-case classes, no DI container |
 | DRY | Mostly | Game identity duplicated 2× for a real reason, and test-locked |
 
-### 8.9 Known violations left standing
+### 8.9 The scan, and what was done about it
+
+The verdicts above came partly from reading the code as it was written and partly
+from a deliberate scan for violations — greps for outward imports, concrete
+adapters named outside the composition root, duplicated logic, interface widths
+and file sizes. Six things came out of it. Three were fixed; three stand, and are
+argued in §8.10.
+
+| # | Finding | Disposition |
+| --- | --- | --- |
+| 1 | The dependency rule was a convention nothing checked | **Fixed** — `src/architecture.test.ts` |
+| 2 | `gameKey.ts` and this document both claimed a safety net that did not exist | **Fixed** — comment corrected, §8.7 carries the correction |
+| 3 | Game identity implemented three times, nothing holding them in agreement | **Fixed** — reduced to two, locked by `gameKey.test.ts` |
+| 4 | `useFederations` imports infrastructure directly | **Stands** — §8.10 V1 |
+| 5 | `SqliteGameArchive` carries six responsibilities | **Stands** — §8.10 V2 |
+| 6 | `GameArchive` is a wide interface | **Stands** — §8.10 V3 |
+
+#### How 1 was fixed
+
+`src/architecture.test.ts` asserts four rules: each layer imports only itself or
+inward; `react`, `chess.js`, `stockfish`, `react-dom`, `react-chessboard` and
+`@sqlite.org/sqlite-wasm` stay out of `domain/` and `application/`; only
+`composition/` constructs adapters; and `presentation/` does not import
+`@infrastructure`. It walks `src/` itself and reads the import specifiers — no
+ESLint, because the project has no linter and adding one plus a plugin to assert
+four things is a worse trade than thirty lines that already run in the commit
+hook.
+
+Two details that make it a guard rather than a decoration. It asserts it found
+more than forty files, so a broken directory walk cannot make every other
+assertion vacuously true. And accepted exceptions live in a list in the test with
+their reason beside them, checked both ways: a second exception fails the build,
+and an entry naming a file that no longer exists also fails — so a breach that
+gets fixed cannot leave stale permission behind.
+
+#### How 3 was fixed
+
+`scripts/lib/gameKey.mjs` is the plain-JavaScript twin the build scripts can
+import; `gameKey.test.ts` pins it to `gameKey.ts` over cases chosen for what the
+key exists to get right — the same game with and without clock comments, with
+annotation glyphs, with punctuation and case differing in names, a forfeit with no
+moves at all, and identical moves played by different people.
+
+The duplication was also reduced rather than merely checked. `audit-pgn-archive`
+and `dedupe-pgn-archive` each had private copies of the tag, person and move-text
+helpers; both now import the shared module. Three implementations became two, and
+the two that remain are the ones that cannot be collapsed — a build script cannot
+import TypeScript behind path aliases without a compile step, and a script that
+needs one is a script nobody runs.
+
+#### Both fixes were proven to fail
+
+A guard that has only ever passed is not known to work. Each was verified by
+injecting the fault it exists to catch, and then restored:
+
+| Injected | Result |
+| --- | --- |
+| NAG stripping removed from `gameKey.mjs` | `gameKey.test.ts`: 1 failed, 16 passed |
+| `import { Chess } from 'chess.js'` added to `domain/chess/Move.ts` | `architecture.test.ts`: 1 failed, 7 passed, naming the file |
+
+The refactor was also checked for behaviour: `audit-pgn` still reports 130,565
+distinct games and no duplicates over the same archive, so moving the helpers
+changed no answer.
+
+---
+
+### 8.10 Known violations left standing
 
 Three violations found by a deliberate scan are **not** being fixed. They are
 recorded here with what is actually wrong, what fixing it would cost, and why the
@@ -846,7 +912,7 @@ Everything above was checked rather than assumed.
 | Gate | Result |
 | --- | --- |
 | `npm run typecheck` | clean |
-| `npm test` | 82 passing, 9 files |
+| `npm test` | 107 passing, 11 files — including the two architecture guards |
 | `npm run build` | clean; CSP meta tag present in output |
 | `npm audit` | 0 vulnerabilities |
 | `npm run audit-pgn` | 130,565 games, 0 duplicates, 11,142,485 half-moves replayed |
@@ -856,6 +922,10 @@ Everything above was checked rather than assumed.
 Two independent scripts arriving at 11,142,485 half-moves over the same games is
 the cross-check worth having: `audit-pgn-archive` and `audit-library` share no
 code.
+
+The two guard tests were each verified by injecting the fault they exist to catch
+and confirming the failure, then restoring — see §8.9. A guard that has only ever
+passed is not known to work.
 
 Two things remain unexercised: the promotion chooser needs a game reaching a
 seventh-rank pawn, and storage persistence has only been observed being
