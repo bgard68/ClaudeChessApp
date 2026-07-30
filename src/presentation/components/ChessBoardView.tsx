@@ -146,6 +146,12 @@ export function ChessBoardView({
       boardStyle: { borderRadius: '6px' },
       darkSquareStyle: { backgroundColor: theme.dark },
       lightSquareStyle: { backgroundColor: theme.light },
+      // The library's coordinate labels default to its own walnut palette
+      // whatever the squares are, which most themes wash out. Neutral ink
+      // instead of theme colours: near-white on dark squares and near-black on
+      // light ones clears every scheme, where tone-on-tone cleared none.
+      darkSquareNotationStyle: { color: '#f7f6f2', fontWeight: 600 },
+      lightSquareNotationStyle: { color: '#3a3833', fontWeight: 600 },
       animationDurationInMs: 180,
       // Arrows are a study tool this app does not offer, and drawing one by
       // accident with the right button is confusing.
