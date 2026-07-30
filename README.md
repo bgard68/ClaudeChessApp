@@ -1,7 +1,7 @@
 # Chess
 
 A browser chess app: play a friend on one device or Stockfish locally, with or
-without a clock, replay 2,850 World Championship games on the board, and keep
+without a clock, replay 2,987 World Championship games on the board, and keep
 your own games in a local library.
 
 No backend. Everything — rules, engine, clocks, and the SQLite game library —
@@ -27,8 +27,15 @@ Then open http://localhost:5173.
 | `npm run fetch-games` | Re-download the World Championship games |
 | `npm run fetch-famous` | Re-extract the famous-games collection |
 | `npm run fetch-modern` | Re-fetch title matches played since 2008 |
+| `npm run fetch-careers` | Fetch the two large optional career collections |
 | `npm run build-library` | Validate, deduplicate, and write the collections |
 | `npm run audit-library` | Independently re-check the built library |
+| `npm run audit-pgn` | Audit any PGN directory or file for validity, duplicates and overlap |
+| `npm run dedupe-pgn` | Merge a directory of collections into one file, each game once |
+| `npm run verify` | Typecheck, test, and `npm audit` in one go |
+
+`prepare-assets` runs before `dev` and `build`, and no-ops when the collections
+are already present — a clone needs no network. `FORCE=1` refetches and rebuilds.
 
 ## What it does
 
@@ -47,14 +54,19 @@ Then open http://localhost:5173.
   and in the actions row while you play — deliberately not automatic, so the
   library stays free of three-move abandonments. Saved games sit at the top of
   the archive, badged, and only they can be deleted.
-- **Import your own PGN** from the archive screen.
+- **Import and export PGN** from the archive screen. Import reads anything a
+  chess program writes, up to 128 MB, and rejects games it already holds. Export
+  writes the games you played or imported to a file — the only thing that
+  survives clearing site data. See
+  [docs/ARCHITECTURE-AND-REVIEW.md §5](docs/ARCHITECTURE-AND-REVIEW.md#5-pgn-import-export-and-where-files-come-from)
+  for both, and for where to find PGN files worth importing.
 
 ## Honest limitations
 
 Worth reading before trusting anything the app displays.
 
 - **Replay clocks are simulated — for historical games.** Per-move clock times
-  were never recorded for them: of the 2,850 championship games, **zero** carry
+  were never recorded for them: of the 2,987 championship games, **zero** carry
   `[%clk]` annotations. The replay clock estimates those by spending each
   stage's budget at an even pace, and labels itself "Simulated" wherever it
   appears. Games *you* play are different — the app records the clock with each
@@ -77,10 +89,13 @@ Worth reading before trusting anything the app displays.
   unless the final position is actually checkmate.
 - **Flag falls always lose.** FIDE 6.9 draws the game if the opponent has no
   material to mate with. Not implemented; running out of time always loses.
-- **Difficulty levels quote no Elo.** Difficulty comes from skill level and
-  depth caps, so any rating printed beside those labels would be a guess. The
-  Stockfish 18 build does expose `UCI_LimitStrength` and `UCI_Elo`, which would
-  let the levels name a real rating — not wired up yet.
+- **The ratings on the difficulty levels are the engine's own estimate.** They
+  come from Stockfish's `UCI_Elo` target, not from a guess mapped off its skill
+  dial — but they are still what the engine believes about itself, not a FIDE
+  rating earned over a board. Stockfish will not aim below 1320, which is already
+  well above a beginner, so the easiest level leans on a shallow depth cap for the
+  rest. Maximum quotes no figure at all: unlimited strength has none, and what it
+  reaches depends on the machine and the time it is given.
 
 ## Architecture
 
@@ -94,6 +109,12 @@ infrastructure/ Adapters — chess.js, Stockfish worker, PGN parsing, timers
 presentation/   React
 composition/    The one place that names concrete classes
 ```
+
+[docs/ARCHITECTURE-AND-REVIEW.md](docs/ARCHITECTURE-AND-REVIEW.md) goes further:
+flow and thread diagrams, the database schema, the security review with its
+findings and their disposition, the bugs that review turned up, and an honest
+account of where the design honours SOLID, Clean Architecture and DRY — and
+where it does not, with the reasons.
 
 ### Where the abstractions earn their keep
 
@@ -132,7 +153,7 @@ size.
 - `GameOutcome` is a discriminated union, so a drawn checkmate or a winner on a
   draw cannot be constructed.
 - The archive indexes games from their tags and only plays out the moves of the
-  one you open. Indexing 2,850 games takes milliseconds; parsing them all would
+  one you open. Indexing 2,987 games takes milliseconds; parsing them all would
   take seconds and throw the result away.
 - **SQLite runs in a worker, and had to.** `createSyncAccessHandle` — the API
   the persistent storage backend is built on — exists only in worker scope; on
@@ -155,13 +176,25 @@ size.
 
 ## Testing
 
-58 tests covering the clock (increments, stage transitions, flag fall), the turn
+82 tests covering the clock (increments, stage transitions, flag fall), the turn
 loop (checkmate, timeout, resignation, illegal-move rejection, late moves after
-the game ends), rules adaptation, PGN parsing, and replay clock alignment.
+the game ends), rules adaptation, PGN parsing, import limits, player identity,
+and replay clock alignment.
 
-`bundledLibrary.test.ts` runs against the real 1.9 MB game file rather than a
-tidy fixture — historical PGN is messy, and that is the test that catches the
-game nobody imagined.
+`bundledLibrary.test.ts` runs against the real game files rather than a tidy
+fixture — historical PGN is messy, and that is the test that catches the game
+nobody imagined. It skips itself when those files have not been generated, so an
+absent library reports as skipped rather than as a broken one.
+
+A tracked `.githooks/pre-commit` runs typecheck and tests before a commit is
+written. Enable it once per clone — git will not do it for you:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+`npm run verify` runs the same two checks plus `npm audit`, which the hook leaves
+out because committing should not require network.
 
 ## The game library
 
@@ -190,7 +223,7 @@ Current state, confirmed by `npm run audit-library`:
 
 | | |
 | --- | --- |
-| Games | 2,986 across 3 non-overlapping files |
+| Games | 2,987 across 3 non-overlapping files |
 | Coverage | 1886 to 2024 — every title match |
 | Unplayable | 0 — every one replayed, 256,826 half-moves |
 | Duplicates | 0 identical, 0 truncated |
