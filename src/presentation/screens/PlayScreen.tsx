@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isOver } from '@domain/chess/GameOutcome'
 import { opposite, type PieceColor } from '@domain/chess/Piece'
+import type { Square } from '@domain/chess/Square'
 import { describeTimeControl } from '@domain/clock/TimeControl'
 import type { GameConfiguration } from '@application/GameConfiguration'
+import type { HintAdviser } from '@application/HintAdviser'
 import type { LiveGame } from '@application/LiveGame'
 import { recordGame } from '@application/recordGame'
 import { ChessBoardView } from '../components/ChessBoardView'
@@ -15,6 +17,12 @@ import { useServices } from '../ServicesContext'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
+interface Hint {
+  readonly from: Square
+  readonly to: Square
+  readonly san: string | null
+}
+
 interface PlayScreenProps {
   readonly game: LiveGame
   readonly configuration: GameConfiguration
@@ -23,9 +31,14 @@ interface PlayScreenProps {
 
 export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) {
   const state = useObservableStore(game)
-  const { services } = useServices()
+  const { services, factory } = useServices()
   const durability = useLibraryDurability()
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [hint, setHint] = useState<Hint | null>(null)
+  const [isAdvising, setAdvising] = useState(false)
+  // Created on the first hint, so a game with no hints never starts the extra
+  // worker; nulled on dispose so StrictMode's double-mount cannot reuse a dead one.
+  const adviser = useRef<HintAdviser | null>(null)
   // Pass-and-play turns the board to whoever is on the move; against the
   // computer the player keeps their own side of the board throughout.
   const [autoFlip, setAutoFlip] = useState(configuration.opponent === 'human')
@@ -40,10 +53,45 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
   const isHumanToMove = state.awaiting?.kind === 'human'
   const lastMove = state.history.at(-1) ?? null
   // Watching the computer play itself: nobody at the keyboard has a game to
-  // undo, a draw to agree, or anything to resign.
+  // undo, a draw to agree, anything to resign — or any use for a hint.
   const isWatching = configuration.opponent === 'engines'
 
   const names = seatNames(configuration)
+
+  const fen = state.position.fen
+  const fenNow = useRef(fen)
+  fenNow.current = fen
+
+  // A hint is advice about one position; the moment the position moves on —
+  // move made, taken back, game over — the arrow comes down.
+  useEffect(() => setHint(null), [fen, gameOver])
+
+  useEffect(
+    () => () => {
+      adviser.current?.dispose()
+      adviser.current = null
+    },
+    [],
+  )
+
+  const requestHint = async () => {
+    if (isAdvising) return
+    setAdvising(true)
+    const askedFor = state.position
+    try {
+      adviser.current ??= factory.createHintAdviser()
+      const intent = await adviser.current.advise(askedFor)
+      // The player may have moved while the engine thought; advice about a
+      // position that is gone would draw an arrow that makes no sense.
+      if (fenNow.current !== askedFor.fen) return
+      const san = services.rules.play(askedFor, intent)?.move.san ?? null
+      setHint({ from: intent.from, to: intent.to, san })
+    } catch {
+      // Search abandoned — the screen is closing. Nothing to show.
+    } finally {
+      setAdvising(false)
+    }
+  }
 
   const saveGame = async () => {
     setSaveState('saving')
@@ -85,6 +133,7 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
         interactive={isHumanToMove && !gameOver}
         legalMoves={state.legalMoves}
         lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
+        hint={hint}
         onMove={(intent) => game.submitMove(intent)}
       />
 
@@ -111,6 +160,7 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
                 <span className="play__thinking">thinking…</span>
               ) : null}
               {state.isCheck ? <span className="play__check">Check</span> : null}
+              {hint?.san ? <span className="play__hint">Try {hint.san}</span> : null}
             </>
           )}
         </div>
@@ -157,6 +207,14 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
           ) : null}
           {isWatching ? null : (
             <>
+              <button
+                type="button"
+                className="button"
+                disabled={!isHumanToMove || gameOver || isAdvising}
+                onClick={() => void requestHint()}
+              >
+                {isAdvising ? 'Hint…' : 'Hint'}
+              </button>
               <button
                 type="button"
                 className="button"

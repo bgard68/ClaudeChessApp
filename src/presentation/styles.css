@@ -599,6 +599,12 @@ h2 {
   font-weight: 700;
 }
 
+/* Matches the hint arrow, so the words and the drawing read as one advice. */
+.play__hint {
+  color: #5896ff;
+  font-weight: 600;
+}
+
 .play__actions {
   display: flex;
   flex-wrap: wrap;

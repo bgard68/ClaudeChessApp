@@ -13,8 +13,14 @@ interface ChessBoardViewProps {
   readonly interactive: boolean
   readonly legalMoves: readonly LegalMove[]
   readonly lastMove?: { readonly from: Square; readonly to: Square } | null
+  /** A suggested move to draw as an arrow, without playing it. */
+  readonly hint?: { readonly from: Square; readonly to: Square } | null
   readonly onMove?: (intent: MoveIntent) => boolean
 }
+
+/** The same blue as a selected square, so advice reads as UI rather than as a
+ *  played move — and it clears every board theme, which no theme colour does. */
+const HINT_ARROW_COLOR = '#5896ff'
 
 /** Order they are offered in — a promotion is a queen nearly always. */
 const PROMOTION_ORDER: readonly PromotionPiece[] = ['queen', 'rook', 'bishop', 'knight']
@@ -44,6 +50,7 @@ export function ChessBoardView({
   interactive,
   legalMoves,
   lastMove,
+  hint,
   onMove,
 }: ChessBoardViewProps) {
   const [areaRef, area] = useElementSize<HTMLDivElement>()
@@ -153,11 +160,14 @@ export function ChessBoardView({
       darkSquareNotationStyle: { color: '#f7f6f2', fontWeight: 600 },
       lightSquareNotationStyle: { color: '#3a3833', fontWeight: 600 },
       animationDurationInMs: 180,
-      // Arrows are a study tool this app does not offer, and drawing one by
-      // accident with the right button is confusing.
+      arrows: hint
+        ? [{ startSquare: hint.from, endSquare: hint.to, color: HINT_ARROW_COLOR }]
+        : [],
+      // Hand-drawn arrows are a study tool this app does not offer, and drawing
+      // one by accident with the right button is confusing.
       allowDrawingArrows: false,
     }),
-    [fen, orientation, interactive, selected, legalMoves, lastMove, theme],
+    [fen, orientation, interactive, selected, legalMoves, lastMove, hint, theme],
   )
 
   const offered =

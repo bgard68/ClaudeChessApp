@@ -1,6 +1,7 @@
 import { opposite } from '@domain/chess/Piece'
 import { EngineOpponent } from '@application/EngineOpponent'
 import type { GameConfiguration } from '@application/GameConfiguration'
+import { HintAdviser } from '@application/HintAdviser'
 import { HumanOpponent } from '@application/HumanOpponent'
 import { LiveGame } from '@application/LiveGame'
 import type { Opponent } from '@application/Opponent'
@@ -59,6 +60,10 @@ export class GameFactory {
 
   createReplaySession(game: ArchivedGame): ReplaySession {
     return new ReplaySession(this.services.createTicker(), game)
+  }
+
+  createHintAdviser(): HintAdviser {
+    return new HintAdviser(() => this.services.createEngine())
   }
 }
 
