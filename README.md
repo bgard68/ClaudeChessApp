@@ -77,9 +77,10 @@ Worth reading before trusting anything the app displays.
   unless the final position is actually checkmate.
 - **Flag falls always lose.** FIDE 6.9 draws the game if the opponent has no
   material to mate with. Not implemented; running out of time always loses.
-- **Difficulty levels quote no Elo.** The bundled Stockfish 11 build has no
-  strength-targeting option, so difficulty comes from skill level and depth
-  caps. Any rating printed beside those labels would be a guess.
+- **Difficulty levels quote no Elo.** Difficulty comes from skill level and
+  depth caps, so any rating printed beside those labels would be a guess. The
+  Stockfish 18 build does expose `UCI_LimitStrength` and `UCI_Elo`, which would
+  let the levels name a real rating — not wired up yet.
 
 ## Architecture
 
@@ -217,8 +218,10 @@ nothing to drift out of step with what produced it.
 - **Famous games** are extracted from per-player collections on
   [pgnmentor.com](https://www.pgnmentor.com) by `npm run fetch-famous`, which
   locates each one by its players, year, and result.
-- **Stockfish 11** (GPL-3.0) is copied out of `node_modules` into
-  `public/engine/`.
+- **Stockfish 18**, the `lite-single` build (GPL-3.0), is copied out of
+  `node_modules` into `public/engine/` — 7.3 MB. The package ships four builds;
+  the threaded ones need COOP/COEP headers this app deliberately does not set,
+  and the full-net ones are 113 MB. See `scripts/copy-engine.mjs`.
 - **The database is never a file in this project.** It is created inside the
   browser's Origin Private File System on first visit — per origin, per browser
   profile, on the user's own machine. There is no `.sqlite` in the repo, the

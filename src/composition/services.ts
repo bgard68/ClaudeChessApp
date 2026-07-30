@@ -15,8 +15,15 @@ export const FAMOUS_GAMES_PGN_URL = '/games/famous-games.pgn'
 export const TITLE_MATCHES_PGN_URL = '/games/world-championship-title-matches.pgn'
 export const KNOCKOUT_PGN_URL = '/games/world-championship-knockout.pgn'
 
-/** Engine worker path, populated by scripts/copy-engine.mjs. */
-export const ENGINE_WORKER_URL = '/engine/stockfish.js'
+/**
+ * Engine worker path, populated by scripts/copy-engine.mjs.
+ *
+ * The build is named in the filename on purpose: which Stockfish is in use is
+ * something you want to be able to see, and `single` in particular is load
+ * bearing — the threaded builds need COOP/COEP headers this app does not set.
+ * That script chooses the file; this constant has to match it.
+ */
+export const ENGINE_WORKER_URL = '/engine/stockfish-18-lite-single.js'
 
 const CLOCK_TICK_MS = 100
 

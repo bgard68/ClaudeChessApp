@@ -14,7 +14,11 @@ export interface EngineConfiguration {
   /**
    * Stockfish's own 0–20 skill scale, where lower levels deliberately pick
    * inferior moves. Combined with a depth cap this is the whole difficulty
-   * mechanism — the engine build in use has no Elo-targeting option.
+   * mechanism.
+   *
+   * Stockfish 18 also offers `UCI_LimitStrength` and `UCI_Elo`, which would let
+   * a level name an actual rating instead of approximating one. Not used yet;
+   * switching is a change to this port, not to the adapter alone.
    */
   readonly skillLevel: number
   readonly searchLimits: EngineSearchLimits
