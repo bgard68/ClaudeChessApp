@@ -1,0 +1,43 @@
+# Deletes old workflow runs weekly: keeps the newest ten per workflow, and
+# nothing completed older than thirty days. Run history is diagnostics, not
+# an archive — the repository's history is the archive.
+name: Clean up old workflow runs
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const KEEP_NEWEST = 10
+            const MAX_AGE_DAYS = 30
+            const cutoff = Date.now() - MAX_AGE_DAYS * 24 * 60 * 60 * 1000
+            const { owner, repo } = context.repo
+
+            const workflows = await github.paginate(
+              github.rest.actions.listRepoWorkflows, { owner, repo },
+            )
+            for (const workflow of workflows) {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                owner, repo, workflow_id: workflow.id, per_page: 100,
+              })
+              const deletable = runs
+                .filter((run) => run.status === 'completed')
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .slice(KEEP_NEWEST)
+                .filter((run) => new Date(run.created_at).getTime() < cutoff)
+
+              for (const run of deletable) {
+                await github.rest.actions.deleteWorkflowRun({ owner, repo, run_id: run.id })
+              }
+              core.info(`${workflow.name}: deleted ${deletable.length} old runs`)
+            }

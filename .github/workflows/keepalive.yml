@@ -1,0 +1,36 @@
+# Two quiet jobs, weekly.
+#
+# The ping is one HEAD request — a few hundred bytes against the Azure free
+# tier's 100 GB monthly bandwidth, so it cannot meaningfully dent it. It exists
+# as a pulse check, not as warming: a static CDN has no cold start.
+#
+# The re-enable step counters GitHub's policy of switching off scheduled
+# workflows after sixty days without repository activity; re-enabling by API
+# resets that clock for every scheduled workflow here.
+name: Keep alive
+
+on:
+  schedule:
+    - cron: '43 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the site, if one is configured
+        if: vars.SITE_URL != ''
+        run: curl -sSIf "${{ vars.SITE_URL }}" | head -1
+
+      - name: Keep the scheduled workflows enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for workflow in codeql.yml actions-cleanup.yml keepalive.yml; do
+            gh api --method PUT \
+              "repos/${{ github.repository }}/actions/workflows/${workflow}/enable" \
+              && echo "kept ${workflow} enabled"
+          done

@@ -35,3 +35,14 @@ To rehearse locally without deploying:
 npm run build
 npm run preview
 ```
+
+## Housekeeping workflows
+
+- `actions-cleanup.yml` deletes completed workflow runs weekly — the newest
+  ten per workflow stay, nothing older than thirty days survives.
+- `keepalive.yml` sends the deployed site one HEAD request a week (a few
+  hundred bytes; the free tier allows 100 GB a month) and re-enables the
+  scheduled workflows so GitHub's sixty-day idle switch-off never bites.
+  Set the site's address as a repository variable named `SITE_URL`
+  (**Settings → Secrets and variables → Actions → Variables**) once the
+  Static Web App exists; until then the ping step skips itself.
