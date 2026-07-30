@@ -372,6 +372,7 @@ absence of anything enforcing the controls that already existed.
 | L1 | UCI is newline-delimited; interpolated values could append commands | **Fixed** — `send()` refuses line breaks |
 | L2 | Dependencies whole majors behind | **Fixed** — vite 6→8, vitest 3→4, TypeScript 5.9→7, Stockfish 11→18, react-chessboard 4→5 |
 | L3 | `PRAGMA user_version` interpolates rather than binds | **Not a defect** — SQLite has no placeholder for PRAGMA values; the value is a module constant. Recorded so a future reviewer does not re-flag it |
+| L4 | GPL-3.0 engine distributed without its licence text or a source route | **Fixed** — `copy-engine` ships both into `public/engine/`, and refuses to run without the licence (§6.4) |
 
 **Verified clean:** no secrets anywhere; no XSS sinks (`innerHTML`,
 `dangerouslySetInnerHTML`, `eval`, `new Function` all absent from `src/`); no
@@ -409,7 +410,35 @@ clean result means the policy held rather than that nothing was watching.
 - `frame-ancestors` cannot be expressed in a `<meta>` tag, so it is set as a
   header in `public/staticwebapp.config.json`.
 
-### 6.4 Still open
+### 6.4 Licensing
+
+Not a vulnerability, but it surfaced from the same audit and had the same shape —
+an obligation nothing enforced.
+
+`stockfish` is **GPL-3.0**, and it is the only GPL package in the tree. It is
+also *distributed*: the WASM and its loader are served to every visitor as static
+assets, not used at build time and discarded. GPL-3.0 asks that recipients
+receive the licence text and a route to the source, and the build shipped neither
+— the licence sat in `node_modules`, which never reaches `dist/`.
+
+`copy-engine.mjs` now copies `Copying.txt` to `public/engine/LICENSE-stockfish.txt`
+and writes a source notice beside it naming both upstream projects and stating
+that the binaries are unmodified. Both land in `dist/engine/`, verified. The
+script **fails** if the upstream licence file is absent rather than shipping GPL
+binaries without it — verified by deleting it and confirming exit 1.
+
+Everything else is MIT, BSD-2-Clause or Apache-2.0, and none of it is
+copyleft. Nothing in the project costs money: every dependency and every data
+source is free to use.
+
+One thing deliberately not asserted here: whether GPL-3.0's copyleft reaches this
+application's own code. The engine loads as a separate worker communicating over
+UCI text, which is normally treated as aggregation rather than a derivative work,
+and that is how browser chess apps generally ship it. It is a genuine grey area in
+GPL interpretation and worth a legal opinion rather than a developer's reading if
+this is ever distributed commercially or closed-source.
+
+### 6.5 Still open
 
 - **The two career collections (~101 MB) remain unpinned.** They are optional
   imports that never deploy, fetched by `fetch-careers.mjs` from

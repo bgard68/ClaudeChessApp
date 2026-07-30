@@ -316,6 +316,12 @@ nothing to drift out of step with what produced it.
   `node_modules` into `public/engine/` — 7.3 MB. The package ships four builds;
   the threaded ones need COOP/COEP headers this app deliberately does not set,
   and the full-net ones are 113 MB. See `scripts/copy-engine.mjs`.
+- **The engine's licence ships with it.** Stockfish is GPL-3.0 and is served to
+  every visitor, not merely used at build time, so `copy-engine` puts
+  `LICENSE-stockfish.txt` and a source notice beside the binaries. It refuses to
+  run if the upstream licence file is missing rather than quietly shipping GPL
+  code without it. Everything else in the tree is MIT, BSD-2-Clause or
+  Apache-2.0.
 - **The database is never a file in this project.** It is created inside the
   browser's Origin Private File System on first visit — per origin, per browser
   profile, on the user's own machine. There is no `.sqlite` in the repo, the
