@@ -28,3 +28,8 @@ original/
 
 # Vite cache
 .vite/
+
+# Local environment and machine-local config — never committed.
+# See CLAUDE.md: no secrets in the repository.
+.env*
+*.local
