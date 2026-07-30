@@ -90,6 +90,70 @@ h2 {
 .board {
   /* Keeps a piece drag from scrolling the page on touch devices. */
   touch-action: none;
+  /* Anchors the promotion chooser, which sits over the board. */
+  position: relative;
+}
+
+/*
+ * react-chessboard 5 sizes itself from its container instead of taking a
+ * boardWidth prop, and the wrapper it renders takes width from its parent but
+ * height from its content — which is zero until the squares exist. `.board` is
+ * already a fixed square, so the wrapper is told to fill it.
+ */
+.board > div {
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * The promotion chooser.
+ *
+ * Ours rather than the board library's: react-chessboard 5 removed its built-in
+ * dialog. Centred over the board instead of pinned to the promoting square —
+ * that square is at the edge by definition, so a popover there falls off the
+ * board on the last file.
+ */
+.promotion {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  background: rgb(0 0 0 / 55%);
+  border-radius: 6px;
+  z-index: 2;
+}
+
+.promotion__choice {
+  width: 3.4rem;
+  height: 3.4rem;
+  font-size: 2.1rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-contrast);
+  background: #eeeed2;
+  border: 2px solid transparent;
+  border-radius: 6px;
+}
+
+.promotion__choice:hover,
+.promotion__choice:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.promotion__cancel {
+  flex-basis: 100%;
+  align-self: center;
+  padding: 0.3rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #eeeed2;
+  background: none;
+  border: none;
+  text-decoration: underline;
 }
 
 .play__panel {

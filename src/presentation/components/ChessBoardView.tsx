@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
-import type { PromotionPieceOption, Square as BoardSquare } from 'react-chessboard/dist/chessboard/types'
 import type { LegalMove, MoveIntent } from '@domain/chess/Move'
 import type { PieceColor, PromotionPiece } from '@domain/chess/Piece'
 import { toSquare, type Square } from '@domain/chess/Square'
@@ -16,11 +15,14 @@ interface ChessBoardViewProps {
   readonly onMove?: (intent: MoveIntent) => boolean
 }
 
-const PROMOTION_BY_OPTION: Readonly<Record<string, PromotionPiece>> = {
-  Q: 'queen',
-  R: 'rook',
-  B: 'bishop',
-  N: 'knight',
+/** Order they are offered in — a promotion is a queen nearly always. */
+const PROMOTION_ORDER: readonly PromotionPiece[] = ['queen', 'rook', 'bishop', 'knight']
+
+const PROMOTION_GLYPH: Readonly<Record<PromotionPiece, string>> = {
+  queen: '♛',
+  rook: '♜',
+  bishop: '♝',
+  knight: '♞',
 }
 
 /**
@@ -29,6 +31,11 @@ const PROMOTION_BY_OPTION: Readonly<Record<string, PromotionPiece>> = {
  * Renders and collects input, and nothing else — it never decides whether a
  * move is legal, only asks. The legal-move list it highlights from is the same
  * one the game validates against, so the two cannot disagree.
+ *
+ * The promotion chooser is ours. react-chessboard 5 dropped the built-in dialog
+ * along with its onPromotionCheck/onPromotionPieceSelect pair, so the choice is
+ * offered here instead — from `promotionChoices`, which means the pieces shown
+ * are the ones the rules actually allow rather than a fixed four.
  */
 export function ChessBoardView({
   fen,
@@ -40,66 +47,53 @@ export function ChessBoardView({
 }: ChessBoardViewProps) {
   const [areaRef, area] = useElementSize<HTMLDivElement>()
   const [selected, setSelected] = useState<Square | null>(null)
-  const [promotionFrom, setPromotionFrom] = useState<Square | null>(null)
-  const [promotionTo, setPromotionTo] = useState<Square | null>(null)
+  const [promotion, setPromotion] = useState<{ from: Square; to: Square } | null>(null)
+
+  // The largest square that fits the space the layout gave us, in both
+  // directions. Taking the width alone is what pushes the board off the bottom
+  // of a short laptop screen.
+  const boardSize = Math.floor(Math.min(area.width, area.height || area.width))
+  const sized = boardSize > 0
 
   const submit = (intent: MoveIntent): boolean => {
     setSelected(null)
     return onMove?.(intent) ?? false
   }
 
-  const clearPromotion = () => {
-    setPromotionFrom(null)
-    setPromotionTo(null)
+  /** True when the move needs a piece chosen, in which case the dialog opens. */
+  const opensPromotion = (from: Square, to: Square): boolean => {
+    if (promotionChoices(legalMoves, from, to).length === 0) return false
+    setPromotion({ from, to })
+    return true
   }
 
-  const handleDrop = (from: BoardSquare, to: BoardSquare): boolean => {
-    if (!interactive) return false
-    return submit({ from: toSquare(from), to: toSquare(to) })
+  const handleDrop = ({
+    sourceSquare,
+    targetSquare,
+  }: {
+    sourceSquare: string
+    targetSquare: string | null
+  }): boolean => {
+    // Dragged off the board entirely: nothing to do, and no move to reject.
+    if (!interactive || targetSquare === null) return false
+
+    const from = toSquare(sourceSquare)
+    const to = toSquare(targetSquare)
+
+    // The piece must go back while the choice is pending, so this reports the
+    // drop as rejected and the dialog commits the move instead.
+    if (opensPromotion(from, to)) return false
+
+    return submit({ from, to })
   }
 
-  /** Tells the board whether this move needs the promotion chooser. */
-  const needsPromotion = (from: BoardSquare, to: BoardSquare): boolean => {
-    if (!interactive) return false
-    const isPromotion = promotionChoices(legalMoves, toSquare(from), toSquare(to)).length > 0
-    if (isPromotion) {
-      setPromotionFrom(toSquare(from))
-      setPromotionTo(toSquare(to))
-    }
-    return isPromotion
-  }
-
-  const handlePromotionSelect = (
-    option?: PromotionPieceOption,
-    fromSquare?: BoardSquare,
-    toSquare_?: BoardSquare,
-  ): boolean => {
-    // The board omits the squares when the dialog was opened by click-to-move,
-    // so fall back to the pair recorded when the move was started.
-    const from = fromSquare === undefined ? promotionFrom : toSquare(fromSquare)
-    const to = toSquare_ === undefined ? promotionTo : toSquare(toSquare_)
-    clearPromotion()
-
-    if (option === undefined || from === null || to === null) return false
-
-    const promotion = PROMOTION_BY_OPTION[option.charAt(1)]
-    if (promotion === undefined) return false
-
-    return submit({ from, to, promotion })
-  }
-
-  const handleSquareClick = (square: BoardSquare) => {
+  const handleSquareClick = ({ square }: { square: string }) => {
     if (!interactive) return
 
     const clicked = toSquare(square)
 
     if (selected !== null && selected !== clicked) {
-      const promotions = promotionChoices(legalMoves, selected, clicked)
-      if (promotions.length > 0) {
-        setPromotionFrom(selected)
-        setPromotionTo(clicked)
-        return
-      }
+      if (opensPromotion(selected, clicked)) return
       if (submit({ from: selected, to: clicked })) return
     }
 
@@ -109,34 +103,104 @@ export function ChessBoardView({
     setSelected(legalMoves.some((move) => move.from === clicked) ? clicked : null)
   }
 
-  // The largest square that fits the space the layout gave us, in both
-  // directions. Taking the width alone is what pushes the board off the bottom
-  // of a short laptop screen.
-  const boardSize = Math.floor(Math.min(area.width, area.height || area.width))
+  const choosePromotion = (piece: PromotionPiece) => {
+    if (promotion === null) return
+    const { from, to } = promotion
+    setPromotion(null)
+    submit({ from, to, promotion: piece })
+  }
 
+  /*
+   * The options object is memoised because its identity matters to the board.
+   *
+   * The play screen re-renders on every clock tick. An options object built
+   * inline is therefore a new object several times a second, and
+   * react-chessboard 5 treats each new one as a reconfiguration — it never gets
+   * from "measuring" to "drawn" before being reset. That is the whole mystery of
+   * the board that rendered on the (static) setup screen and came up empty in a
+   * game: same component, same values, different re-render cadence.
+   *
+   * The handlers ride in a ref so the memo does not have to be invalidated to
+   * keep them current — they close over `selected` and `legalMoves`, which
+   * change with play.
+   */
+  const handlers = useRef({ handleDrop, handleSquareClick })
+  handlers.current = { handleDrop, handleSquareClick }
+
+  const boardOptions = useMemo(
+    () => ({
+      position: fen,
+      boardOrientation: orientation,
+      allowDragging: interactive,
+      onPieceDrop: (args: { piece: unknown; sourceSquare: string; targetSquare: string | null }) =>
+        handlers.current.handleDrop(args),
+      onSquareClick: (args: { piece: unknown; square: string }) =>
+        handlers.current.handleSquareClick(args),
+      squareStyles: squareStyles(selected, legalMoves, lastMove),
+      boardStyle: { borderRadius: '6px' },
+      darkSquareStyle: { backgroundColor: '#6d8a58' },
+      lightSquareStyle: { backgroundColor: '#eeeed2' },
+      animationDurationInMs: 180,
+      // Arrows are a study tool this app does not offer, and drawing one by
+      // accident with the right button is confusing.
+      allowDrawingArrows: false,
+    }),
+    [fen, orientation, interactive, selected, legalMoves, lastMove],
+  )
+
+  const offered =
+    promotion === null ? [] : promotionChoices(legalMoves, promotion.from, promotion.to)
+
+  /*
+   * The board mounts with the component's first commit, never later.
+   *
+   * react-chessboard 5 has a mount-timing sensitivity: mounted in a commit
+   * after its screen's, while an ancestor is re-rendering (the play screen
+   * ticks with the clock), it renders its wrappers and no squares, and never
+   * recovers. Mounted in the first commit it is fine — including under the same
+   * re-render load. Bisected empirically: a bare board and one with churning
+   * options both survived on the play screen; an identical board mounted one
+   * setTimeout later died, exactly like the size-gated original.
+   *
+   * So the measured size must not gate mounting. Until it lands, the container
+   * fills the area it was given — real dimensions either way — and is pinned to
+   * the fitted square one commit later.
+   */
   return (
     <div className="board-area" ref={areaRef}>
-      {boardSize > 0 ? (
-        <div className="board" style={{ width: boardSize, height: boardSize }}>
-          <Chessboard
-            boardWidth={boardSize}
-            position={fen}
-            boardOrientation={orientation}
-            arePiecesDraggable={interactive}
-            onPieceDrop={handleDrop}
-            onPromotionCheck={needsPromotion}
-            onPromotionPieceSelect={handlePromotionSelect}
-            onSquareClick={handleSquareClick}
-            showPromotionDialog={promotionTo !== null}
-            promotionToSquare={promotionTo}
-            customSquareStyles={squareStyles(selected, legalMoves, lastMove)}
-            customBoardStyle={{ borderRadius: '6px' }}
-            customDarkSquareStyle={{ backgroundColor: '#6d8a58' }}
-            customLightSquareStyle={{ backgroundColor: '#eeeed2' }}
-            animationDuration={180}
-          />
-        </div>
-      ) : null}
+      <div
+        className="board"
+        style={
+          sized
+            ? { width: boardSize, height: boardSize }
+            : { width: '100%', height: '100%' }
+        }
+      >
+        <Chessboard options={boardOptions} />
+
+        {promotion !== null && offered.length > 0 ? (
+          <div className="promotion" role="dialog" aria-label="Choose a piece">
+            {PROMOTION_ORDER.filter((piece) => offered.includes(piece)).map((piece) => (
+              <button
+                key={piece}
+                type="button"
+                className="promotion__choice"
+                aria-label={piece}
+                onClick={() => choosePromotion(piece)}
+              >
+                <span aria-hidden="true">{PROMOTION_GLYPH[piece]}</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              className="promotion__cancel"
+              onClick={() => setPromotion(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }
