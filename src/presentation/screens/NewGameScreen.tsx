@@ -9,6 +9,7 @@ import {
 } from '@application/Difficulty'
 import type { GameConfiguration, OpponentChoice } from '@application/GameConfiguration'
 import { ChessBoardView } from '../components/ChessBoardView'
+import { Credits } from '../components/Credits'
 
 type ColourChoice = PieceColor | 'random'
 
@@ -61,6 +62,7 @@ export function NewGameScreen({ onStart, onBrowseArchive }: NewGameScreenProps) 
           <p className="setup__summary">
             {summarise(opponent, colour, difficulty.label, preset?.label ?? '')}
           </p>
+          <Credits />
         </div>
 
         <div className="setup__options">

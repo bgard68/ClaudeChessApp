@@ -213,6 +213,60 @@ h2 {
   flex: 0 0 auto;
 }
 
+/* ---------- Credits ----------
+   Collapsed by default and quiet: an acknowledgement of other people's work,
+   not something anyone opens the app to read. */
+
+.credits {
+  flex: 0 0 auto;
+  text-align: center;
+}
+
+.credits__toggle {
+  font: inherit;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  padding: 0.2rem;
+  cursor: pointer;
+  text-decoration: underline;
+  touch-action: manipulation;
+}
+
+.credits__toggle:hover {
+  color: var(--text);
+}
+
+.credits__body {
+  margin-top: 0.3rem;
+  text-align: left;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+}
+
+.credits__body p {
+  margin: 0 0 0.45rem;
+}
+
+.credits__body p:last-child {
+  margin-bottom: 0;
+}
+
+.credits__body a {
+  color: var(--accent-strong);
+}
+
+.credits__note {
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
 /* Only this column scrolls, so the board and the Start button stay put. */
 .setup__options {
   display: flex;
