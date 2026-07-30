@@ -4,6 +4,7 @@ import type { LegalMove, MoveIntent } from '@domain/chess/Move'
 import type { PieceColor, PromotionPiece } from '@domain/chess/Piece'
 import { toSquare, type Square } from '@domain/chess/Square'
 import { destinationsFrom, promotionChoices } from '@application/selectors'
+import { currentBoardTheme } from '../boardThemes'
 import { useElementSize } from '../hooks/useElementSize'
 
 interface ChessBoardViewProps {
@@ -127,6 +128,11 @@ export function ChessBoardView({
   const handlers = useRef({ handleDrop, handleSquareClick })
   handlers.current = { handleDrop, handleSquareClick }
 
+  // Read fresh each render rather than passed as a prop: the preference is set
+  // on the setup screen, whose own re-render is what brings the new colours to
+  // its preview, and every other screen mounts after the choice was made.
+  const theme = currentBoardTheme()
+
   const boardOptions = useMemo(
     () => ({
       position: fen,
@@ -138,14 +144,14 @@ export function ChessBoardView({
         handlers.current.handleSquareClick(args),
       squareStyles: squareStyles(selected, legalMoves, lastMove),
       boardStyle: { borderRadius: '6px' },
-      darkSquareStyle: { backgroundColor: '#6d8a58' },
-      lightSquareStyle: { backgroundColor: '#eeeed2' },
+      darkSquareStyle: { backgroundColor: theme.dark },
+      lightSquareStyle: { backgroundColor: theme.light },
       animationDurationInMs: 180,
       // Arrows are a study tool this app does not offer, and drawing one by
       // accident with the right button is confusing.
       allowDrawingArrows: false,
     }),
-    [fen, orientation, interactive, selected, legalMoves, lastMove],
+    [fen, orientation, interactive, selected, legalMoves, lastMove, theme],
   )
 
   const offered =

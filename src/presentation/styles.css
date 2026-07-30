@@ -404,6 +404,27 @@ h2 {
   color: var(--text-muted);
 }
 
+/* A board-colour choice shows its colours instead of describing them. */
+.choice--swatch {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.swatch {
+  display: grid;
+  grid-template-columns: repeat(2, 0.6rem);
+  grid-auto-rows: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.swatch i {
+  display: block;
+}
+
 .chip {
   font: inherit;
   font-size: 0.78rem;

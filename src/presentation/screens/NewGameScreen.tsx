@@ -8,6 +8,7 @@ import {
   difficultyById,
 } from '@application/Difficulty'
 import type { GameConfiguration, OpponentChoice } from '@application/GameConfiguration'
+import { BOARD_THEMES, currentBoardTheme, rememberBoardTheme } from '../boardThemes'
 import { ChessBoardView } from '../components/ChessBoardView'
 import { Credits } from '../components/Credits'
 
@@ -25,6 +26,7 @@ export function NewGameScreen({ onStart, onBrowseArchive }: NewGameScreenProps) 
   const [colour, setColour] = useState<ColourChoice>('white')
   const [timeControlId, setTimeControlId] = useState(DEFAULT_TIME_CONTROL_ID)
   const [difficultyId, setDifficultyId] = useState(DEFAULT_DIFFICULTY_ID)
+  const [themeId, setThemeId] = useState(currentBoardTheme().id)
 
   const preset =
     TIME_CONTROL_PRESETS.find((candidate) => candidate.id === timeControlId) ??
@@ -125,6 +127,29 @@ export function NewGameScreen({ onStart, onBrowseArchive }: NewGameScreenProps) 
                 isSelected={timeControlId === option.id}
                 onSelect={() => setTimeControlId(option.id)}
               />
+            ))}
+          </Panel>
+
+          <Panel title="Board colours">
+            {BOARD_THEMES.map((theme) => (
+              <button
+                key={theme.id}
+                type="button"
+                className={`choice choice--swatch${themeId === theme.id ? ' choice--selected' : ''}`}
+                aria-pressed={themeId === theme.id}
+                onClick={() => {
+                  rememberBoardTheme(theme.id)
+                  setThemeId(theme.id)
+                }}
+              >
+                <span className="swatch" aria-hidden="true">
+                  <i style={{ background: theme.light }} />
+                  <i style={{ background: theme.dark }} />
+                  <i style={{ background: theme.dark }} />
+                  <i style={{ background: theme.light }} />
+                </span>
+                <span className="choice__label">{theme.label}</span>
+              </button>
             ))}
           </Panel>
         </div>
