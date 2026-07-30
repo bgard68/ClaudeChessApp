@@ -16,15 +16,16 @@ public/engine/
 public/games/raw/
 
 # Exported PGN copies for local use — never committed
-library/
+/library/
 
 # The consolidated PGN archive. Every collection in one place, kept outside the
 # worktrees so it survives them — around 100 MB of re-downloadable game scores,
 # which is not something to put in a history that cannot forget. See pgn/MANIFEST.txt.
-pgn/
+# Anchored to the root: unanchored, this also swallowed src/infrastructure/pgn/.
+/pgn/
 
 # Untouched copies of the generated collections, kept at their original paths.
-original/
+/original/
 
 # Vite cache
 .vite/
@@ -33,3 +34,45 @@ original/
 # See CLAUDE.md: no secrets in the repository.
 .env*
 *.local
+
+# ---------- Remote-repository hygiene ----------
+
+# Logs of any kind
+logs/
+*.log
+npm-debug.log*
+
+# Test and tooling output
+coverage/
+playwright-report/
+test-results/
+phone-screens/
+*.tsbuildinfo
+
+# OS and editor debris
+Thumbs.db
+.DS_Store
+.idea/
+
+# Claude Code session data — worktrees, transcripts, local tool config.
+# Nothing under it belongs in the repository.
+.claude/
+
+# Azure credentials, publish profiles, and import/export artefacts
+.azure/
+*.publishsettings
+*.PublishSettings
+local.settings.json
+appsettings.*.json
+*.bacpac
+*.dacpac
+
+# Key material of any kind
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Conversation exports and transcripts
+conversations/
+transcripts/
