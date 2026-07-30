@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "preview", "--", "--port", "4173", "--strictPort", "--host"],
       "port": 4173
+    },
+    {
+      "name": "chess-dev-worktree",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5273", "--strictPort", "--host"],
+      "port": 5273
     }
   ]
 }
