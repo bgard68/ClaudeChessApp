@@ -408,8 +408,19 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
   // excluding everything, and the two need different advice.
   const libraryIsEmpty = facets !== null && facets.totalGames === 0
 
-  /** The active narrowings, each dismissible where it is shown. */
+  /** The active narrowings, each dismissible where it is shown. All of them
+   *  apply together — the chips sitting in one row is what says so. */
   const chips: { readonly key: string; readonly label: string; readonly clear: () => void }[] = []
+  if (chosen === null && query.trim() !== '') {
+    chips.push({
+      key: 'search',
+      label: `Search: “${query.trim()}”`,
+      clear: () => {
+        setSearch('')
+        restartList()
+      },
+    })
+  }
   if (chosen !== null) {
     chips.push({
       key: 'player',
@@ -608,7 +619,25 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
               </p>
             ) : (
               <p className="notice">
-                No games match what you asked for.
+                {query.trim() !== ''
+                  ? 'Nothing found — try a player surname, an event name, or a year like 1972.'
+                  : 'No games match what you asked for.'}
+                {query.trim() !== '' ? (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() => {
+                        setSearch('')
+                        setChosen(null)
+                        restartList()
+                      }}
+                    >
+                      Clear the search
+                    </button>
+                  </>
+                ) : null}
                 {filtered ? (
                   <>
                     {' '}
