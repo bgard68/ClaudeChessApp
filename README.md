@@ -229,10 +229,18 @@ size.
 
 ## Testing
 
-82 tests covering the clock (increments, stage transitions, flag fall), the turn
+107 tests covering the clock (increments, stage transitions, flag fall), the turn
 loop (checkmate, timeout, resignation, illegal-move rejection, late moves after
 the game ends), rules adaptation, PGN parsing, import limits, player identity,
 and replay clock alignment.
+
+Two of them guard the architecture rather than behaviour. `architecture.test.ts`
+asserts the dependency rule — each layer imports only itself or inward, outer
+libraries stay out of `domain/` and `application/`, and only the composition root
+constructs adapters — with any accepted exception listed in the test beside its
+reason. `gameKey.test.ts` holds the app's game-identity function and the build
+scripts' copy of it to identical output, since a script cannot import TypeScript
+behind path aliases and the two drifting apart would be silent.
 
 `bundledLibrary.test.ts` runs against the real game files rather than a tidy
 fixture — historical PGN is messy, and that is the test that catches the game

@@ -5,8 +5,11 @@
  * games, and player names alone repeat constantly. Comments are stripped first,
  * so the same game with and without clock annotations is recognised as one.
  *
- * Kept in step with `scripts/lib/gameKey.mjs`, which the export script uses;
- * `gameKey.test.ts` fails if the two ever disagree.
+ * Kept in step with `scripts/lib/gameKey.mjs`, the plain-JavaScript twin the
+ * build scripts use — they cannot import this one, being TypeScript behind path
+ * aliases, and a script that needs a compile step to run is a script nobody
+ * runs. `gameKey.test.ts` pins the two to identical output and fails if either
+ * drifts.
  */
 export function gameKey(pgn: string): string {
   const moves = pgn

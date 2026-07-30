@@ -622,16 +622,30 @@ protocol-shaped stays in the adapter.
 and a screen that only lists games depends on all of it. Splitting it further
 would be defensible; it has not earned it yet.
 
-### 8.5 Dependency Inversion (DIP) — honoured strictly
+### 8.5 Dependency Inversion (DIP) — honoured, and now enforced
 
 `domain/` and `application/` import no React, no chess.js, no Stockfish, no
 SQLite. Dependencies point inward only. `composition/services.ts` is the single
 module that names concrete classes, and it is 85 lines.
 
-The enforcement is a convention rather than a build rule — nothing fails if
-someone imports React into `application/`. A lint rule (`import/no-restricted-paths`)
-would make the boundary real instead of documented. That is the most valuable
-architectural improvement still available, and it is not done.
+This used to be a convention that nothing checked, and a scan found the
+predictable result: one breach that had gone unnoticed for exactly that reason.
+`src/architecture.test.ts` now asserts the rule — each layer imports only itself
+or inward, outer libraries stay out of `domain/` and `application/`, only the
+composition root constructs adapters, and `presentation/` does not reach
+`@infrastructure`. Hand-rolled rather than an ESLint rule, because the project
+has no linter and adding one plus a plugin to assert four things is a worse trade
+than thirty lines that already run in the commit hook. Verified by injecting a
+`chess.js` import into `domain/` and confirming the failure.
+
+**One accepted exception**, listed in that test with its reason:
+`presentation/hooks/useFederations.ts` imports `@infrastructure/archive/federations`
+directly. It reads a static JSON file to put flags beside player names. A port
+plus injection would buy substitutability for something that will never have a
+second implementation; the cost of the exception is that flag rendering cannot be
+tested without stubbing `fetch`. Keeping it in a list means it stays a decision
+rather than becoming a precedent — the test also fails if an entry in that list
+no longer exists, so a fixed exception cannot linger as implied permission.
 
 ### 8.6 Clean Architecture — followed in substance, not ceremony
 
@@ -651,24 +665,33 @@ its *file taxonomy*. Someone arriving expecting `CreateGameUseCase.ts` will not
 find it. What they will find is a `domain/` they can read without knowing what
 React is.
 
-### 8.7 DRY — mostly, with two knowing duplications
+### 8.7 DRY — mostly, with one knowing duplication
 
-Good: `gameKey` is one function; case-folding lives once in `search_text`;
-`Clock` handles blitz and 1927 adjournments as the same shape.
+Good: case-folding lives once in `search_text`; `Clock` handles blitz and 1927
+adjournments as the same shape; the identity and PGN-tag helpers the build
+scripts share now live in `scripts/lib/gameKey.mjs` rather than being copied
+into each one.
 
 Deliberately duplicated:
 
-- **Game identity is implemented three times** — `gameKey.ts` (app),
-  `scripts/lib/gameKey.mjs` (export script), and again in
-  `audit-pgn-archive.mjs` / `dedupe-pgn-archive.mjs`. The app's is TypeScript
-  behind path aliases; a build script that needs a compile step to run is a
-  script nobody runs. `gameKey.test.ts` fails if the first two disagree, which
-  converts the duplication from a risk into a checked invariant. The audit
-  scripts are not covered by that test — a real if small gap.
+- **Game identity is implemented twice** — `gameKey.ts` for the app and
+  `scripts/lib/gameKey.mjs` for the build scripts. The app's is TypeScript
+  behind path aliases, and a script that needs a compile step to run is a script
+  nobody runs. `gameKey.test.ts` pins the two to identical output over a fixture
+  set, so the duplication is a checked invariant rather than a risk. Verified by
+  injecting drift into the `.mjs` and confirming the test fails.
 - **The engine filename appears in two places** — `copy-engine.mjs` chooses it,
   `services.ts` references it. Nothing but a broken engine says so if they
   diverge. Both carry a comment pointing at the other; a generated constant
   would be better.
+
+> **Correction.** An earlier version of this section claimed `gameKey.test.ts`
+> already locked two of three implementations. It did not: neither that test nor
+> `scripts/lib/gameKey.mjs` existed, and the comment at the top of `gameKey.ts`
+> had promised both for some time. A scan for violations found the claim before
+> it found anything else. Both now exist, the third copy is gone, and the test is
+> proven to fail on drift — but the lesson is that a comment asserting a safety
+> net is worth exactly nothing until something fails without it.
 
 ### 8.8 Summary
 
@@ -678,9 +701,9 @@ Deliberately duplicated:
 | OCP | Held where extension is likely | Screens are closed to extension by choice |
 | LSP | Held, and load-bearing | Capability check (`isInteractive`) instead of type check |
 | ISP | Held | `GameArchive` is wide; splitting not yet earned |
-| DIP | Held strictly | Convention, not enforced by a lint rule — the top remaining gap |
+| DIP | Held, and enforced | `architecture.test.ts` asserts it; one exception, listed with its reason |
 | Clean Arch | Dependency rule yes, taxonomy no | No use-case classes, no DI container |
-| DRY | Mostly | Game identity duplicated 3× for real reasons; 2 of 3 test-locked |
+| DRY | Mostly | Game identity duplicated 2× for a real reason, and test-locked |
 
 ---
 

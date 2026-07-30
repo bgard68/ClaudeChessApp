@@ -18,6 +18,7 @@
  */
 import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs'
 import { join, basename } from 'node:path'
+import { gameIdentity as identity, tagOf as tag } from './lib/gameKey.mjs'
 
 const DIR = process.argv[2] ?? 'pgn'
 const OUT = process.argv[3] ?? join(DIR, 'all-games.pgn')
@@ -26,20 +27,6 @@ if (!existsSync(DIR)) {
   console.error(`No such directory: ${DIR}`)
   process.exit(1)
 }
-
-const tag = (game, name) => {
-  const match = new RegExp(`^\\[${name} "([^"]*)"\\]`, 'm').exec(game)
-  return match ? match[1] : ''
-}
-const person = (game, name) => tag(game, name).toLowerCase().replace(/[^a-z]/g, '')
-const identity = (game) =>
-  `${person(game, 'White')}|${person(game, 'Black')}|` +
-  game
-    .replace(/^\s*\[.*\]\s*$/gm, '')
-    .replace(/\{[^}]*\}/g, '')
-    .replace(/\$\d+/g, '')
-    .replace(/\s+/g, '')
-    .toLowerCase()
 
 /**
  * Processed collections before the raw sources they were derived from, so the

@@ -29,6 +29,12 @@ import { join, dirname, basename } from 'node:path'
 import { availableParallelism } from 'node:os'
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads'
 import { Chess } from 'chess.js'
+import {
+  gameIdentity as identity,
+  moveTextOf as moveText,
+  personOf as person,
+  tagOf as tag,
+} from './lib/gameKey.mjs'
 
 const splitGames = (text) => text.split(/(?=\[Event )/).filter((game) => game.trim() !== '')
 
@@ -88,20 +94,6 @@ if (!isMainThread) {
     process.exit(1)
   }
 
-  const tag = (game, name) => {
-    const match = new RegExp(`^\\[${name} "([^"]*)"\\]`, 'm').exec(game)
-    return match ? match[1] : ''
-  }
-  const person = (game, name) => tag(game, name).toLowerCase().replace(/[^a-z]/g, '')
-  const moveText = (game) =>
-    game
-      .replace(/^\s*\[.*\]\s*$/gm, '')
-      .replace(/\{[^}]*\}/g, '')
-      .replace(/\$\d+/g, '')
-      .replace(/\s+/g, '')
-      .toLowerCase()
-  const identity = (game) =>
-    `${person(game, 'White')}|${person(game, 'Black')}|${moveText(game)}`
 
   const oneFile = statSync(TARGET).isFile()
   const base = oneFile ? dirname(TARGET) : TARGET
