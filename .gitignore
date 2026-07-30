@@ -76,3 +76,7 @@ appsettings.*.json
 # Conversation exports and transcripts
 conversations/
 transcripts/
+
+# The gate's throwaway failing-test probe; deleted by the script, ignored in
+# case a crash strands it.
+**/gate-probe.test.ts

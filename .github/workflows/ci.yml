@@ -1,0 +1,31 @@
+# The publish gate on every pull request: scripts/test-gate.ps1 runs the
+# real checks and the negative probes that prove the checks can fail.
+name: CI gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks scans the whole history, so the whole history must be here.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz \
+            | sudo tar -xz -C /usr/local/bin gitleaks
+
+      - run: pwsh scripts/test-gate.ps1
