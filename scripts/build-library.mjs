@@ -355,7 +355,18 @@ function buildReadme(files, total) {
     'button (Browse championship games -> Import PGN). Re-importing is safe:',
     'the app fingerprints every game and refuses to store one it already has.',
     '',
+    'The optional- files are the large ones. They are not shipped with the app,',
+    'because they would burden every visitor with games nobody asked for. Import',
+    'them by hand if you want them.',
+    '',
+    'Going the other way: Browse championship games -> Export mine writes the',
+    'games you played or imported to my-chess-games.pgn. That is the only backup',
+    'of them there is -- the library lives in your browser, so clearing site data',
+    'removes it. Run over http://localhost, Chrome will call the download',
+    'insecure; that is about the address, not the file. Click Keep.',
+    '',
     'Regenerate with: npm run build-library',
+    'Check with:      npm run audit-library',
     'Not committed to git, and self-contained once built.',
   ].join('\n')
 }
