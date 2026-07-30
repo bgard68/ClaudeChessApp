@@ -21,10 +21,11 @@ jobs:
           node-version: 22
           cache: npm
 
-      # npm install, not npm ci: a lock written on Windows omits other
-      # platforms' native-binding packages (npm/cli#4828), and ci refuses such
-      # a lock outright. install honours the locked versions and quietly adds
-      # the bindings this runner needs.
+      # A lock written on Windows omits other platforms' native bindings
+      # (npm/cli#4828) - npm ci refuses it, and npm install trusts the
+      # omission and skips them too. CI resolves fresh from package.json;
+      # every gate that follows validates what that produced.
+      - run: rm package-lock.json
       - run: npm install --no-audit --no-fund
 
       - name: Install gitleaks
