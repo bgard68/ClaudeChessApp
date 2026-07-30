@@ -7,6 +7,10 @@
     "skipLibCheck": true,
 
     "moduleResolution": "bundler",
+    // TypeScript 7 no longer pulls in every @types package it can find. Node's
+    // globals are needed by the build-time tests, and vite/client is what
+    // declares a side-effect CSS import as a module.
+    "types": ["node", "vite/client"],
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
@@ -21,13 +25,12 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": false,
 
-    "baseUrl": ".",
     "paths": {
-      "@domain/*": ["src/domain/*"],
-      "@application/*": ["src/application/*"],
-      "@infrastructure/*": ["src/infrastructure/*"],
-      "@presentation/*": ["src/presentation/*"],
-      "@composition/*": ["src/composition/*"]
+      "@domain/*": ["./src/domain/*"],
+      "@application/*": ["./src/application/*"],
+      "@infrastructure/*": ["./src/infrastructure/*"],
+      "@presentation/*": ["./src/presentation/*"],
+      "@composition/*": ["./src/composition/*"]
     }
   },
   "include": ["src"]
