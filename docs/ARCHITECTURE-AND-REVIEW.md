@@ -475,25 +475,89 @@ stays visible.
   that ability. Harmless to the app because `game_key` is unique; it only makes
   the "games added" count on import misleading.
 
-### 7.5 react-chessboard 5 mount timing
+### 7.5 react-chessboard 4 → 5: the migration, and a two-day dead end
 
-Version 5 sizes itself from its container instead of taking a `boardWidth` prop.
-Mounted in a commit *after* its screen's, while an ancestor re-renders — which
-the play screen does on every clock tick — it renders its wrappers and no
-squares, and never recovers: not on a resize event, a box change, or a full
-option change.
+#### What the API change required
 
-Established by bisection on the live play screen: a bare board mounted with the
-screen survives; one whose options are rebuilt every tick survives; an identical
-bare board mounted one `setTimeout` later dies. So **deferring the mount is the
-cause, not the cure** — the original wrapper gated mounting behind a measured
-container size, which is exactly that late mount. The board now mounts in the
-component's first commit and fills the area until the measured square lands a
-commit later.
+Version 5 is a rewrite of the surface, not a version bump.
 
-Version 5 also **removed the built-in promotion dialog**, so the app has its own,
-built from `promotionChoices` — which means it offers the pieces the rules
-actually allow rather than a fixed four.
+| v4 | v5 |
+| --- | --- |
+| individual props | one `options` object |
+| `boardWidth={n}` | **removed** — sizes from its container |
+| `arePiecesDraggable` | `allowDragging` |
+| `onPieceDrop(from, to)` | `onPieceDrop({ piece, sourceSquare, targetSquare })` |
+| `onSquareClick(square)` | `onSquareClick({ piece, square })` |
+| `customSquareStyles` | `squareStyles` |
+| `customBoardStyle` | `boardStyle` |
+| `customDarkSquareStyle` | `darkSquareStyle` |
+| `customLightSquareStyle` | `lightSquareStyle` |
+| `animationDuration` | `animationDurationInMs` |
+| `onPromotionCheck`, `onPromotionPieceSelect`, `showPromotionDialog`, `promotionToSquare` | **all removed** |
+
+`targetSquare` is now nullable, because a piece can be dragged off the board.
+
+The removed promotion API is the substantive work: the app has its own chooser,
+built from `promotionChoices`, so it offers the pieces the rules actually allow
+rather than a fixed four. It is centred over the board rather than pinned to the
+promoting square, which is at the edge by definition — a popover there falls off
+the board on the last file.
+
+#### The failure
+
+The board rendered on the setup screen and rendered **nothing** in a game:
+wrapper divs, no squares, no pieces, and no error anywhere. Same component, same
+FEN, effectively identical options.
+
+The cause is mount timing. Mounted in a commit *after* its screen's, while an
+ancestor re-renders — which the play screen does on every clock tick — v5
+produces an empty shell and never recovers.
+
+Established by bisection on the live play screen, three boards side by side:
+
+| Board | Result |
+| --- | --- |
+| bare, mounted with the screen | renders |
+| full options, rebuilt every clock tick | renders |
+| bare, mounted one `setTimeout` later | **empty** |
+
+So **deferring the mount is the cause, not the cure.** The original wrapper gated
+mounting behind a measured container size — which is exactly that late mount.
+The board now mounts in the component's first commit and fills the area it was
+given until the measured square lands a commit later.
+
+#### Remedies tried and ruled out
+
+Recorded because several are the obvious things to reach for, and all of them
+fail. The first attempt at this upgrade was abandoned entirely before the
+bisection above found the real cause.
+
+| Attempted | Outcome |
+| --- | --- |
+| Forcing the wrapper's height (`.board > div { height: 100% }`) | v5's wrapper was indeed collapsing to 0px; fixing it changed nothing. A symptom. |
+| `allowDragging: false` | No change — not the drag machinery |
+| Stripping options to `{ position }` | No change — not the options |
+| Removing React `StrictMode` | No change — not double-mounting |
+| Dispatching `resize`, and mutating the box | No change — it never re-measures |
+| Memoising `options` so it is stable | Necessary, but not sufficient alone |
+| **Deferring the mount** (`setTimeout`, 50 ms) | **Made it worse** — this is the fault itself |
+| Deferring via double `requestAnimationFrame` | Not tried: it is the same late mount, one frame later |
+| Forcing a remount with a changing `key` | Not tried: also remounts after the first commit |
+
+The last two came from external advice suggesting the fix was to delay mounting
+further. The bisection rules out that whole family — anything that moves the
+mount later is the disease, so a different timer is not a cure. Recorded here so
+the next person does not spend the afternoon on it.
+
+The options are memoised regardless. Rebuilding them was proved harmless to
+rendering, but there is no reason to make the library diff its entire
+configuration several times a second because a clock is ticking.
+
+#### Verified, and not
+
+Verified: the board renders on the setup screen and in a live game, the engine's
+reply appears, click-to-move plays, and drag-and-drop works. Not verified: the
+promotion chooser, which needs a game to reach a seventh-rank pawn.
 
 ---
 
@@ -631,7 +695,12 @@ Everything above was checked rather than assumed.
 | `npm run build` | clean; CSP meta tag present in output |
 | `npm audit` | 0 vulnerabilities |
 | `npm run audit-pgn` | 130,565 games, 0 duplicates, 11,142,485 half-moves replayed |
+| `npm run audit-library` | 2,987 served games, 0 unplayable, 1 forfeit, 0 duplicates |
 | Browser | engine loads WASM and moves; archive imports and renders; click-to-move and drag-and-drop both play |
+
+Two independent scripts arriving at 11,142,485 half-moves over the same games is
+the cross-check worth having: `audit-pgn-archive` and `audit-library` share no
+code.
 
 Two things remain unexercised: the promotion chooser needs a game reaching a
 seventh-rank pawn, and storage persistence has only been observed being
