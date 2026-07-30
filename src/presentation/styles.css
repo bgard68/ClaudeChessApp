@@ -240,6 +240,14 @@ h2 {
   flex: 1 1 auto;
 }
 
+/* The board absorbs whatever height the column has left — and grows back
+   after a squeeze. Without the grow, its height came from the board itself,
+   and every transient squeeze ratcheted the board smaller for good. */
+.screen--puzzle .board-area {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .streak-pill {
   font-size: 0.78rem;
   font-weight: 600;
