@@ -415,8 +415,28 @@ export class SqliteGameArchive implements GameArchive, GameStore {
   }
 
   private ready(): Promise<void> {
-    this.initialisation ??= this.initialise()
+    this.initialisation ??= this.attemptInitialise()
     return this.initialisation
+  }
+
+  /**
+   * A run that failed — threw outright, or finished with a collection missing —
+   * is not kept, so the next query starts a fresh attempt instead of serving
+   * the failure for the rest of the session. Without this, one bad fetch on the
+   * very first visit left the library empty until the page was reloaded; now it
+   * heals on the next look at the screen. A clean run stays cached forever, so
+   * seeding still happens exactly once.
+   */
+  private attemptInitialise(): Promise<void> {
+    const run = this.initialise()
+    run
+      .then(() => {
+        if (this.importFailure !== null) this.initialisation = null
+      })
+      .catch(() => {
+        this.initialisation = null
+      })
+    return run
   }
 
   /**
@@ -463,6 +483,9 @@ export class SqliteGameArchive implements GameArchive, GameStore {
   }
 
   private async initialise(): Promise<void> {
+    // A retry must judge its own run, not inherit the verdict of the last one.
+    this.importFailure = null
+
     await this.client.open()
     await this.migrate()
 

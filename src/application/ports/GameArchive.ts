@@ -85,6 +85,13 @@ export interface ArchivePage {
 export type ImportProgress = (done: number, total: number) => void
 
 export interface GameArchive {
+  /**
+   * Why the library may be missing games right now: the bundled sources that
+   * could not be read on the last attempt. Empty when the library is whole.
+   * The screen shows these instead of advising an import that would not help.
+   */
+  readonly failures: readonly string[]
+
   list(query?: ArchiveQuery): Promise<ArchivePage>
   load(id: string): Promise<ArchivedGame>
   /**

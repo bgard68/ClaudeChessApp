@@ -362,6 +362,18 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
     restartList()
   }
 
+  /**
+   * Asks the archive again, from the top.
+   *
+   * The archive retries a failed first load on its next query, so bumping the
+   * token is all a recovery takes — same mechanism an import uses to refresh.
+   */
+  const retryLoad = () => {
+    setError(null)
+    setOffset(0)
+    setReloadToken((token) => token + 1)
+  }
+
   const resetFilters = () => {
     setFilters(NO_FILTERS)
     setSort(null)
@@ -602,10 +614,32 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
             <p className="notice">Added {lastImport.toLocaleString()} games.</p>
           ) : null}
 
-          {error ? <p className="notice notice--error">{error}</p> : null}
+          {error ? (
+            <p className="notice notice--error">
+              {error}
+              {games.length === 0 ? (
+                <>
+                  {' '}
+                  <button type="button" className="link-button" onClick={retryLoad}>
+                    Try again
+                  </button>
+                </>
+              ) : null}
+            </p>
+          ) : null}
 
-          {!isLoading && games.length === 0 ? (
-            libraryIsEmpty ? (
+          {!isLoading && games.length === 0 && error === null ? (
+            services.archive.failures.length > 0 ? (
+              // The bundled games failed to load, which importing cannot fix —
+              // name the real problem and offer the retry that can.
+              <p className="notice notice--error">
+                The bundled games could not be loaded (
+                {services.archive.failures[0]}).{' '}
+                <button type="button" className="link-button" onClick={retryLoad}>
+                  Try again
+                </button>
+              </p>
+            ) : libraryIsEmpty ? (
               <p className="notice">
                 No games in the library yet.{' '}
                 <button
