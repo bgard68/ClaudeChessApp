@@ -1,0 +1,36 @@
+# Builds and deploys to Azure Static Web Apps on every push to main.
+# One-time setup and the reasoning live in docs/DEPLOYMENT.md.
+name: Deploy to Azure Static Web Apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The same gate the pre-commit hook applies locally; nothing deploys
+      # that would not have been allowed to commit.
+      - run: npm run typecheck
+      - run: npx vitest run
+
+      # prebuild copies the engine and game collections into public/.
+      - run: npm run build
+
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: dist
+          skip_app_build: true
