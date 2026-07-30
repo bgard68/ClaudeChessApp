@@ -21,11 +21,11 @@ jobs:
           node-version: 22
           cache: npm
 
-      # The lock was written by npm 11; the runner's npm 10 resolves optional
-      # platform packages differently and rejects it. Same npm, same answer.
-      - run: npm install -g npm@11
-
-      - run: npm ci
+      # npm install, not npm ci: a lock written on Windows omits other
+      # platforms' native-binding packages (npm/cli#4828), and ci refuses such
+      # a lock outright. install honours the locked versions and quietly adds
+      # the bindings this runner needs.
+      - run: npm install --no-audit --no-fund
 
       - name: Install gitleaks
         run: |
