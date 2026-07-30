@@ -21,6 +21,7 @@ import type { SqliteClient } from '../sqlite/SqliteClient'
 import type { SqlStatement, SqlValue } from '../sqlite/protocol'
 import { insertStatement, SUMMARY_COLUMNS, toSummary, type GameSource } from './gameRow'
 import { mergePlayers, type NameCount } from './playerIdentity'
+import { requestPersistentStorage } from '../storage/persistence'
 import type { PgnSource } from './PgnSource'
 
 /** A PGN file shipped with the app, and what kind of games it holds. */
@@ -76,12 +77,37 @@ export class SqliteGameArchive implements GameArchive, GameStore {
   async durability(): Promise<LibraryDurability> {
     await this.ready()
     const storage = this.client.storage
-    return storage.kind === 'persistent'
-      ? { kind: 'durable' }
-      : {
-          kind: 'temporary',
-          reason: storage.reason === 'another-tab' ? 'another-tab' : 'no-storage',
-        }
+
+    if (storage.kind !== 'persistent') {
+      return {
+        kind: 'temporary',
+        reason: storage.reason === 'another-tab' ? 'another-tab' : 'no-storage',
+      }
+    }
+
+    // Asked here rather than on open, because this is the one moment the answer
+    // is about to be used: the screen is asking whether a save will last.
+    const persisted = await requestPersistentStorage()
+    return { kind: 'durable', evictable: !persisted }
+  }
+
+  /**
+   * Every game you played or imported, oldest first.
+   *
+   * Read straight back out as stored rather than re-serialised from the parsed
+   * form: the PGN that went in is the most faithful record there is, and passing
+   * it through the writer would quietly drop anything the app does not model.
+   */
+  async exportPgn(): Promise<string> {
+    await this.ready()
+
+    const rows = await this.client.select<{ pgn: string }>(
+      `SELECT pgn FROM game WHERE source IN ('played','imported')
+        ORDER BY recorded_at, played_on, id`,
+    )
+    if (rows.length === 0) return ''
+
+    return `${rows.map((row) => String(row.pgn).trim()).join('\n\n')}\n`
   }
 
   async list(query: ArchiveQuery = {}): Promise<ArchivePage> {

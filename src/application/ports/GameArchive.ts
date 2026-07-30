@@ -7,7 +7,13 @@ import type { ArchivedGame, ArchivedGameSummary } from '@domain/archive/Archived
  * technology's, so a future server-backed library can answer it too.
  */
 export type LibraryDurability =
-  | { readonly kind: 'durable' }
+  /**
+   * Stored on disk and still there after a restart. `evictable` when the browser
+   * has not promised to keep it: storage works, but the origin is best-effort and
+   * may be cleared under disk pressure. Worth distinguishing, because the games
+   * at risk are the ones nobody can get back.
+   */
+  | { readonly kind: 'durable'; readonly evictable: boolean }
   | { readonly kind: 'temporary'; readonly reason: 'no-storage' | 'another-tab' }
 
 /** What a search term is matched against. */
@@ -88,6 +94,16 @@ export interface GameArchive {
   importPgn(pgnText: string, sourceName: string, onProgress?: ImportProgress): Promise<number>
   /** Resolves once the library is open, so the UI can warn before a game is lost. */
   durability(): Promise<LibraryDurability>
+
+  /**
+   * Every game you played or imported, as one PGN file.
+   *
+   * The bundled collections are deliberately left out: they are shipped with the
+   * app and re-importable, and this exists for the games that are not. Storage
+   * permission reduces the chance of losing them; a file you hold is the only
+   * thing that actually recovers from a cleared profile.
+   */
+  exportPgn(): Promise<string>
 
   /**
    * Players whose name begins with `prefix`, most-played first.

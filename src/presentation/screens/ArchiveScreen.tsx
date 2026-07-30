@@ -190,6 +190,35 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
     }
   }, [services.archive, query, field, chosen, filters, sort, direction, offset, reloadToken])
 
+  /**
+   * Downloads the games you played or imported as one PGN file.
+   *
+   * The only recovery from a cleared profile: storage permission makes eviction
+   * unlikely, but nothing inside the browser survives the user deleting site
+   * data, and a file on disk does.
+   */
+  const exportGames = async () => {
+    setError(null)
+    try {
+      const pgn = await services.archive.exportPgn()
+      if (pgn === '') {
+        setError('Nothing to export yet — no games of your own have been saved or imported.')
+        return
+      }
+
+      const url = URL.createObjectURL(new Blob([pgn], { type: 'application/x-chess-pgn' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'my-chess-games.pgn'
+      link.click()
+      // Released on the next turn of the event loop: revoking immediately can
+      // cancel the download before the browser has taken the blob.
+      setTimeout(() => URL.revokeObjectURL(url), 0)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
   const importFile = async (file: File) => {
     setError(null)
 
@@ -311,6 +340,9 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
           </div>
           <button type="button" className="button" onClick={() => fileInput.current?.click()}>
             Import PGN
+          </button>
+          <button type="button" className="button" onClick={() => void exportGames()}>
+            Export mine
           </button>
           <input
             ref={fileInput}
