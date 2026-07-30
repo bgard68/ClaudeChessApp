@@ -21,6 +21,10 @@ jobs:
           node-version: 22
           cache: npm
 
+      # The lock was written by npm 11; the runner's npm 10 resolves optional
+      # platform packages differently and rejects it. Same npm, same answer.
+      - run: npm install -g npm@11
+
       - run: npm ci
 
       - name: Install gitleaks
