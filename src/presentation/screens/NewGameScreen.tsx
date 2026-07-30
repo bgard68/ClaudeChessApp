@@ -84,7 +84,10 @@ export function NewGameScreen({ onStart, onBrowseArchive }: NewGameScreenProps) 
               {DIFFICULTY_LEVELS.map((level) => (
                 <Choice
                   key={level.id}
-                  label={level.label}
+                  // The rating rides in the label rather than the hint so the
+                  // levels can be compared at a glance, which is the whole point
+                  // of showing a number. Maximum has none to show.
+                  label={level.rating === null ? level.label : `${level.label} · ${level.rating}`}
                   hint={level.description}
                   isSelected={difficultyId === level.id}
                   onSelect={() => setDifficultyId(level.id)}

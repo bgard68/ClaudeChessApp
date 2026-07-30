@@ -10,17 +10,23 @@ export interface EngineSearchLimits {
   readonly maxDepth?: number
 }
 
+/**
+ * How strong the opponent should be.
+ *
+ * A rating rather than a skill dial, because Stockfish can now be asked for one
+ * directly. The old 0–20 skill scale made the engine pick deliberately inferior
+ * moves without saying how much weaker that made it, so a difficulty level could
+ * never honestly quote a number.
+ *
+ * `full` is not "very high elo" — it is the absence of any limit, which is a
+ * different thing and worth keeping distinguishable.
+ */
+export type EngineStrength =
+  | { readonly kind: 'rated'; readonly elo: number }
+  | { readonly kind: 'full' }
+
 export interface EngineConfiguration {
-  /**
-   * Stockfish's own 0–20 skill scale, where lower levels deliberately pick
-   * inferior moves. Combined with a depth cap this is the whole difficulty
-   * mechanism.
-   *
-   * Stockfish 18 also offers `UCI_LimitStrength` and `UCI_Elo`, which would let
-   * a level name an actual rating instead of approximating one. Not used yet;
-   * switching is a change to this port, not to the adapter alone.
-   */
-  readonly skillLevel: number
+  readonly strength: EngineStrength
   readonly searchLimits: EngineSearchLimits
 }
 

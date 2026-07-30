@@ -55,7 +55,17 @@ export class StockfishEngine implements ChessEngine {
   async configure(configuration: EngineConfiguration): Promise<void> {
     await this.init()
     this.configuration = configuration
-    this.send(`setoption name Skill Level value ${configuration.skillLevel}`)
+
+    // UCI_Elo is only consulted while UCI_LimitStrength is on, and the engine
+    // keeps whatever was set last, so both are always sent — turning the limit
+    // off explicitly is what makes `full` mean full after a rated game.
+    const strength = configuration.strength
+    if (strength.kind === 'rated') {
+      this.send('setoption name UCI_LimitStrength value true')
+      this.send(`setoption name UCI_Elo value ${Math.round(strength.elo)}`)
+    } else {
+      this.send('setoption name UCI_LimitStrength value false')
+    }
   }
 
   async chooseMove(position: Position): Promise<MoveIntent> {
@@ -121,6 +131,14 @@ export class StockfishEngine implements ChessEngine {
   }
 
   private handleLine(line: string): void {
+    // Stockfish answers an option it does not recognise with a line and then
+    // carries on at whatever strength it was already at. Silently ignoring that
+    // is how a difficulty setting comes to mean nothing, so it is surfaced.
+    if (line.startsWith('No such option')) {
+      console.warn(`Engine rejected an option: ${line}`)
+      return
+    }
+
     if (line.startsWith('uciok')) {
       this.uciHandshake?.resolve()
       this.uciHandshake = null
