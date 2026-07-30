@@ -4,6 +4,7 @@ import type { GameConfiguration } from '@application/GameConfiguration'
 import { HintAdviser } from '@application/HintAdviser'
 import { HumanOpponent } from '@application/HumanOpponent'
 import { LiveGame } from '@application/LiveGame'
+import { PuzzleGenerator } from '@application/puzzle/PuzzleGenerator'
 import type { Opponent } from '@application/Opponent'
 import { ReplaySession } from '@application/replay/ReplaySession'
 import type { ArchivedGame } from '@domain/archive/ArchivedGame'
@@ -64,6 +65,10 @@ export class GameFactory {
 
   createHintAdviser(): HintAdviser {
     return new HintAdviser(() => this.services.createEngine())
+  }
+
+  createPuzzleGenerator(): PuzzleGenerator {
+    return new PuzzleGenerator(this.services.rules, () => this.services.createEngine())
   }
 }
 

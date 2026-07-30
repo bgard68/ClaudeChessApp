@@ -213,6 +213,88 @@ h2 {
   flex: 0 0 auto;
 }
 
+.setup__nav {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* ---------- Puzzle of the day ---------- */
+
+.screen--puzzle {
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.puzzle__header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+.puzzle__header h1 {
+  flex: 1 1 auto;
+}
+
+.streak-pill {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--warning);
+  border: 1px solid var(--warning);
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  white-space: nowrap;
+}
+
+.puzzle__caption {
+  margin: 0;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+.puzzle__prompt {
+  margin: 0;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  min-height: 1.3rem;
+  flex: 0 0 auto;
+}
+
+.puzzle__prompt--wrong {
+  color: var(--danger-text);
+}
+
+.puzzle__prompt--solved {
+  color: var(--accent-strong);
+}
+
+.puzzle__actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+
+/* Composition takes a dozen seconds; the wait explains itself, centred. */
+.puzzle__generating {
+  margin: auto;
+  max-width: 26rem;
+  text-align: center;
+  color: var(--text-muted);
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+}
+
 /* ---------- Credits ----------
    Collapsed by default and quiet: an acknowledgement of other people's work,
    not something anyone opens the app to read. */

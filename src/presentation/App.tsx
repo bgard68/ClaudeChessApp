@@ -5,12 +5,14 @@ import type { ReplaySession } from '@application/replay/ReplaySession'
 import { ArchiveScreen } from './screens/ArchiveScreen'
 import { NewGameScreen } from './screens/NewGameScreen'
 import { PlayScreen } from './screens/PlayScreen'
+import { PuzzleScreen } from './screens/PuzzleScreen'
 import { ReplayScreen } from './screens/ReplayScreen'
 import { useServices } from './ServicesContext'
 
 type View =
   | { readonly name: 'setup' }
   | { readonly name: 'archive' }
+  | { readonly name: 'puzzle' }
   | { readonly name: 'loading'; readonly message: string }
   | { readonly name: 'play'; readonly game: LiveGame; readonly configuration: GameConfiguration }
   | { readonly name: 'replay'; readonly session: ReplaySession }
@@ -70,8 +72,12 @@ export function App() {
         <NewGameScreen
           onStart={startGame}
           onBrowseArchive={() => goTo({ name: 'archive' })}
+          onOpenPuzzle={() => goTo({ name: 'puzzle' })}
         />
       )
+
+    case 'puzzle':
+      return <PuzzleScreen onBack={() => goTo({ name: 'setup' })} />
 
     case 'archive':
       return (

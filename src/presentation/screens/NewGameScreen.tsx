@@ -19,9 +19,10 @@ const DEFAULT_TIME_CONTROL_ID = '10+0'
 interface NewGameScreenProps {
   readonly onStart: (configuration: GameConfiguration) => void
   readonly onBrowseArchive: () => void
+  readonly onOpenPuzzle: () => void
 }
 
-export function NewGameScreen({ onStart, onBrowseArchive }: NewGameScreenProps) {
+export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGameScreenProps) {
   const [opponent, setOpponent] = useState<OpponentChoice>('computer')
   const [colour, setColour] = useState<ColourChoice>('white')
   const [timeControlId, setTimeControlId] = useState(DEFAULT_TIME_CONTROL_ID)
@@ -47,9 +48,14 @@ export function NewGameScreen({ onStart, onBrowseArchive }: NewGameScreenProps) 
     <div className="screen screen--setup">
       <header className="setup__header">
         <h1>Chess</h1>
-        <button type="button" className="button" onClick={onBrowseArchive}>
-          Browse championship games
-        </button>
+        <div className="setup__nav">
+          <button type="button" className="button" onClick={onOpenPuzzle}>
+            🧩 Puzzle of the day
+          </button>
+          <button type="button" className="button" onClick={onBrowseArchive}>
+            Browse championship games
+          </button>
+        </div>
       </header>
 
       <div className="setup__body">
