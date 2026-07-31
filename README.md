@@ -229,7 +229,7 @@ size.
 
 ## Testing
 
-107 tests covering the clock (increments, stage transitions, flag fall), the turn
+126 tests covering the clock (increments, stage transitions, flag fall), the turn
 loop (checkmate, timeout, resignation, illegal-move rejection, late moves after
 the game ends), rules adaptation, PGN parsing, import limits, player identity,
 and replay clock alignment.
@@ -296,15 +296,25 @@ otherwise look identical.
 
 ## Data and storage
 
-**Nothing generated is committed.** Both `public/games/` and `public/engine/`
-are gitignored, so the repository holds source only — no binaries, no datasets,
-nothing to drift out of step with what produced it.
+**The finished collections are committed; everything else generated is not.**
+`public/games/` holds the three cleaned PGN files and the federation lookup —
+about 2 MB, and the repository packs to well under that. The raw downloads
+(`public/games/raw/`), the hundred-megabyte career archives, and
+`public/engine/` all stay out.
+
+That split was a deliberate reversal. Previously every clone, dev start and
+deploy pulled roughly a hundred megabytes from two third-party hosts to
+reconstruct two megabytes of files — which meant whoever controlled those hosts
+controlled the content of every build, and a bad day for either broke ours.
+Committing the result removed them from the build path. See
+[docs/SUPPLY-CHAIN.md](docs/SUPPLY-CHAIN.md).
 
 - **Championship games** come from the public
-  [Chess-Dataset](https://github.com/mainali123/Chess-Dataset) repository and
-  are merged into `public/games/world-championship.pgn` by `npm run
-  fetch-games`. `prebuild` runs the same fetch, so a deploy pulls them once at
-  build time. Game move scores are factual records.
+  [Chess-Dataset](https://github.com/mainali123/Chess-Dataset) repository,
+  cleaned by `npm run build-library` into
+  `public/games/world-championship-knockout.pgn` and
+  `world-championship-title-matches.pgn`. Those files are committed, so a
+  build does not refetch them. Game move scores are factual records.
 - **Title matches since 2008** are pulled from the Anand, Carlsen, Ding, and
   Gukesh collections by `npm run fetch-modern` — between them those four played
   in every match from 2010 to 2024. Games are identified by their event tag, not
@@ -334,5 +344,22 @@ One rule worth stating plainly, for whoever works on this next:
 > connection strings can never live here — that is a server-side concern, and
 > this app has no server.
 
-If the upstream dataset repository ever moves or disappears, the build breaks.
-Mirroring the PGN into storage you control is the durable fix.
+The upstream dataset repository moving or disappearing no longer breaks the
+build — that is precisely what committing the cleaned collections fixed.
+Regenerating them from scratch still needs those sources, but nothing on the
+critical path does.
+
+## Security
+
+No server, no accounts, no personal data leaving the browser — so the real
+exposure is the path from source to CDN, not a backend that does not exist.
+
+- [SECURITY.md](SECURITY.md) — threat model, and how to report a vulnerability
+  privately.
+- [docs/SUPPLY-CHAIN.md](docs/SUPPLY-CHAIN.md) — what the pipeline enforces,
+  why, how to audit it, and the mistakes that would quietly undo it.
+
+Briefly: merging to `main` requires the full gate to pass, dependencies install
+from a committed lock rather than being re-resolved, every GitHub Action is
+pinned to a commit SHA, and the whole history is scanned for secrets on every
+run.
