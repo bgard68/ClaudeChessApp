@@ -70,6 +70,29 @@ left `Test Files 18 passed (18)` exactly where it had been. **Watch the file
 count, not just the pass count, when a merge adds tests.** The pattern now reads
 `['src/**/*.test.ts', 'src/**/*.test.tsx']`.
 
+## A passing check cannot see something that is absent
+
+The settings panel was missing from every phone. Not clipped or misplaced —
+not rendered at all: no destinations, no choices, no Start game, and a page
+exactly one screen tall because there was nothing left to scroll to.
+
+Every check said the screen was fine. No horizontal overflow. No tap target
+under 44px. No text under 12px. Nothing hidden behind the navigation bar. All
+four were true, and all four were true *of a page missing its entire reason
+for existing*, because each one asks "is anything here wrong?" and none asks
+"is everything here?"
+
+The cause was a shared class: the rail carried both `app-rail` and
+`app-rail--right`, and below 860px `.app-rail` becomes the fixed bottom bar,
+so the panel became a 72px strip pinned under the navigation. The mobile
+override had reset the properties that looked wrong — width, padding,
+background — and left position, inset and height to the bar rule.
+
+What found it was walking the page top to bottom and reading what a user
+actually scrolls past. **When a layout is reported as wrong and the
+measurements come back clean, enumerate what should be on the page before
+measuring what is.**
+
 ## Upstream data defects
 
 - **Gelfand–Gareev, World Blitz 2019** — `Invalid move in PGN: Qxe1`. Corrupt
@@ -230,6 +253,23 @@ The rule this produces:
 
 And run it after every pull that touched `package-lock.json`, and once in every
 new worktree before trusting any gate result.
+
+## A branch cut before a squash merge cannot be merged, only replayed
+
+`feat/archive-split` was branched from `main` before the previous PR merged,
+so it carried that PR's seven commits as well as its own. Those seven had
+landed on `main` as one squashed commit with a different hash, and git has no
+way to know they are the same work: four files conflicted, and GitHub would
+not even run the checks on a PR it considered dirty.
+
+Merging did not fix it and rebasing the whole branch would have replayed seven
+commits that were already in. The fix was to cherry-pick the one commit that
+was genuinely new onto current `main`, which applied cleanly.
+
+This is the standing cost of squash merging — a tidy history on `main`, paid
+for by every branch cut before the squash. **Branch from current `main`, and
+when a branch predates a squash, replay the new commits rather than merging
+the branch.**
 
 ## A required review that nobody can give
 
