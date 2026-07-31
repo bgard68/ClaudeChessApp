@@ -154,6 +154,40 @@ The comment is not decoration. That is the form Dependabot reads, so bumps keep
 arriving as pull requests — a pin is only tolerable if something still tells you
 when it is stale.
 
+### Telling a major bump apart from a routine one
+
+Both ecosystems in `dependabot.yml` group minor and patch and leave major
+ungrouped. That makes the shape of the pull request carry the information:
+
+| Arrives as | Means |
+| --- | --- |
+| One PR listing several updates | Minor and patch. Merge on green. |
+| A PR on its own | **A major. Open the release notes before merging.** |
+
+This exists because four action majors — `checkout` and `setup-node` 4→7,
+`github-script` 7→9, `codeql-action` 3→4 — were once merged on passing checks
+alone, with nobody reading a changelog. Reviewed afterwards, all four were
+genuinely safe:
+
+| Bump | Breaking change | Why it did not bite |
+| --- | --- | --- |
+| `checkout` 4→7 | Node 24 runtime | `fetch-depth: 0` is unchanged API |
+| `setup-node` 4→7 | Automatic package-manager detection (v5); auto-caching narrowed to npm (v6) | `cache: npm` is set explicitly, so detection never applies |
+| `github-script` 7→9 | **`require('@actions/github')` removed — the package is ESM-only** | These scripts use the injected `github`, `context` and `core` and never call `require` |
+| `codeql-action` 3→4 | — | `init` / `analyze` inputs unchanged |
+
+The third is the one worth remembering. It was a real breaking change that
+missed only because of how the cleanup script happened to be written. Green
+checks did not establish safety there — the script never exercised the removed
+API, so nothing could have failed.
+
+To check a major before merging: read the release body, then grep for the
+pattern it removed.
+
+```bash
+gh api repos/actions/github-script/releases/tags/v9.0.0 --jq .body
+```
+
 ### Re-pinning after a Dependabot bump
 
 Dependabot updates the SHA and the comment together, so normally there is

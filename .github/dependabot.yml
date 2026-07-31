@@ -1,5 +1,13 @@
 # Weekly dependency updates, grouped so routine bumps arrive as one PR
 # instead of five. Security updates are not batched — they come as they are.
+#
+# Both ecosystems group minor and patch and leave major ungrouped, which makes
+# the shape of a pull request carry the information: a batched one is routine,
+# and one that arrives alone is a major version. Four action majors were once
+# merged on green checks without anyone opening the release notes — nothing
+# broke, but actions/github-script 9 had dropped `require('@actions/github')`
+# and only missed because these scripts use the injected globals. A major is
+# now visible without having to read the title carefully.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -17,3 +25,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
