@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import type { PieceColor } from '@domain/chess/Piece'
 import { STARTING_FEN } from '@domain/chess/Position'
-import { TIME_CONTROL_PRESETS } from '@domain/clock/TimeControl'
+import { TIME_CONTROL_PRESETS, type TimeControlPreset } from '@domain/clock/TimeControl'
 import {
   DEFAULT_DIFFICULTY_ID,
   DIFFICULTY_LEVELS,
@@ -179,14 +179,25 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
               description="Pick a relaxed game or a faster test."
               icon="clock"
             >
-              {TIME_CONTROL_PRESETS.map((option) => (
-                <Choice
-                  key={option.id}
-                  label={option.label}
-                  hint={option.category}
-                  isSelected={timeControlId === option.id}
-                  onSelect={() => setTimeControlId(option.id)}
-                />
+              {groupByCategory(TIME_CONTROL_PRESETS).map(([category, presets]) => (
+                <div className="time-group" key={category}>
+                  <span className="time-group__label">{category}</span>
+                  <div className="time-group__options" role="group" aria-label={category}>
+                    {presets.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={`time-chip${
+                          timeControlId === option.id ? ' time-chip--selected' : ''
+                        }`}
+                        aria-pressed={timeControlId === option.id}
+                        onClick={() => setTimeControlId(option.id)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </Panel>
 
@@ -284,6 +295,25 @@ function Panel({
       </div>
     </section>
   )
+}
+
+/**
+ * The presets in category order, each category once.
+ *
+ * The category was previously repeated as a hint under all ten labels, which
+ * said "Blitz" three times in a row and made the tallest panel on the screen.
+ * Stated once per group, the labels themselves fit several to a line.
+ */
+function groupByCategory(
+  presets: readonly TimeControlPreset[],
+): readonly (readonly [string, readonly TimeControlPreset[]])[] {
+  const groups = new Map<string, TimeControlPreset[]>()
+  for (const preset of presets) {
+    const existing = groups.get(preset.category)
+    if (existing === undefined) groups.set(preset.category, [preset])
+    else existing.push(preset)
+  }
+  return [...groups]
 }
 
 function Choice({

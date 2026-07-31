@@ -1664,11 +1664,19 @@ h2 {
     grid-template-rows: auto minmax(0, 1fr);
   }
 
-  /* Small enough that the next panel peeks above the fold, which is what tells
-     you the column scrolls. */
+  /*
+   * The preview board is as wide as the column and square, which the phase
+   * stylesheet already asks for with width: 100% and aspect-ratio: 1/1.
+   *
+   * It was capped at min(23dvh, 46vw) — 46vw being about half the width,
+   * chosen when the preview sat beside the settings rather than above them.
+   * Stacked, that reads as a small board floating in a wide empty column: on
+   * a 360px screen it came out 165px, under half the width available. The cap
+   * won only because this file loads after the phase sheets.
+   */
   .setup__preview .board-area {
     flex: 0 0 auto;
-    height: min(23dvh, 46vw);
+    height: auto;
   }
 }
 
@@ -2461,5 +2469,120 @@ select:focus-visible,
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* ------------------------- Phone legibility ---------------------------
+   Last in the file, and deliberately: this is a floor, and a floor only
+   works if nothing overrides it afterwards.
+
+   The redesign's type scale was drawn for a desktop panel and carried to
+   the phone unchanged — 33 separate elements rendered below 12px on a
+   360px screen, down to 10.6px, across twenty-odd rules in four
+   stylesheets. Correcting each at its source would mean touching every one
+   of them and re-checking every desktop layout that depends on it. A floor
+   applied only where the reading distance is short is the smaller change
+   and the one that can be reasoned about. */
+
+@media (max-width: 600px) {
+  .app-content small,
+  .app-content .phase2-kicker,
+  .app-content .choice__hint,
+  .app-content .setup__step-count,
+  .app-content .phase46-choice-panel__step,
+  .app-content .credits__toggle,
+  .app-content .credits__body {
+    font-size: 0.75rem;
+  }
+
+  /* The project sets --tap at 44px and calls it the minimum comfortable
+     touch target; the header actions and the credits toggle were the three
+     that missed it. Padding rather than height on the toggle, which is a
+     text link and would look wrong as a 44px slab. */
+  .app-content .button {
+    min-height: var(--tap);
+  }
+
+  .app-content .credits__toggle {
+    min-height: var(--tap);
+    padding-inline: 0.5rem;
+  }
+
+  /* The heading stack — back button, kicker, title, description, metrics —
+     came to 197px before any content on an 800px screen. The description
+     repeats what the screen already shows and is the honest thing to drop
+     first; the puzzle screen already did exactly this. */
+  .screen-header__description {
+    display: none;
+  }
+}
+
+/* ---------------------- Time control chips ----------------------------
+   Ten presets used to be ten full-width rows, each repeating its category
+   underneath the label — "Blitz" three times running — which made this the
+   tallest panel on the setup screen by a wide margin.
+
+   The category is now said once per group and the labels sit several to a
+   line. Same information, and the panel is roughly a third of its height.
+   Auto-fit rather than a fixed column count so it holds four across on a
+   desktop panel and two on a phone without a second breakpoint. */
+
+.time-group + .time-group {
+  margin-top: 0.7rem;
+}
+
+.time-group__label {
+  display: block;
+  margin-bottom: 0.35rem;
+  /* 12px, the floor set for phones further down — no point adding five new
+     labels below it while removing thirty-three others. */
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.time-group__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  gap: 0.4rem;
+}
+
+.time-chip {
+  min-height: var(--tap);
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  cursor: pointer;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  touch-action: manipulation;
+}
+
+.time-chip:hover {
+  background: var(--surface-hover);
+}
+
+.time-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.time-chip--selected {
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* On a phone the categories read fine at two across; below this the labels
+   ("15 | 10") start to wrap, which looks worse than a narrower grid. */
+@media (max-width: 380px) {
+  .time-group__options {
+    grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
   }
 }
