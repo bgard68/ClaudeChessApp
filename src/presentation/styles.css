@@ -69,6 +69,27 @@ h2 {
 }
 
 /*
+ * A screen fills the box it is given, not the whole viewport.
+ *
+ * `height: 100dvh` above measures the window, but a screen starts below the
+ * top bar and inside the content padding, so it overshot by exactly that much
+ * — every screen ran about 108px past the bottom of a 900px window and leaned
+ * on .app-content scrolling to hide it.
+ *
+ * The phase stylesheet computes the same thing correctly with a calc(), and
+ * loses the tie on load order. Fixing the order was tried and reverted: it
+ * changes what the board measures at mount, and the replay board came back
+ * 314x490 instead of square. That is the failure in LESSONS-LEARNED, and not
+ * worth reopening for a layout tidy. Filling the parent gets the same result
+ * without touching when anything is measured.
+ */
+.app-content > .screen {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+}
+
+/*
  * On a phone a screen is as tall as its content and the page scrolls; the
  * navigation is a fixed bar over the bottom, not a column beside it.
  *
