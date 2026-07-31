@@ -1,3 +1,4 @@
+import { foldName } from '@domain/archive/foldName'
 /**
  * Deciding when two spellings name the same player.
  *
@@ -36,9 +37,16 @@ export interface MergedPlayer {
  */
 const IMPLAUSIBLE_CAREER_YEARS = 80
 
-/** Surname plus first initial, lower case, punctuation removed. */
+/**
+ * Surname plus first initial, lower case, punctuation removed.
+ *
+ * Accents fold to their base letter first. Replacing them with a space
+ * instead split "Ljubojević" into "ljubojevi", which matched neither the
+ * FIDE directory — 120 keys, every one ASCII — nor the same player spelled
+ * without the accent in another collection.
+ */
 export function identityKey(name: string): string {
-  const cleaned = name.toLowerCase().replace(/[^a-z, ]/g, ' ')
+  const cleaned = foldName(name).replace(/[^a-z, ]/g, ' ')
   const [surnamePart = '', restPart = ''] = cleaned.split(',')
 
   const surname = surnamePart.trim().replace(/\s+/g, ' ')

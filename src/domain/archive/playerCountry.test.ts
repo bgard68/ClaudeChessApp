@@ -55,20 +55,26 @@ describe('federationOf', () => {
   })
 
   /*
-   * A KNOWN GAP, pinned here rather than papered over.
+   * The list is written in ASCII; PGN files are not. The same player is
+   * "Ljubojevic" in one collection and "Ljubojević" in another, and both
+   * spellings have to find the same entry.
    *
-   * The name is filtered to [a-z, -], which deletes accented letters instead
-   * of folding them: "Réti" becomes "rti", which matches nothing — even
-   * though 'reti r' is in the list. Every bundled game spells names in ASCII,
-   * so nothing on screen is wrong today; an imported PGN written with
-   * diacritics would silently lose its flags.
-   *
-   * The fix is a NFD normalise before the filter. Change this test when that
-   * lands — it should then expect 'CZ'.
+   * This used to delete the accented letter rather than fold it — "Réti"
+   * became "rti" and matched nothing, though 'reti r' was right there in the
+   * list.
    */
-  it('does not yet fold accents, so an accented spelling misses', () => {
+  it.each([
+    ['an acute accent', 'Réti, Richard', 'Reti, Richard'],
+    ['a caron', 'Ljubojević, Ljubomir', 'Ljubojevic, Ljubomir'],
+    ['an umlaut', 'Hübner, Robert', 'Huebner, Robert'],
+  ])('finds the same player through %s', (_kind, accented, plain) => {
+    // Whatever the plain spelling resolves to, the accented one must match it.
+    expect(code(accented)).toBe(code(plain))
+  })
+
+  it('folds an accented name to the entry it belongs to', () => {
+    expect(code('Réti, Richard')).toBe('CZ')
     expect(code('Reti, Richard')).toBe('CZ')
-    expect(code('Réti, Richard')).toBeNull()
   })
 
   // Hyphens are kept, because double-barrelled surnames are one surname.
