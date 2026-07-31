@@ -153,7 +153,10 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
     <div className="screen screen--puzzle phase2-puzzle phase3-puzzle phase46-puzzle">
       <ScreenHeader
         kicker="Daily training"
-        title="Puzzle of the day"
+        // The top bar already names the destination "Puzzle of the day"; this
+        // names the task, as the setup screen does with "Choose your match".
+        // Repeating the destination stacked the same two lines twice.
+        title="Today’s position"
         description="Find the forcing continuation composed locally by Stockfish."
         onBack={onBack}
         backLabel="Back to play"
