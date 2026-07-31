@@ -21,9 +21,16 @@ jobs:
   keepalive:
     runs-on: ubuntu-latest
     steps:
+      # Through env, not interpolated into the script. `${{ }}` is substituted
+      # before the shell ever sees the line, so a variable holding shell
+      # metacharacters would be executed rather than fetched. Only an admin can
+      # set a repository variable, which makes this cheap insurance and not a
+      # live hole — but the shape is the one worth never writing.
       - name: Ping the site, if one is configured
         if: vars.SITE_URL != ''
-        run: curl -sSIf "${{ vars.SITE_URL }}" | head -1
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: curl -sSIf "$SITE_URL" | head -1
 
       - name: Keep the scheduled workflows enabled
         env:
