@@ -28,6 +28,30 @@ describe('identityKey', () => {
   it('copes with a surname alone', () => {
     expect(identityKey('Zukertort')).toBe('zukertort')
   })
+
+  /*
+   * The point of the key is that two spellings of one player produce it, and
+   * an accent is one of the ways these files disagree — the same person is
+   * "Ljubojevic" in one collection and "Ljubojević" in another.
+   *
+   * Replacing the accented letter with a space, as this once did, split them
+   * into two players: "ljubojevi l" and "ljubojevic l". It also missed the
+   * FIDE directory, whose 120 keys are all ASCII.
+   */
+  it.each([
+    ['Ljubojević, Ljubomir', 'Ljubojevic, Ljubomir'],
+    ['Réti, Richard', 'Reti, Richard'],
+    ['Đurić, Stefan', 'Duric, Stefan'],
+    ['Polgár, Judit', 'Polgar, Judit'],
+  ])('gives %s the same key as its plain spelling', (accented, plain) => {
+    expect(identityKey(accented)).toBe(identityKey(plain))
+  })
+
+  it('folds to the ASCII spelling, not merely to something consistent', () => {
+    // The directory is keyed in ASCII, so the folded form has to be the one
+    // that is actually in it.
+    expect(identityKey('Ljubojević, Ljubomir')).toBe('ljubojevic l')
+  })
 })
 
 describe('mergePlayers', () => {

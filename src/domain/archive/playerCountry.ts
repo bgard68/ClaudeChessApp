@@ -1,3 +1,4 @@
+import { foldName } from './foldName'
 /**
  * Which federation a player represents.
  *
@@ -234,10 +235,14 @@ const ALL: Readonly<Record<string, Federation>> = { ...FEDERATIONS, si: SLOVENIA
 /**
  * Normalises "Nakamura,Hi" and "Fischer, Robert James" to a common key:
  * surname plus first initial.
+ *
+ * Accents are folded to their base letter before anything is discarded. The
+ * table below is written in ASCII, so deleting the accented letter instead —
+ * turning "Réti" into "rti" — meant a name in the list could not be found
+ * under the spelling a PGN actually used.
  */
 function keyFor(playerName: string): string {
-  const cleaned = playerName
-    .toLowerCase()
+  const cleaned = foldName(playerName)
     .replace(/[^a-z, -]/g, '')
     .trim()
 
