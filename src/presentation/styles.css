@@ -2485,11 +2485,15 @@ select:focus-visible,
    and the one that can be reasoned about. */
 
 @media (max-width: 600px) {
+  .app-rail--right small,
+  .app-rail--right .setup-chip-group__label,
   .app-content small,
   .app-content .phase2-kicker,
   .app-content .choice__hint,
   .app-content .setup__step-count,
   .app-content .phase46-choice-panel__step,
+  .app-rail--right .credits__toggle,
+  .app-rail--right .credits__body,
   .app-content .credits__toggle,
   .app-content .credits__body {
     font-size: 0.75rem;
@@ -2499,11 +2503,17 @@ select:focus-visible,
      touch target; the header actions and the credits toggle were the three
      that missed it. Padding rather than height on the toggle, which is a
      text link and would look wrong as a 44px slab. */
-  .app-content .button {
+  /* The rail counts too: the destinations moved out of .app-content when the
+     panel became a column of the shell, and took themselves out of this rule
+     with it. */
+  .app-content .button,
+  .app-rail--right .button,
+  .app-rail--right .setup-chip {
     min-height: var(--tap);
   }
 
-  .app-content .credits__toggle {
+  .app-content .credits__toggle,
+  .app-rail--right .credits__toggle {
     min-height: var(--tap);
     padding-inline: 0.5rem;
   }
@@ -2810,8 +2820,19 @@ select:focus-visible,
    each side the chip rows lost 28px and Opponent and Difficulty went to two
    lines again. 366 keeps them on one. */
 @media (min-width: 861px) {
+  /* One column: the settings are in the rail now, so the body is just the
+     board and it centres between the two rails instead of hugging a column
+     that is no longer beside it. */
   .app-content > .screen--setup .setup__body {
-    grid-template-columns: minmax(0, 1fr) clamp(320px, 26vw, 366px);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-content > .screen--setup .setup__preview {
+    justify-items: center;
+  }
+
+  .app-content > .screen--setup .setup__board-frame {
+    margin-inline: auto;
   }
 
   .app-content > .screen--setup .setup__settings {
@@ -2820,5 +2841,66 @@ select:focus-visible,
 
   .app-content > .screen--setup .setup__options {
     padding: 0;
+  }
+}
+
+/* ------------------------- The right rail -----------------------------
+   A column of the shell, mirroring the left one: full window height, flush
+   to the edge, beside the top bar rather than inside the content area.
+
+   What was here before was a rounded card floating in the content padding.
+   It had the surface of a panel but not the shape of one, which is why it
+   read as content on a background next to a rail that is genuinely
+   structural. */
+
+.app-rail--right {
+  width: 366px;
+  padding: 20px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-right: 0;
+  border-left: 1px solid var(--p46-line, rgba(150, 196, 176, 0.2));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 25%),
+    rgba(4, 13, 11, 0.9);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(22px);
+}
+
+/* Three columns while a screen is using the rail; two when it is empty. */
+.app-shell:has(.app-rail--right:not(:empty)) {
+  grid-template-columns: var(--p46-rail-expanded, 224px) minmax(0, 1fr) 366px;
+}
+
+.app-rail--right:empty {
+  display: none;
+}
+
+/* Inside the rail the panel is the rail, so it drops its own card. */
+.app-rail--right .setup__settings {
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+@media (max-width: 860px) {
+  /* On a phone there is no room beside anything: the rail becomes a block in
+     the page flow, under the board, and the bottom navigation bar keeps its
+     own fixed position. */
+  .app-shell:has(.app-rail--right:not(:empty)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-rail--right {
+    width: 100%;
+    padding: 0 var(--p46-content-padding, 15px);
+    border-left: 0;
+    background: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    overflow: visible;
   }
 }

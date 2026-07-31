@@ -106,9 +106,23 @@ export function AppShell({
           {children}
         </main>
       </div>
+
+      {/*
+        The right rail, empty until a screen fills it.
+
+        Rendered here rather than by the screen so it is a column of the shell
+        like the left rail — full window height, flush to the edge, beside the
+        top bar rather than inside the content. A screen puts its own controls
+        in through a portal, which keeps that screen's state where it already
+        lives while the markup lands out here.
+      */}
+      <aside id={RIGHT_RAIL_ID} className="app-rail app-rail--right" />
     </div>
   )
 }
+
+/** Where a screen portals its controls to reach the right rail. */
+export const RIGHT_RAIL_ID = 'app-right-rail'
 
 function pageTitle(active: NavigationTarget): string {
   switch (active) {

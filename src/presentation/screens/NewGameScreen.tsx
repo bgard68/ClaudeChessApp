@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import type { PieceColor } from '@domain/chess/Piece'
 import { STARTING_FEN } from '@domain/chess/Position'
 import { TIME_CONTROL_PRESETS } from '@domain/clock/TimeControl'
@@ -12,6 +13,7 @@ import { BOARD_THEMES, currentBoardTheme, rememberBoardTheme } from '../boardThe
 import { AppIcon, type AppIconName } from '../components/AppIcon'
 import { ChessBoardView } from '../components/ChessBoardView'
 import { Credits } from '../components/Credits'
+import { RIGHT_RAIL_ID } from '../components/AppShell'
 import { ScreenHeader } from '../components/ScreenHeader'
 
 type ColourChoice = PieceColor | 'random'
@@ -24,7 +26,15 @@ interface NewGameScreenProps {
   readonly onOpenPuzzle: () => void
 }
 
+/** The rail is mounted by the shell, so it is only there after first paint. */
+function useRightRail(): HTMLElement | null {
+  const [rail, setRail] = useState<HTMLElement | null>(null)
+  useEffect(() => setRail(document.getElementById(RIGHT_RAIL_ID)), [])
+  return rail
+}
+
 export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGameScreenProps) {
+  const rightRail = useRightRail()
   const [opponent, setOpponent] = useState<OpponentChoice>('computer')
   const [colour, setColour] = useState<ColourChoice>('white')
   const [timeControlId, setTimeControlId] = useState(DEFAULT_TIME_CONTROL_ID)
@@ -81,6 +91,9 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
           <Credits />
         </section>
 
+      </div>
+
+      {rightRail === null ? null : createPortal(
         <section className="setup__settings" aria-label="Game settings">
           {/*
             The two destinations live here rather than in the screen heading.
@@ -222,8 +235,9 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
           <div className="setup__panel-credits">
             <Credits />
           </div>
-        </section>
-      </div>
+        </section>,
+        rightRail,
+      )}
     </div>
   )
 }
