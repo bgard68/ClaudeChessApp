@@ -88,6 +88,11 @@ export default defineConfig({
   optimizeDeps: { exclude: ['stockfish', '@sqlite.org/sqlite-wasm'] },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    // .tsx as well as .ts: the presentation tests render components through
+    // react-dom/server, which needs no DOM, but they live in .tsx files and a
+    // .ts-only pattern skips them silently — the suite still passes, just
+    // without them. That is how the UI redesign's two component tests went
+    // unrun from the day they were written.
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
   },
 })
