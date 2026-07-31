@@ -11,6 +11,7 @@ import type {
   PlayerSuggestion,
   SearchField,
   SortColumn,
+  ArchiveScope,
 } from '@application/ports/GameArchive'
 import type { GameStore, RecordedGame } from '@application/ports/GameStore'
 import { parseArchivedGame } from '../pgn/parseArchivedGame'
@@ -134,6 +135,12 @@ export class SqliteGameArchive implements GameArchive, GameStore {
     if (base.where !== '') {
       clauses.push(`(${base.where.replace(/^WHERE /, '')})`)
       filter.push(...base.filter)
+    }
+    // The scope is a source filter, and `game_by_source_year` indexes it.
+    if (query.scope === 'reference') {
+      clauses.push("source IN ('championship','famous','career')")
+    } else if (query.scope === 'mine') {
+      clauses.push("source IN ('played','imported')")
     }
     if (query.event !== undefined && query.event !== '') {
       clauses.push('event = ?')
@@ -259,19 +266,28 @@ export class SqliteGameArchive implements GameArchive, GameStore {
     return (await this.countGames()) - before
   }
 
-  async facets(): Promise<ArchiveFacets> {
+  async facets(scope: ArchiveScope = 'all'): Promise<ArchiveFacets> {
     await this.ready()
+
+    // Same split the list uses: filters must describe the games on screen, or
+    // My games offers you championship events it holds none of.
+    const where =
+      scope === 'reference'
+        ? " WHERE source IN ('championship','famous','career')"
+        : scope === 'mine'
+          ? " WHERE source IN ('played','imported')"
+          : ''
 
     const totals = await this.client.selectOne<{
       n: number
       lo: number | null
       hi: number | null
-    }>('SELECT count(*) AS n, min(year) AS lo, max(year) AS hi FROM game')
+    }>(`SELECT count(*) AS n, min(year) AS lo, max(year) AS hi FROM game${where}`)
 
     // Capped: importing the career collections pushes this into the thousands,
     // and a filter listing every one of them helps nobody.
     const events = await this.client.select<{ event: string; games: number }>(
-      `SELECT event, count(*) AS games FROM game
+      `SELECT event, count(*) AS games FROM game${where}
         GROUP BY event ORDER BY games DESC LIMIT ?`,
       [MAX_EVENT_OPTIONS],
     )

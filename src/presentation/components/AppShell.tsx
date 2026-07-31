@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { AppIcon, type AppIconName } from './AppIcon'
 
-type NavigationTarget = 'setup' | 'puzzle' | 'archive'
+type NavigationTarget = 'setup' | 'puzzle' | 'archive' | 'mine'
 
 interface AppShellProps {
   readonly active: NavigationTarget
@@ -21,7 +21,8 @@ interface NavItem {
 const navItems: readonly NavItem[] = [
   { target: 'setup', label: 'Play chess', shortLabel: 'Play', icon: 'play' },
   { target: 'puzzle', label: 'Puzzle of the day', shortLabel: 'Puzzle', icon: 'puzzle' },
-  { target: 'archive', label: 'Browse championships', shortLabel: 'Archive', icon: 'trophy' },
+  { target: 'archive', label: 'Championships', shortLabel: 'Titles', icon: 'trophy' },
+  { target: 'mine', label: 'My games', shortLabel: 'My games', icon: 'save' },
 ]
 
 /**
@@ -131,6 +132,8 @@ function pageTitle(active: NavigationTarget): string {
     case 'puzzle':
       return 'Puzzle of the day'
     case 'archive':
-      return 'Browse championships'
+      return 'Championships'
+    case 'mine':
+      return 'My games'
   }
 }

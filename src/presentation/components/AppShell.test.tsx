@@ -30,13 +30,14 @@ describe('AppShell', () => {
     expect(markup.match(/aria-current="page"/g)).toHaveLength(1)
     // The current item is the one named for the active target, not merely the
     // first that happens to render.
-    expect(markup).toContain('aria-current="page" aria-label="Browse championships"')
+    expect(markup).toContain('aria-current="page" aria-label="Championships"')
   })
 
   it.each([
     ['setup', 'Play'],
     ['puzzle', 'Puzzle of the day'],
-    ['archive', 'Browse championships'],
+    ['archive', 'Championships'],
+    ['mine', 'My games'],
   ] as const)('titles the %s screen "%s" by default', (active, title) => {
     const markup = render(
       <AppShell active={active} onNavigate={vi.fn()}>

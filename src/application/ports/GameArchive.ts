@@ -26,11 +26,23 @@ export const SEARCH_FIELDS: readonly { id: SearchField; label: string }[] = [
   { id: 'year', label: 'Year' },
 ]
 
+/**
+ * Which half of the library a query is asking about.
+ *
+ * The schema has always split these — `source` is one of championship, famous,
+ * career, played or imported — and the behaviour follows the split: only your
+ * own games can be deleted, exporting writes only them, and importing only ever
+ * adds to them. The screens name that division rather than explaining it.
+ */
+export type ArchiveScope = 'all' | 'reference' | 'mine'
+
 /** Columns the list can be ordered by. */
 export type SortColumn = 'event' | 'players' | 'result' | 'year' | 'moves'
 export type SortDirection = 'asc' | 'desc'
 
 export interface ArchiveQuery {
+  /** Defaults to `all`, which is every source. */
+  readonly scope?: ArchiveScope
   readonly search?: string
   /** Defaults to `all`. */
   readonly field?: SearchField
@@ -122,5 +134,6 @@ export interface GameArchive {
   suggestPlayers(prefix: string, limit?: number): Promise<readonly PlayerSuggestion[]>
 
   /** Values the filters can offer, and the shape of the library as a whole. */
-  facets(): Promise<ArchiveFacets>
+  /** Scoped, so a screen only offers filters for games it can show. */
+  facets(scope?: ArchiveScope): Promise<ArchiveFacets>
 }

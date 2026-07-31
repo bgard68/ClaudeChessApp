@@ -126,10 +126,16 @@ function Player({
 }
 
 interface ArchiveScreenProps {
+  /**
+   * Which half of the library this screen is. `reference` is the bundled
+   * collections, read-only; `mine` is what you played or imported, where
+   * importing, exporting and deleting apply and nowhere else.
+   */
+  readonly scope: 'reference' | 'mine'
   readonly onOpenGame: (id: string) => void
 }
 
-export function ArchiveScreen({ onOpenGame }: ArchiveScreenProps) {
+export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
   const { services } = useServices()
   const lookup = useFederations()
   const [search, setSearch] = useState('')
@@ -170,7 +176,7 @@ export function ArchiveScreen({ onOpenGame }: ArchiveScreenProps) {
     let cancelled = false
 
     services.archive
-      .facets()
+      .facets(scope)
       .then((found) => {
         if (!cancelled) setFacets(found)
       })
@@ -181,7 +187,7 @@ export function ArchiveScreen({ onOpenGame }: ArchiveScreenProps) {
     return () => {
       cancelled = true
     }
-  }, [services.archive, reloadToken])
+  }, [services.archive, scope, reloadToken])
 
   useEffect(() => {
     let cancelled = false
@@ -192,6 +198,7 @@ export function ArchiveScreen({ onOpenGame }: ArchiveScreenProps) {
         search: query,
         field,
         playerId: chosen?.id,
+        scope,
         event: filters.event === '' ? undefined : filters.event,
         result: filters.result === '' ? undefined : filters.result,
         yearFrom: filters.yearFrom === '' ? undefined : Number(filters.yearFrom),
@@ -218,7 +225,7 @@ export function ArchiveScreen({ onOpenGame }: ArchiveScreenProps) {
     return () => {
       cancelled = true
     }
-  }, [services.archive, query, field, chosen, filters, sort, direction, offset, limit, reloadToken])
+  }, [services.archive, scope, query, field, chosen, filters, sort, direction, offset, limit, reloadToken])
 
   /** A new question starts the list over at its first page. */
   const restartList = () => {
@@ -474,9 +481,13 @@ export function ArchiveScreen({ onOpenGame }: ArchiveScreenProps) {
   return (
     <div className="screen screen--archive phase3-archive phase46-archive">
       <ScreenHeader
-        kicker="Game library"
-        title="Championship games"
-        description="Search, filter, preview, and replay the bundled archive or games saved on this device."
+        kicker={scope === 'mine' ? 'Your collection' : 'Reference library'}
+        title={scope === 'mine' ? 'My games' : 'Championship games'}
+        description={
+          scope === 'mine'
+            ? 'Games you have played or imported. These are the only ones you can export or delete.'
+            : 'Every world championship game the app ships with. Search, filter, preview, and replay.'
+        }
         metrics={
           <div className="phase46-archive-metrics" aria-live="polite">
             <span><strong>{isLoading ? '—' : total.toLocaleString()}</strong><small>games found</small></span>
@@ -530,6 +541,11 @@ export function ArchiveScreen({ onOpenGame }: ArchiveScreenProps) {
 
             {/* Data management, not browsing — parked behind one quiet button. */}
             <div className="menu" ref={menu}>
+              {/* Import and export only ever touch your own games —
+                  export writes `played` and `imported` and nothing
+                  else — so they belong on that screen alone. */}
+              {scope === 'mine' ? (
+                <>
               <button
                 type="button"
                 className="button"
@@ -565,6 +581,8 @@ export function ArchiveScreen({ onOpenGame }: ArchiveScreenProps) {
                     Export my games
                   </button>
                 </div>
+              ) : null}
+                </>
               ) : null}
             </div>
 
@@ -653,15 +671,25 @@ export function ArchiveScreen({ onOpenGame }: ArchiveScreenProps) {
               </p>
             ) : libraryIsEmpty ? (
               <p className="notice">
-                No games in the library yet.{' '}
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={() => fileInput.current?.click()}
-                >
-                  Import a PGN file
-                </button>{' '}
-                from your computer to begin.
+                {scope === 'mine' ? (
+                  <>
+                    Nothing here yet. Games you play are saved from the
+                    game-over banner, or{' '}
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() => fileInput.current?.click()}
+                    >
+                      import a PGN file
+                    </button>{' '}
+                    from your computer.
+                  </>
+                ) : (
+                  <>
+                    The bundled collections could not be read. Reload the page
+                    to try again.
+                  </>
+                )}
               </p>
             ) : (
               <p className="notice">

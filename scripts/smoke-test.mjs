@@ -61,9 +61,11 @@ try {
 
   await page.goto(URL, { waitUntil: 'networkidle' })
 
-  // The setup screen, whole: board drawn, both journeys offered.
+  // The setup screen, whole: board drawn, and every journey reachable. The
+  // destinations moved from the screen into the navigation rail, so they are
+  // checked by the label the rail actually shows.
   await page.waitForSelector('[data-square="e2"]', { timeout: 20_000 })
-  for (const label of ['Start game', 'Browse championships', 'Puzzle of the day']) {
+  for (const label of ['Start game', 'Titles', 'Puzzle', 'My games']) {
     if ((await page.locator(`button:has-text("${label}")`).count()) === 0) {
       throw new Error(`Setup screen is missing "${label}".`)
     }
