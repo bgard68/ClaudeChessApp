@@ -1664,11 +1664,19 @@ h2 {
     grid-template-rows: auto minmax(0, 1fr);
   }
 
-  /* Small enough that the next panel peeks above the fold, which is what tells
-     you the column scrolls. */
+  /*
+   * The preview board is as wide as the column and square, which the phase
+   * stylesheet already asks for with width: 100% and aspect-ratio: 1/1.
+   *
+   * It was capped at min(23dvh, 46vw) — 46vw being about half the width,
+   * chosen when the preview sat beside the settings rather than above them.
+   * Stacked, that reads as a small board floating in a wide empty column: on
+   * a 360px screen it came out 165px, under half the width available. The cap
+   * won only because this file loads after the phase sheets.
+   */
   .setup__preview .board-area {
     flex: 0 0 auto;
-    height: min(23dvh, 46vw);
+    height: auto;
   }
 }
 
@@ -2461,5 +2469,455 @@ select:focus-visible,
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* ------------------------- Phone legibility ---------------------------
+   Last in the file, and deliberately: this is a floor, and a floor only
+   works if nothing overrides it afterwards.
+
+   The redesign's type scale was drawn for a desktop panel and carried to
+   the phone unchanged — 33 separate elements rendered below 12px on a
+   360px screen, down to 10.6px, across twenty-odd rules in four
+   stylesheets. Correcting each at its source would mean touching every one
+   of them and re-checking every desktop layout that depends on it. A floor
+   applied only where the reading distance is short is the smaller change
+   and the one that can be reasoned about. */
+
+@media (max-width: 600px) {
+  .app-rail--right small,
+  .app-rail--right .setup-chip-group__label,
+  .app-content small,
+  .app-content .phase2-kicker,
+  .app-content .choice__hint,
+  .app-content .setup__step-count,
+  .app-content .phase46-choice-panel__step,
+  .app-rail--right .credits__toggle,
+  .app-rail--right .credits__body,
+  .app-content .credits__toggle,
+  .app-content .credits__body {
+    font-size: 0.75rem;
+  }
+
+  /* The project sets --tap at 44px and calls it the minimum comfortable
+     touch target; the header actions and the credits toggle were the three
+     that missed it. Padding rather than height on the toggle, which is a
+     text link and would look wrong as a 44px slab. */
+  /* The rail counts too: the destinations moved out of .app-content when the
+     panel became a column of the shell, and took themselves out of this rule
+     with it. */
+  .app-content .button,
+  .app-rail--right .button,
+  .app-rail--right .setup-chip {
+    min-height: var(--tap);
+  }
+
+  .app-content .credits__toggle,
+  .app-rail--right .credits__toggle {
+    min-height: var(--tap);
+    padding-inline: 0.5rem;
+  }
+
+  /* The heading stack — back button, kicker, title, description, metrics —
+     came to 197px before any content on an 800px screen. The description
+     repeats what the screen already shows and is the honest thing to drop
+     first; the puzzle screen already did exactly this. */
+  .screen-header__description {
+    display: none;
+  }
+}
+
+/* -------------------------- Setup chips -------------------------------
+   Ten presets used to be ten full-width rows, each repeating its category
+   underneath the label — "Blitz" three times running — which made this the
+   tallest panel on the setup screen by a wide margin.
+
+   The category is now said once per group and the labels sit several to a
+   line. Same information, and the panel is roughly a third of its height.
+   Auto-fit rather than a fixed column count so it holds four across on a
+   desktop panel and two on a phone without a second breakpoint. */
+
+.setup-chip-group + .setup-chip-group {
+  margin-top: 0.7rem;
+}
+
+.setup-chip-group__label {
+  display: block;
+  margin-bottom: 0.35rem;
+  /* 12px, the floor set for phones further down — no point adding five new
+     labels below it while removing thirty-three others. */
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.setup-chip-row {
+  /* Flex, not grid: a uniform grid gives "Another player" and "3" the same
+     cell, so the short labels waste most of theirs and the long ones wrap.
+     Sized to their content the chips pack, which is what fits the settings
+     into one screen. */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.setup-chip {
+  min-height: var(--tap);
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  cursor: pointer;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  touch-action: manipulation;
+}
+
+.setup-chip:hover {
+  background: var(--surface-hover);
+}
+
+.setup-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.setup-chip--selected {
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+
+/* The board themes are the one group where the colour is the information and
+   the name is not, so the chip is the swatch. The name survives as the
+   accessible label and the tooltip. */
+.setup-chip--swatch {
+  padding: 5px;
+  line-height: 0;
+}
+
+.setup-chip--swatch .swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+}
+
+/* ------------------- Setup: board and settings ------------------------
+   Closer together and a narrower settings column.
+
+   Four rules set these columns — this file, phase2, phase3 and phase4-6 —
+   and phase4-6 won at minmax(430px, 1.1fr) minmax(410px, 0.9fr) with a gap
+   that clamped up to 32px. Chips need far less width than the stacked rows
+   they replaced, so the column gives its space back to the board. Specific
+   enough to settle it here rather than adding a fifth voice to the argument. */
+
+@media (min-width: 861px) {
+  .app-content > .screen--setup .setup__body {
+    grid-template-columns: minmax(0, 1fr) clamp(280px, 24vw, 330px);
+    gap: clamp(12px, 1.2vw, 18px);
+  }
+}
+
+/* The options list is a single column of full-width groups.
+
+   It was a two-column grid, which is right for five boxed panels and wrong
+   for nine label-and-chips rows: each group landed in a 142px cell, so every
+   chip wrapped onto its own line and the list came to 1090px in a 414px box.
+   One column gives each row the full 330px and lets the chips sit side by
+   side, which is the whole point of them. */
+.app-content > .screen--setup .setup__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* 44px is a finger's target, not a cursor's. Where there is a fine pointer
+   AND the room of a desktop layout, the chips step down — which is what buys
+   the last of the height the settings needed to fit without scrolling.
+   The width test is not redundant: `pointer: fine` is what an emulated phone
+   in a desktop browser reports, so on its own it takes 10px off every target
+   on a real narrow screen too. Phones keep the full 44px either way. */
+@media (min-width: 861px) and (pointer: fine) {
+  .setup-chip {
+    min-height: 34px;
+  }
+
+  .setup-chip--swatch .swatch {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* The options list keeps padding meant for boxed panels with their own
+   borders. The groups have no box, so the padding is width the chips could
+   be using — and at 295px of usable row the Opponent and Difficulty groups
+   each missed fitting on one line by under twenty pixels. */
+@media (min-width: 861px) {
+  .app-content > .screen--setup .setup__options {
+    padding: 2px 0 0;
+  }
+
+  .app-content > .screen--setup .setup-chip {
+    padding-inline: 0.45rem;
+  }
+
+  .app-content > .screen--setup .setup-chip-group + .setup-chip-group {
+    margin-top: 0.5rem;
+  }
+}
+
+/* ------------------ Setup: one panel on the right ---------------------
+   Puzzle of the day, Browse championships, the settings and Start game are
+   one column now. They used to be two: the destinations sat in the screen
+   heading, above the board, so the right-hand side had two different left
+   edges 42px apart and neither lined up with the other.
+
+   The board moves across to meet the panel. It cannot grow into that space
+   — it is square and bounded by the height, not the width — so the 250px it
+   was floating in becomes one margin on the left instead of a gap down the
+   middle. */
+
+@media (min-width: 861px) {
+  .app-content > .screen--setup .setup__settings {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  /* The board takes the preview heading's room. "Live preview / Your board"
+     labels a board that is plainly a board, and the perspective it also
+     carried is already stated in the summary underneath it. */
+  .app-content > .screen--setup .phase46-preview-heading {
+    display: none;
+  }
+
+  /* And the screen description with it. "Configure the opponent, seat, clock
+     and board" describes five labelled groups that now say so themselves,
+     and the board is the thing competing for the height. */
+  .app-content > .screen--setup .screen-header__description {
+    display: none;
+  }
+
+  .app-content > .screen--setup .setup__preview {
+    justify-items: end;
+  }
+
+  /* The frame takes the flexible row; credits is the fixed one under it. */
+  .app-content > .screen--setup .setup__preview {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  /* The frame takes what is left after the summary and the credits, rather
+     than its own square and then some: it was 569px tall in a 574px column
+     that also had 40px of text under it, so the column overflowed by 35 and
+     the board sat lower than the panel beside it. */
+  .app-content > .screen--setup .setup__board-frame {
+    margin-left: auto;
+    min-height: 0;
+    /* On the item as well as the container: the frame is given align-self
+       centre by name elsewhere, and a container's align-items does not
+       override an item that states its own. */
+    align-self: stretch;
+    /* Square, so the board is bounded by the column's height rather than by
+       whatever width the frame happened to shrink to. Stretched but not
+       squared, the frame was 668 tall and 521 wide, and the board — which
+       takes the smaller of the two to stay square — came out 493. */
+    aspect-ratio: 1 / 1;
+    width: auto;
+  }
+}
+
+.setup__destinations {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.setup__destinations .button {
+  justify-content: center;
+  padding-inline: 0.5rem;
+}
+
+/* Shorter only where the chips are, and for the same reason: a cursor does
+   not need 44px, a finger does. Gated on width as well as pointer, because
+   an emulated phone reports a fine pointer too. */
+@media (min-width: 861px) and (pointer: fine) {
+  .setup__destinations .button {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 600px) {
+  .setup__destinations {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ------------------ Setup: the board takes the room ---------------------
+   The screen heading is the last thing between the board and more size.
+   "NEW GAME / Choose your match" sits directly under a top bar already
+   reading "Local chess studio / New game" — the same screen named twice,
+   forty pixels apart, above the thing the screen is actually for.
+
+   Hidden rather than deleted: it stays the page's h1 for a screen reader,
+   which the top bar's <p> is not. Sighted users lose a duplicate; nobody
+   loses the heading.
+
+   Desktop only. On a phone the page scrolls, height is not the constraint,
+   and the heading is the only thing naming the screen once the top bar is
+   gone. */
+@media (min-width: 861px) {
+  .app-content > .screen--setup > .screen-header {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* The credits go under the panel, not under the board — 22px the board
+     could not otherwise reach, since it is bounded by its column's height. */
+  .app-content > .screen--setup .setup__preview {
+    grid-template-rows: minmax(0, 1fr);
+    /* Stretch, not centre. Centred, the frame kept its content height and
+       sat in the middle of the column — 521px of board in a 668px row, with
+       147px of nothing above and below it. The board is bounded by its
+       column, so the column has to actually give it the column. */
+    align-items: stretch;
+  }
+
+  .app-content > .screen--setup .setup__preview > .credits {
+    display: none;
+  }
+}
+
+.setup__panel-credits {
+  display: none;
+}
+
+@media (min-width: 861px) {
+  .setup__panel-credits {
+    display: block;
+    margin-top: 0.4rem;
+  }
+}
+
+/* -------------------- Setup: the panel reads as one --------------------
+   The settings already carried a surface — background, border, radius,
+   shadow — and no padding at all, so every row ran to its edges and the
+   container disappeared into the page behind it. It looked like content on a
+   background rather than a panel beside the rail.
+
+   Padding costs width, so the column takes some back: at 330px with 14px
+   each side the chip rows lost 28px and Opponent and Difficulty went to two
+   lines again. 366 keeps them on one. */
+@media (min-width: 861px) {
+  /* One column: the settings are in the rail now, so the body is just the
+     board and it centres between the two rails instead of hugging a column
+     that is no longer beside it. */
+  .app-content > .screen--setup .setup__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-content > .screen--setup .setup__preview {
+    justify-items: center;
+  }
+
+  .app-content > .screen--setup .setup__board-frame {
+    margin-inline: auto;
+  }
+
+  .app-content > .screen--setup .setup__settings {
+    padding: 14px;
+  }
+
+  .app-content > .screen--setup .setup__options {
+    padding: 0;
+  }
+}
+
+/* ------------------------- The right rail -----------------------------
+   A column of the shell, mirroring the left one: full window height, flush
+   to the edge, beside the top bar rather than inside the content area.
+
+   What was here before was a rounded card floating in the content padding.
+   It had the surface of a panel but not the shape of one, which is why it
+   read as content on a background next to a rail that is genuinely
+   structural. */
+
+.app-rail--right {
+  width: 366px;
+  padding: 20px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-right: 0;
+  border-left: 1px solid var(--p46-line, rgba(150, 196, 176, 0.2));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 25%),
+    rgba(4, 13, 11, 0.9);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(22px);
+}
+
+/* Three columns while a screen is using the rail; two when it is empty. */
+.app-shell:has(.app-rail--right:not(:empty)) {
+  grid-template-columns: var(--p46-rail-expanded, 224px) minmax(0, 1fr) 366px;
+}
+
+.app-rail--right:empty {
+  display: none;
+}
+
+/* Inside the rail the panel is the rail, so it drops its own card. */
+.app-rail--right .setup__settings {
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+@media (max-width: 860px) {
+  /* On a phone there is no room beside anything: the rail becomes a block in
+     the page flow, under the board, and the bottom navigation bar keeps its
+     own fixed position. */
+  .app-shell:has(.app-rail--right:not(:empty)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /*
+   * The right rail is not the navigation bar.
+   *
+   * It carries both classes, and below 860px `.app-rail` is turned into the
+   * fixed 72px bar across the bottom of the screen — so the settings panel
+   * became a 72px strip pinned under the real navigation, with everything in
+   * it clipped away. The whole of it was missing from a phone: no
+   * destinations, no choices, no Start game, and a page exactly one screen
+   * tall because there was nothing left to scroll to.
+   *
+   * Everything the bar rule sets has to be given back, not just the parts
+   * that looked wrong.
+   */
+  .app-rail--right {
+    position: static;
+    inset: auto;
+    z-index: auto;
+    width: 100%;
+    height: auto;
+    padding: 0 var(--p46-content-padding, 15px);
+    border: 0;
+    background: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    overflow: visible;
   }
 }

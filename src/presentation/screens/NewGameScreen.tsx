@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import type { PieceColor } from '@domain/chess/Piece'
 import { STARTING_FEN } from '@domain/chess/Position'
 import { TIME_CONTROL_PRESETS } from '@domain/clock/TimeControl'
@@ -12,6 +13,7 @@ import { BOARD_THEMES, currentBoardTheme, rememberBoardTheme } from '../boardThe
 import { AppIcon, type AppIconName } from '../components/AppIcon'
 import { ChessBoardView } from '../components/ChessBoardView'
 import { Credits } from '../components/Credits'
+import { RIGHT_RAIL_ID } from '../components/AppShell'
 import { ScreenHeader } from '../components/ScreenHeader'
 
 type ColourChoice = PieceColor | 'random'
@@ -24,7 +26,15 @@ interface NewGameScreenProps {
   readonly onOpenPuzzle: () => void
 }
 
+/** The rail is mounted by the shell, so it is only there after first paint. */
+function useRightRail(): HTMLElement | null {
+  const [rail, setRail] = useState<HTMLElement | null>(null)
+  useEffect(() => setRail(document.getElementById(RIGHT_RAIL_ID)), [])
+  return rail
+}
+
 export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGameScreenProps) {
+  const rightRail = useRightRail()
   const [opponent, setOpponent] = useState<OpponentChoice>('computer')
   const [colour, setColour] = useState<ColourChoice>('white')
   const [timeControlId, setTimeControlId] = useState(DEFAULT_TIME_CONTROL_ID)
@@ -53,18 +63,6 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
         kicker="New game"
         title="Choose your match"
         description="Configure the opponent, seat, clock, and board before the first move."
-        actions={
-          <>
-            <button type="button" className="button" onClick={onOpenPuzzle}>
-              <AppIcon name="puzzle" size={17} />
-              Puzzle of the day
-            </button>
-            <button type="button" className="button" onClick={onBrowseArchive}>
-              <AppIcon name="trophy" size={17} />
-              Browse championships
-            </button>
-          </>
-        }
       />
 
       <div className="setup__body">
@@ -89,119 +87,105 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
               legalMoves={[]}
             />
           </div>
-          <p id="setup-summary" className="setup__summary" aria-live="polite">
-            {summary}
-          </p>
+
           <Credits />
         </section>
 
+      </div>
+
+      {rightRail === null ? null : createPortal(
         <section className="setup__settings" aria-label="Game settings">
-          <div className="setup__settings-heading">
-            <div>
-              <p className="phase2-kicker">Game settings</p>
-              <h2>Ready your board</h2>
-            </div>
-            <span className="setup__step-count">5 choices</span>
-          </div>
+          {/*
+            The two destinations live here rather than in the screen heading.
+            In the heading they sat above the board and left the settings
+            beginning 42px to their right, so nothing on the right-hand side
+            lined up with anything else on it. In the panel they share its
+            edges, and the heading is left to name the screen.
+          */}
+          <nav className="setup__destinations" aria-label="Other screens">
+            <button type="button" className="button" onClick={onOpenPuzzle}>
+              <AppIcon name="puzzle" size={17} />
+              Puzzle of the day
+            </button>
+            <button type="button" className="button" onClick={onBrowseArchive}>
+              <AppIcon name="trophy" size={17} />
+              Browse championships
+            </button>
+          </nav>
 
           <div className="setup__options">
-            <Panel
-              index={1}
-              title="Opponent"
-              description="Choose who controls the other side."
-              icon="computer"
-            >
-              <Choice
+            <ChipGroup label="Opponent">
+              <Chip
                 label="Another player"
-                hint="Share this device"
                 isSelected={opponent === 'human'}
                 onSelect={() => setOpponent('human')}
               />
-              <Choice
+              <Chip
                 label="Computer"
-                hint="Stockfish, offline"
                 isSelected={opponent === 'computer'}
                 onSelect={() => setOpponent('computer')}
               />
-              <Choice
-                label="Computer vs computer"
-                hint="Watch Stockfish play itself"
+              <Chip
+                label="Watch it play"
+                title="Computer vs computer — watch Stockfish play itself"
                 isSelected={opponent === 'engines'}
                 onSelect={() => setOpponent('engines')}
               />
-            </Panel>
+            </ChipGroup>
 
             {opponent !== 'human' ? (
-              <Panel
-                index={2}
-                title="Difficulty"
-                description="Tune Stockfish for the kind of game you want."
-                icon="sparkles"
-              >
+              <ChipGroup label="Difficulty">
                 {DIFFICULTY_LEVELS.map((level) => (
-                  <Choice
+                  <Chip
                     key={level.id}
-                    label={level.rating === null ? level.label : `${level.label} · ${level.rating}`}
-                    hint={level.description}
+                    label={level.rating === null ? 'Max' : String(level.rating)}
+                    title={`${level.label} — ${level.description}`}
                     isSelected={difficultyId === level.id}
                     onSelect={() => setDifficultyId(level.id)}
                   />
                 ))}
-              </Panel>
+              </ChipGroup>
             ) : null}
 
-            <Panel
-              index={opponent === 'human' ? 2 : 3}
-              title={opponent === 'computer' ? 'Your colour' : 'Board faces'}
-              description="Set the opening orientation."
-              icon="user"
-            >
-              <Choice
+            <ChipGroup label={opponent === 'computer' ? 'You play' : 'Board faces'}>
+              <Chip
                 label="White"
                 isSelected={colour === 'white'}
                 onSelect={() => setColour('white')}
               />
-              <Choice
+              <Chip
                 label="Black"
                 isSelected={colour === 'black'}
                 onSelect={() => setColour('black')}
               />
-              <Choice
+              <Chip
                 label="Random"
                 isSelected={colour === 'random'}
                 onSelect={() => setColour('random')}
               />
-            </Panel>
+            </ChipGroup>
 
-            <Panel
-              index={opponent === 'human' ? 3 : 4}
-              title="Time control"
-              description="Pick a relaxed game or a faster test."
-              icon="clock"
-            >
+            <ChipGroup label="Clock">
               {TIME_CONTROL_PRESETS.map((option) => (
-                <Choice
+                <Chip
                   key={option.id}
                   label={option.label}
-                  hint={option.category}
+                  title={option.category}
                   isSelected={timeControlId === option.id}
                   onSelect={() => setTimeControlId(option.id)}
                 />
               ))}
-            </Panel>
+            </ChipGroup>
 
-            <Panel
-              index={opponent === 'human' ? 4 : 5}
-              title="Board colours"
-              description="Choose a board theme for every game screen."
-              icon="palette"
-            >
+            <ChipGroup label="Board">
               {BOARD_THEMES.map((theme) => (
                 <button
                   key={theme.id}
                   type="button"
-                  className={`choice choice--swatch${themeId === theme.id ? ' choice--selected' : ''}`}
+                  className={`setup-chip setup-chip--swatch${themeId === theme.id ? ' setup-chip--selected' : ''}`}
                   aria-pressed={themeId === theme.id}
+                  aria-label={theme.label}
+                  title={theme.label}
                   onClick={() => {
                     rememberBoardTheme(theme.id)
                     setThemeId(theme.id)
@@ -213,11 +197,9 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
                     <i style={{ background: theme.dark }} />
                     <i style={{ background: theme.light }} />
                   </span>
-                  <span className="choice__label">{theme.label}</span>
-                  <SelectedMark selected={themeId === theme.id} />
                 </button>
               ))}
-            </Panel>
+            </ChipGroup>
           </div>
 
           <footer className="setup__actions">
@@ -235,7 +217,9 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
                 {BOARD_THEMES.find((theme) => theme.id === themeId)?.label ?? 'Board'}
               </span>
             </div>
-            <p className="setup__action-summary">{summary}</p>
+            <p id="setup-summary" className="setup__action-summary" aria-live="polite">
+              {summary}
+            </p>
             <button
               type="button"
               className="button button--primary button--large setup__start"
@@ -247,79 +231,74 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
               <span className="phase46-button-arrow" aria-hidden="true">→</span>
             </button>
           </footer>
-        </section>
+
+          <div className="setup__panel-credits">
+            <Credits />
+          </div>
+        </section>,
+        rightRail,
+      )}
+    </div>
+  )
+}
+
+/**
+ * One labelled row of choices, kept local because it is specific to setup.
+ *
+ * Replaces the boxed, numbered panel each choice used to sit in. Five panels,
+ * each with a step badge, an icon, a title, a description sentence and a
+ * column of full-width rows carrying a second line apiece, came to 1744px of
+ * settings in a 641px column — nearly three screens of scrolling to make five
+ * decisions. The label and the choices are what the decision needs; the rest
+ * was chrome around it.
+ */
+function ChipGroup({
+  label,
+  children,
+}: {
+  readonly label: string
+  readonly children: ReactNode
+}) {
+  return (
+    <div className="setup-chip-group">
+      <span className="setup-chip-group__label">{label}</span>
+      <div className="setup-chip-row" role="group" aria-label={label}>
+        {children}
       </div>
     </div>
   )
 }
 
-/** One labelled group of choices, kept local because it is specific to setup. */
-function Panel({
-  index,
-  title,
-  description,
-  icon,
-  children,
-}: {
-  readonly index: number
-  readonly title: string
-  readonly description: string
-  readonly icon: AppIconName
-  readonly children: ReactNode
-}) {
-  return (
-    <section className="panel phase46-choice-panel">
-      <header className="phase46-choice-panel__heading">
-        <span className="phase46-choice-panel__step" aria-hidden="true">{index}</span>
-        <span className="phase46-choice-panel__icon" aria-hidden="true">
-          <AppIcon name={icon} size={17} />
-        </span>
-        <span>
-          <h3 className="panel__title">{title}</h3>
-          <small>{description}</small>
-        </span>
-      </header>
-      <div className="panel__options" role="group" aria-label={title}>
-        {children}
-      </div>
-    </section>
-  )
-}
-
-function Choice({
+/**
+ * `title` carries what the old hint line said — the difficulty's description,
+ * what "watch it play" means — as a tooltip rather than a permanent second
+ * line. Present for anyone who wants it, costing no height for everyone else.
+ */
+function Chip({
   label,
-  hint,
+  title,
   isSelected,
   onSelect,
 }: {
   readonly label: string
-  readonly hint?: string
+  readonly title?: string
   readonly isSelected: boolean
   readonly onSelect: () => void
 }) {
   return (
     <button
       type="button"
-      className={`choice${isSelected ? ' choice--selected' : ''}`}
+      className={`setup-chip${isSelected ? ' setup-chip--selected' : ''}`}
       aria-pressed={isSelected}
+      title={title}
       onClick={onSelect}
     >
-      <span className="choice__copy">
-        <span className="choice__label">{label}</span>
-        {hint ? <span className="choice__hint">{hint}</span> : null}
-      </span>
-      <SelectedMark selected={isSelected} />
+      {label}
     </button>
   )
 }
 
-function SelectedMark({ selected }: { readonly selected: boolean }) {
-  return (
-    <span className="phase46-selected-mark" aria-hidden="true">
-      {selected ? <AppIcon name="check" size={13} /> : null}
-    </span>
-  )
-}
+
 
 function summarise(
   opponent: OpponentChoice,

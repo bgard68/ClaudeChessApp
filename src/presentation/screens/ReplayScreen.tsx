@@ -12,10 +12,9 @@ import { useObservableStore } from '../hooks/useObservableStore'
 
 interface ReplayScreenProps {
   readonly session: ReplaySession
-  readonly onBack: () => void
 }
 
-export function ReplayScreen({ session, onBack }: ReplayScreenProps) {
+export function ReplayScreen({ session }: ReplayScreenProps) {
   const state = useObservableStore(session)
   const { game } = state
 
@@ -64,8 +63,6 @@ export function ReplayScreen({ session, onBack }: ReplayScreenProps) {
         kicker="Championship replay"
         title={`${game.white} vs ${game.black}`}
         description={`${detail.join(' · ')} · ${describeOutcome(game.outcome)}`}
-        onBack={onBack}
-        backLabel="Back to championships"
         metrics={
           <div className="phase3-replay__position-summary phase46-replay__position-summary" aria-live="polite">
             <span className="phase46-replay__position-icon" aria-hidden="true">

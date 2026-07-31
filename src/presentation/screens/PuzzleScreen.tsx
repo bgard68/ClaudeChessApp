@@ -25,11 +25,7 @@ type Phase =
 
 type SolveStatus = 'solving' | 'wrong' | 'solved'
 
-interface PuzzleScreenProps {
-  readonly onBack: () => void
-}
-
-export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
+export function PuzzleScreen() {
   const { services, factory } = useServices()
   const rules = services.rules
   const today = useMemo(() => dayKey(new Date()), [])
@@ -158,8 +154,6 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
         // Repeating the destination stacked the same two lines twice.
         title="Today’s position"
         description="Find the forcing continuation composed locally by Stockfish."
-        onBack={onBack}
-        backLabel="Back to play"
         metrics={
           <div className="phase2-puzzle-metrics phase46-puzzle-metrics">
             <span>
