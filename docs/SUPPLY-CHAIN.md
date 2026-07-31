@@ -188,6 +188,35 @@ pattern it removed.
 gh api repos/actions/github-script/releases/tags/v9.0.0 --jq .body
 ```
 
+### One action Dependabot no longer watches
+
+`Azure/static-web-apps-deploy` is in `dependabot.yml`'s `ignore` list, and the
+reason is worth knowing before someone helpfully removes it.
+
+That repository has **two refs named `v1`**:
+
+| Ref | Commit | Date |
+| --- | --- | --- |
+| tag `v1` | `1a947af` | 2021-03-03 |
+| branch `v1` | `4d27395` | 2024-09-11 — what the pin carries |
+
+Microsoft tagged `v1` once and then kept developing on a branch of the same
+name. Dependabot follows tags, so it proposed the 2021 commit as an *upgrade*
+over the 2024 one — a three-and-a-half year rollback of the step that performs
+the deploy. It was caught because the SHA in the pull request had an older
+commit date than the SHA it replaced.
+
+**The cost is real:** nothing now watches that action automatically. Check it by
+hand when touching the deploy, and pin to whichever ref is actually newer rather
+than to the tag by reflex:
+
+```bash
+gh api repos/Azure/static-web-apps-deploy/commits/v1 --jq .sha
+```
+
+The general lesson, which applies to any SHA-pinned action: **compare commit
+dates, not just SHAs.** A bump is not automatically forward.
+
 ### Re-pinning after a Dependabot bump
 
 Dependabot updates the SHA and the comment together, so normally there is
