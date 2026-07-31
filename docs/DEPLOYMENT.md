@@ -25,9 +25,23 @@ and it lives in GitHub's secret store — never in this repository.
 ## After that
 
 Every push to `main` runs `.github/workflows/azure-static-web-apps.yml`:
-install, typecheck, tests, build, deploy. The build is gated by the same
-checks as the local pre-commit hook, so nothing can deploy that could not
-have been committed.
+install, typecheck, tests, audit, gitleaks, build, smoke test, deploy. The
+build is gated by the same checks as the local pre-commit hook, so nothing can
+deploy that could not have been committed.
+
+Two details of that install are load-bearing rather than incidental, and
+[SUPPLY-CHAIN.md](SUPPLY-CHAIN.md) explains both in full:
+
+- Dependencies come from `npm ci` against the committed lock. What deploys is
+  the tree that was reviewed, not whatever npm would resolve at deploy time.
+  Regenerating that lock has an order that must be followed — see
+  [CLAUDE.md](../CLAUDE.md#the-lock-file) before you touch it.
+- Every action is pinned to a commit SHA, so a moved tag cannot change what
+  runs in the job that holds the deploy token.
+
+`main` cannot be pushed to through a pull request without `gate` and `Analyze`
+passing, so in normal use the deploy only ever runs on a commit that has
+already been through the full gate.
 
 To rehearse locally without deploying:
 
