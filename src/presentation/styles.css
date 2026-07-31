@@ -59,7 +59,6 @@ h2 {
 /* ---------- Screen shells ----------
    Each screen owns exactly one viewport. `dvh` tracks the mobile toolbar as it
    collapses, which `vh` does not. */
-
 .screen {
   height: 100vh;
   height: 100dvh;
@@ -91,12 +90,15 @@ h2 {
 
 /*
  * On a phone a screen is as tall as its content and the page scrolls; the
- * navigation is a fixed bar over the bottom, not a column beside it.
+ * navigation is a fixed bar over the bottom,
+not a column beside it.
  *
- * The phase stylesheet says exactly this already, and loses: main.tsx imports
- * App — and through it the phase sheets — before this file, so `.screen` above
- * takes the tie and pins every screen to 100dvh. Height-locked, their content
- * overflowed underneath the fixed bar, which is why the last board-colour
+ * The phase stylesheet says exactly this already,
+so `.screen` above
+ * takes the tie and pins every screen to 100dvh. Height-locked,
+their content
+ * overflowed underneath the fixed bar,
+which is why the last board-colour
  * buttons on setup and the end of the archive list could not be reached.
  *
  * Two classes deep so it also outranks `.app-content > .screen`.
@@ -209,21 +211,11 @@ h2 {
 }
 
 /* ---------- Setup ---------- */
-
 .screen--setup {
   max-width: 1100px;
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
-}
-
-.setup__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  flex: 0 0 auto;
 }
 
 .setup__body {
@@ -246,39 +238,12 @@ h2 {
   flex: 1 1 auto;
 }
 
-.setup__summary {
-  margin: 0;
-  text-align: center;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  flex: 0 0 auto;
-}
-
-.setup__nav {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
 /* ---------- Puzzle of the day ---------- */
-
 .screen--puzzle {
   max-width: 760px;
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
-}
-
-.puzzle__header {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  flex: 0 0 auto;
-}
-
-.puzzle__header h1 {
-  flex: 1 1 auto;
 }
 
 /* The board absorbs whatever height the column has left — and grows back
@@ -287,24 +252,6 @@ h2 {
 .screen--puzzle .board-area {
   flex: 1 1 auto;
   min-height: 0;
-}
-
-.streak-pill {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--warning);
-  border: 1px solid var(--warning);
-  border-radius: 999px;
-  padding: 0.25rem 0.6rem;
-  white-space: nowrap;
-}
-
-.puzzle__caption {
-  margin: 0;
-  text-align: center;
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  flex: 0 0 auto;
 }
 
 .puzzle__prompt {
@@ -331,8 +278,7 @@ h2 {
   flex: 0 0 auto;
 }
 
-/* Composition takes a dozen seconds; the wait explains itself, centred. */
-.puzzle__generating {
+/* Composition takes a dozen seconds; the wait explains itself {
   margin: auto;
   max-width: 26rem;
   text-align: center;
@@ -347,7 +293,6 @@ h2 {
 /* ---------- Credits ----------
    Collapsed by default and quiet: an acknowledgement of other people's work,
    not something anyone opens the app to read. */
-
 .credits {
   flex: 0 0 auto;
   text-align: center;
@@ -414,8 +359,7 @@ h2 {
   width: 100%;
 }
 
-/* Each decision gets its own box, so the four read as four. */
-.panel {
+/* Each decision gets its own box {
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface-raised);
@@ -423,22 +367,7 @@ h2 {
   flex: 0 0 auto;
 }
 
-.panel__title {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--text-muted);
-  margin: 0 0 0.45rem;
-}
-
-.panel__options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(6.2rem, 1fr));
-  gap: 0.4rem;
-}
-
 /* ---------- Controls ---------- */
-
 .button {
   font: inherit;
   font-size: 0.88rem;
@@ -484,64 +413,6 @@ h2 {
   font-size: 1rem;
 }
 
-.input {
-  font: inherit;
-  /* Below 16px, mobile Safari and Chrome zoom the page on focus. */
-  font-size: 16px;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.4rem 0.6rem;
-  min-height: 38px;
-  min-width: 0;
-  flex: 1 1 12rem;
-}
-
-.choice {
-  font: inherit;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  text-align: left;
-  min-height: 40px;
-  justify-content: center;
-  color: var(--text);
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.45rem 0.6rem;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.choice:hover {
-  background: var(--surface-hover);
-}
-
-.choice--selected {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.choice__label {
-  font-weight: 600;
-  font-size: 0.88rem;
-}
-
-.choice__hint {
-  font-size: 0.72rem;
-  line-height: 1.25;
-  color: var(--text-muted);
-}
-
-/* A board-colour choice shows its colours instead of describing them. */
-.choice--swatch {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-}
-
 .swatch {
   display: grid;
   grid-template-columns: repeat(2, 0.6rem);
@@ -583,7 +454,6 @@ h2 {
 }
 
 /* ---------- Clocks ---------- */
-
 .clock-panel {
   display: flex;
   flex-direction: column;
@@ -635,7 +505,6 @@ h2 {
 }
 
 /* ---------- Move list ---------- */
-
 .play__moves {
   flex: 1 1 auto;
   min-height: 4rem;
@@ -709,7 +578,6 @@ h2 {
 }
 
 /* ---------- Play status ---------- */
-
 .play__status {
   display: flex;
   align-items: center;
@@ -720,18 +588,7 @@ h2 {
   flex: 0 0 auto;
 }
 
-.play__thinking {
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.play__check {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-/* Matches the hint arrow, so the words and the drawing read as one advice. */
-.play__hint {
+/* Matches the hint arrow {
   color: #5896ff;
   font-weight: 600;
 }
@@ -770,7 +627,6 @@ h2 {
    colours it had. Overriding the variables rather than the rules is what lets
    the shared pieces — buttons, notices, badges, the search bar — follow along
    without being forked into archive-only copies. */
-
 .screen--archive {
   /* The sidebar column and the gutter beside it. Named because the header
      lines its title up with the results column, and doing that by eye — a
@@ -826,19 +682,16 @@ h2 {
   max-width: none;
 }
 
-/* Same first column as the body below it, so the title starts exactly where
-   "All games" does. Back sits in the sidebar's column, the title opens the
-   results column, and the tools take what is left. */
-.archive__header {
+/* Same first column as the body below it,
+so the title starts exactly where
+   "All games" does. Back sits in the sidebar's column,
+the title opens the
+   results column {
   display: grid;
   grid-template-columns: var(--sidebar) auto minmax(0, 1fr);
   gap: var(--gutter);
   align-items: center;
   flex: 0 0 auto;
-}
-
-.archive__header > .button {
-  justify-self: start;
 }
 
 /* Scoped to this screen: every other title keeps the colour it had. */
@@ -869,7 +722,6 @@ h2 {
 }
 
 /* ---------- Filter sidebar ---------- */
-
 .filters {
   display: flex;
   flex-direction: column;
@@ -985,7 +837,6 @@ h2 {
 /* ---------- Library stats ----------
    One quiet line pinned to the sidebar's foot. What the current query matched
    is stated by the results heading, right next to the results it counts. */
-
 .stats-line {
   margin: auto 0 0;
   font-size: 0.74rem;
@@ -994,7 +845,6 @@ h2 {
 }
 
 /* ---------- Results ---------- */
-
 .archive__results {
   display: flex;
   flex-direction: column;
@@ -1192,7 +1042,6 @@ h2 {
    The pill takes the colour of the side that won, which is why there is no
    legend anywhere on the screen: light is White, dark is Black, violet is a
    draw. */
-
 .result-pill {
   display: inline-block;
   font-size: 0.74rem;
@@ -1210,7 +1059,6 @@ h2 {
    the text was legible but the shape was invisible, which is half of what a
    pill is for. Brightening the fills instead would have cost the warm/cool
    split that tells a White win from a Black one. */
-
 .result-pill--white {
   background: var(--result-white-bg);
   color: var(--result-white-fg);
@@ -1235,7 +1083,6 @@ h2 {
 }
 
 /* ---------- Small controls ---------- */
-
 .button--small {
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
@@ -1275,7 +1122,6 @@ h2 {
 
 /* ---------- Active filter chips ----------
    Every narrowing in force, said where the results are and dismissible there. */
-
 .active-filters {
   display: flex;
   flex-wrap: wrap;
@@ -1284,7 +1130,6 @@ h2 {
 }
 
 /* ---------- Import/export menu ---------- */
-
 .menu {
   position: relative;
   flex: 0 0 auto;
@@ -1326,7 +1171,6 @@ h2 {
 /* ---------- Game preview pane ----------
    Master/detail on wide screens: the list keeps your place, the pane shows the
    game. The grid only gains this column when the JS layout check adds it. */
-
 .archive__body--preview {
   grid-template-columns: var(--sidebar) minmax(0, 1fr) clamp(280px, 26vw, 380px);
 }
@@ -1415,26 +1259,6 @@ h2 {
   line-height: 1.6;
 }
 
-/* ---------- Replay ---------- */
-
-.replay__header {
-  flex: 0 0 auto;
-}
-
-.replay__header h2 {
-  font-size: 0.98rem;
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--text);
-  margin: 0.4rem 0 0.2rem;
-}
-
-.replay__meta {
-  margin: 0;
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-
 .replay__transport {
   display: flex;
   gap: 0.3rem;
@@ -1465,16 +1289,7 @@ h2 {
   touch-action: manipulation;
 }
 
-.replay__position {
-  margin: 0;
-  font-size: 0.76rem;
-  color: var(--text-muted);
-  text-align: center;
-  flex: 0 0 auto;
-}
-
 /* ---------- Notices ---------- */
-
 .notice {
   margin: 0;
   padding: 0.7rem 0.9rem;
@@ -1545,8 +1360,8 @@ h2 {
     grid-template-rows: minmax(120px, 1fr) auto;
   }
 
-  /* Side by side, because vertical space is the scarce one here. */
-  .clock-panel {
+/* Side by side, because vertical space is the scarce one here. */
+.clock-panel {
     flex-direction: row;
     flex-wrap: wrap;
   }
@@ -1558,12 +1373,12 @@ h2 {
     gap: 0;
   }
 
-  /* Its own line — beside the clocks it reads as a stray label. */
-  .clock-note {
+/* Its own line — beside the clocks it reads as a stray label. */
+.clock-note {
     flex: 1 0 100%;
   }
 
-  /*
+/*
    * The panel is as tall as its content and the page scrolls.
    *
    * It used to be capped at 56dvh and scroll inside itself, which is the older
@@ -1576,7 +1391,7 @@ h2 {
    * Landscape already asked for `max-height: none` further down, for the same
    * reason. This makes it the rule rather than the exception.
    */
-  .play__panel {
+.play__panel {
     max-height: none;
     -webkit-overflow-scrolling: touch;
   }
@@ -1591,9 +1406,9 @@ h2 {
     min-height: var(--tap);
   }
 
-  /* Filters move above the results and lie flat, because a 15rem sidebar and a
+/* Filters move above the results and lie flat, because a 15rem sidebar and a
      table cannot both have the width here. */
-  .archive__body {
+.archive__body {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
   }
@@ -1613,10 +1428,10 @@ h2 {
     flex: 1 1 8rem;
   }
 
-  /* Here the title really is a toggle, and closed is the default: the games
+/* Here the title really is a toggle, and closed is the default: the games
      are what a phone screen is for, and the chips above the results still say
      what is filtered while the controls are away. */
-  .filters__toggle {
+.filters__toggle {
     cursor: pointer;
   }
 
@@ -1637,8 +1452,8 @@ h2 {
     margin: 0;
   }
 
-  /* Move count is not why anyone opens an archive; the rest still fits. */
-  .col-moves {
+/* Move count is not why anyone opens an archive; the rest still fits. */
+.col-moves {
     display: none;
   }
 
@@ -1646,9 +1461,9 @@ h2 {
     width: auto;
   }
 
-  /* No sidebar to line up with down here, so the title closes up behind the
+/* No sidebar to line up with down here, so the title closes up behind the
      Back button and the tools take a row of their own. */
-  .archive__header {
+.archive__header {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
@@ -1658,13 +1473,13 @@ h2 {
     max-width: none;
   }
 
-  /* Board preview on top at a reduced size, panels scrolling beneath it. */
-  .setup__body {
+/* Board preview on top at a reduced size, panels scrolling beneath it. */
+.setup__body {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
   }
 
-  /*
+/*
    * The preview board is as wide as the column and square, which the phase
    * stylesheet already asks for with width: 100% and aspect-ratio: 1/1.
    *
@@ -1674,7 +1489,7 @@ h2 {
    * a 360px screen it came out 165px, under half the width available. The cap
    * won only because this file loads after the phase sheets.
    */
-  .setup__preview .board-area {
+.setup__preview .board-area {
     flex: 0 0 auto;
     height: auto;
   }
@@ -1685,14 +1500,10 @@ h2 {
     padding: 0.5rem;
   }
 
-  /* Players, result and year are what identifies a game on a phone. The event
+/* Players, result and year are what identifies a game on a phone. The event
      goes; it is the longest column and the least distinguishing. */
-  .col-event {
+.col-event {
     display: none;
-  }
-
-  .panel__options {
-    grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
   }
 
   .replay__transport .button {
@@ -1713,7 +1524,7 @@ h2 {
    a usable size. */
 @media (max-width: 900px) and (orientation: landscape) {
   /* Height is the scarce dimension here, so put the board beside the panels. */
-  .setup__body {
+.setup__body {
     grid-template-columns: minmax(0, 1fr) minmax(210px, 46vw);
     grid-template-rows: minmax(0, 1fr);
   }
@@ -1745,7 +1556,6 @@ h2 {
 }
 
 /* ---------- Archive search ---------- */
-
 .archive__heading {
   font-size: 0.9rem;
   text-transform: none;
@@ -1814,7 +1624,6 @@ h2 {
 }
 
 /* ---------- Player in a game row ---------- */
-
 .player {
   display: inline-flex;
   align-items: baseline;
@@ -1849,7 +1658,6 @@ h2 {
 }
 
 /* ---------- Player suggestions ---------- */
-
 .search-bar {
   position: relative;
 }
@@ -1992,8 +1800,6 @@ select:focus-visible,
 .play__panel,
 .filters,
 .game-table-scroll,
-.archive-preview,
-.puzzle__generating,
 .notice,
 .outcome-banner {
   border-color: var(--border);
@@ -2036,7 +1842,6 @@ select:focus-visible,
 }
 
 /* ------------------------------ Main play ------------------------------ */
-
 .screen--play {
   grid-template-columns: minmax(440px, 1fr) clamp(300px, 27vw, 380px);
   gap: clamp(0.8rem, 1.35vw, 1.25rem);
@@ -2172,18 +1977,23 @@ select:focus-visible,
 /* --------------------------- Puzzle of the day ------------------------- */
 
 /*
- * Two rows, one column: the header, then the board-and-panel grid, which owns
+ * Two rows,
+one column: the header,
+then the board-and-panel grid,
+which owns
  * its own columns.
  *
- * This used to be the two-column grid itself, from a markup shape that no
- * longer exists — the redesign moved the board and side panel inside a nested
- * grid. Because this stylesheet loads *after* the phase sheets (main.tsx pulls
- * App, and its imports, before styles.css), the stale definition outranked the
- * new one on equal specificity: the header took column one, the entire puzzle
- * was squeezed into column two, and the side panel — hint button and all —
+ * This used to be the two-column grid itself,
+and its imports,
+the stale definition outranked the
+ * new one on equal specificity: the header took column one,
+the entire puzzle
+ * was squeezed into column two,
+and the side panel — hint button and all —
  * started 47px beyond the right edge of a 1880px window.
  *
- * Centred rather than left-aligned, because the board is the thing being
+ * Centred rather than left-aligned,
+because the board is the thing being
  * looked at and a page-wide screen leaves it stranded against one margin.
  */
 .screen--puzzle {
@@ -2242,7 +2052,6 @@ select:focus-visible,
 }
 
 /* -------------------------- Browse championships ----------------------- */
-
 .screen--archive {
   --surface: #080e18;
   --surface-raised: #101925;
@@ -2260,11 +2069,6 @@ select:focus-visible,
 
   background: transparent;
   gap: 0.8rem;
-}
-
-.archive__header {
-  min-height: 52px;
-  padding: 0.35rem 0;
 }
 
 .screen--archive h1 {
@@ -2345,10 +2149,6 @@ select:focus-visible,
   border-radius: 999px;
 }
 
-.archive-preview {
-  background: var(--surface-raised);
-}
-
 /* ----------------------------- Responsive ------------------------------ */
 
 @media (max-width: 1020px) {
@@ -2385,13 +2185,13 @@ select:focus-visible,
     min-height: 72px;
   }
 
-  /*
+/*
    * On a narrow screen the header and the puzzle grid simply stack and the
    * page scrolls. The explicit ordering that used to live here belonged to the
    * old flat markup; the board and panel are now nested inside the puzzle
    * grid, which orders them itself.
    */
-  .screen--puzzle {
+.screen--puzzle {
     display: flex;
     flex-direction: column;
     height: auto;
@@ -2399,13 +2199,13 @@ select:focus-visible,
     max-width: 760px;
   }
 
-  /*
+/*
    * The board is what the player came for, so it should not start a third of
    * the way down a phone. The title already names the screen and the objective
    * card below repeats the target, which makes the description the honest
    * thing to drop first. Desktop keeps it.
    */
-  .screen--puzzle .screen-header__description {
+.screen--puzzle .screen-header__description {
     display: none;
   }
 
@@ -2448,12 +2248,6 @@ select:focus-visible,
   .play__actions .button,
   .puzzle__actions .button {
     min-height: var(--tap);
-  }
-
-  .puzzle__header h1 {
-    text-align: left;
-    width: 100%;
-    order: 3;
   }
 
   .puzzle__actions {
@@ -2499,14 +2293,14 @@ select:focus-visible,
     font-size: 0.75rem;
   }
 
-  /* The project sets --tap at 44px and calls it the minimum comfortable
+/* The project sets --tap at 44px and calls it the minimum comfortable
      touch target; the header actions and the credits toggle were the three
      that missed it. Padding rather than height on the toggle, which is a
      text link and would look wrong as a 44px slab. */
   /* The rail counts too: the destinations moved out of .app-content when the
      panel became a column of the shell, and took themselves out of this rule
      with it. */
-  .app-content .button,
+.app-content .button,
   .app-rail--right .button,
   .app-rail--right .setup-chip {
     min-height: var(--tap);
@@ -2518,11 +2312,11 @@ select:focus-visible,
     padding-inline: 0.5rem;
   }
 
-  /* The heading stack — back button, kicker, title, description, metrics —
+/* The heading stack — back button, kicker, title, description, metrics —
      came to 197px before any content on an 800px screen. The description
      repeats what the screen already shows and is the honest thing to drop
      first; the puzzle screen already did exactly this. */
-  .screen-header__description {
+.screen-header__description {
     display: none;
   }
 }
@@ -2536,7 +2330,6 @@ select:focus-visible,
    line. Same information, and the panel is roughly a third of its height.
    Auto-fit rather than a fixed column count so it holds four across on a
    desktop panel and two on a phone without a second breakpoint. */
-
 .setup-chip-group + .setup-chip-group {
   margin-top: 0.7rem;
 }
@@ -2592,7 +2385,6 @@ select:focus-visible,
   border-color: var(--accent);
   background: var(--accent-soft);
 }
-
 
 /* The board themes are the one group where the colour is the information and
    the name is not, so the chip is the swatch. The name survives as the
@@ -2688,17 +2480,17 @@ select:focus-visible,
     grid-template-rows: auto minmax(0, 1fr) auto;
   }
 
-  /* The board takes the preview heading's room. "Live preview / Your board"
+/* The board takes the preview heading's room. "Live preview / Your board"
      labels a board that is plainly a board, and the perspective it also
      carried is already stated in the summary underneath it. */
-  .app-content > .screen--setup .phase46-preview-heading {
+.app-content > .screen--setup .phase46-preview-heading {
     display: none;
   }
 
-  /* And the screen description with it. "Configure the opponent, seat, clock
+/* And the screen description with it. "Configure the opponent, seat, clock
      and board" describes five labelled groups that now say so themselves,
      and the board is the thing competing for the height. */
-  .app-content > .screen--setup .screen-header__description {
+.app-content > .screen--setup .screen-header__description {
     display: none;
   }
 
@@ -2706,16 +2498,16 @@ select:focus-visible,
     justify-items: end;
   }
 
-  /* The frame takes the flexible row; credits is the fixed one under it. */
-  .app-content > .screen--setup .setup__preview {
+/* The frame takes the flexible row; credits is the fixed one under it. */
+.app-content > .screen--setup .setup__preview {
     grid-template-rows: minmax(0, 1fr) auto;
   }
 
-  /* The frame takes what is left after the summary and the credits, rather
+/* The frame takes what is left after the summary and the credits, rather
      than its own square and then some: it was 569px tall in a 574px column
      that also had 40px of text under it, so the column overflowed by 35 and
      the board sat lower than the panel beside it. */
-  .app-content > .screen--setup .setup__board-frame {
+.app-content > .screen--setup .setup__board-frame {
     margin-left: auto;
     min-height: 0;
     /* On the item as well as the container: the frame is given align-self
@@ -2731,30 +2523,12 @@ select:focus-visible,
   }
 }
 
-.setup__destinations {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.4rem;
-  margin-bottom: 0.6rem;
-}
-
-.setup__destinations .button {
-  justify-content: center;
-  padding-inline: 0.5rem;
-}
-
 /* Shorter only where the chips are, and for the same reason: a cursor does
    not need 44px, a finger does. Gated on width as well as pointer, because
    an emulated phone reports a fine pointer too. */
 @media (min-width: 861px) and (pointer: fine) {
   .setup__destinations .button {
     min-height: 36px;
-  }
-}
-
-@media (max-width: 600px) {
-  .setup__destinations {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -2783,9 +2557,9 @@ select:focus-visible,
     white-space: nowrap;
   }
 
-  /* The credits go under the panel, not under the board — 22px the board
+/* The credits go under the panel, not under the board — 22px the board
      could not otherwise reach, since it is bounded by its column's height. */
-  .app-content > .screen--setup .setup__preview {
+.app-content > .screen--setup .setup__preview {
     grid-template-rows: minmax(0, 1fr);
     /* Stretch, not centre. Centred, the frame kept its content height and
        sat in the middle of the column — 521px of board in a 668px row, with
@@ -2823,7 +2597,7 @@ select:focus-visible,
   /* One column: the settings are in the rail now, so the body is just the
      board and it centres between the two rails instead of hugging a column
      that is no longer beside it. */
-  .app-content > .screen--setup .setup__body {
+.app-content > .screen--setup .setup__body {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -2852,7 +2626,6 @@ select:focus-visible,
    It had the surface of a panel but not the shape of one, which is why it
    read as content on a background next to a rail that is genuinely
    structural. */
-
 .app-rail--right {
   width: 366px;
   padding: 20px 16px;
@@ -2890,11 +2663,11 @@ select:focus-visible,
   /* On a phone there is no room beside anything: the rail becomes a block in
      the page flow, under the board, and the bottom navigation bar keeps its
      own fixed position. */
-  .app-shell:has(.app-rail--right:not(:empty)) {
+.app-shell:has(.app-rail--right:not(:empty)) {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /*
+/*
    * The right rail is not the navigation bar.
    *
    * It carries both classes, and below 860px `.app-rail` is turned into the
@@ -2907,7 +2680,7 @@ select:focus-visible,
    * Everything the bar rule sets has to be given back, not just the parts
    * that looked wrong.
    */
-  .app-rail--right {
+.app-rail--right {
     position: static;
     inset: auto;
     z-index: auto;

@@ -50,7 +50,6 @@ body {
 }
 
 /* ----------------------------- Application shell ------------------------ */
-
 .phase46-shell {
   grid-template-columns: var(--p46-rail-expanded) minmax(0, 1fr);
   min-height: 100dvh;
@@ -231,10 +230,8 @@ body {
 }
 
 /* -------------------------- Shared interaction polish -------------------- */
-
 .app-shell .button,
 .app-shell .phase2-icon-button,
-.app-shell .choice,
 .app-shell .chip,
 .app-shell .phase2-back-button {
   position: relative;
@@ -293,10 +290,7 @@ body {
 
 .button--danger {
   border-color: rgba(230, 141, 136, 0.32) !important;
-}
-
-.phase2-panel-card,
-.phase46-choice-panel,
+}.phase2-panel-card,
 .phase46-preview,
 .phase46-system-state {
   border-color: var(--p46-line) !important;
@@ -353,7 +347,6 @@ body {
 }
 
 /* ------------------------------- Phase 4: layout ------------------------- */
-
 .phase46-setup,
 .phase46-play,
 .phase46-puzzle,
@@ -443,131 +436,10 @@ body {
     var(--p46-surface);
 }
 
-.phase46-setup .setup__settings-heading {
-  min-height: 66px;
-  padding: 14px 16px 12px;
-}
-
 .phase46-setup .setup__options {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   padding: 12px;
-}
-
-.phase46-setup .phase46-choice-panel {
-  padding: 10px;
-  border-radius: 15px;
-  box-shadow: none;
-}
-
-.phase46-setup .phase46-choice-panel:first-child,
-.phase46-setup .phase46-choice-panel:nth-child(2) {
-  grid-column: 1 / -1;
-}
-
-.phase46-choice-panel__heading {
-  display: grid;
-  grid-template-columns: 22px 28px minmax(0, 1fr);
-  align-items: center;
-  gap: 7px;
-  margin-bottom: 9px;
-}
-
-.phase46-choice-panel__step,
-.phase46-choice-panel__icon {
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--p46-line);
-  background: var(--p46-surface-soft);
-}
-
-.phase46-choice-panel__step {
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  color: var(--p2-muted);
-  font-size: 0.68rem;
-  font-weight: 760;
-}
-
-.phase46-choice-panel__icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 9px;
-  color: var(--p2-accent-strong);
-  background: var(--p46-accent-softer);
-}
-
-.phase46-choice-panel__heading .panel__title {
-  margin: 0;
-  color: var(--p2-text);
-  font-size: 0.77rem;
-}
-
-.phase46-choice-panel__heading small {
-  display: block;
-  margin-top: 2px;
-  overflow: hidden;
-  color: var(--p2-muted);
-  font-size: 0.66rem;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.phase46-setup .panel__options {
-  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
-  gap: 7px;
-}
-
-.phase46-setup .choice {
-  min-height: 45px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 7px 8px 7px 10px;
-  border-color: var(--p46-line);
-  background: rgba(3, 13, 10, 0.48);
-  text-align: left;
-}
-
-.phase46-setup .choice:not(.choice--selected):hover {
-  border-color: var(--p46-line-strong);
-  background: var(--p46-surface-hover);
-  transform: translateY(-1px);
-}
-
-.phase46-setup .choice--selected {
-  border-color: rgba(135, 213, 169, 0.56);
-  background:
-    linear-gradient(145deg, rgba(135, 213, 169, 0.14), rgba(64, 142, 98, 0.09));
-  box-shadow:
-    inset 0 0 0 1px rgba(135, 213, 169, 0.08),
-    0 7px 18px rgba(0, 0, 0, 0.12);
-}
-
-.choice__copy {
-  min-width: 0;
-  display: grid;
-}
-
-.phase46-selected-mark {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--p46-line);
-  border-radius: 50%;
-  color: #072015;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.choice--selected .phase46-selected-mark {
-  border-color: var(--p2-accent);
-  background: var(--p2-accent);
-  box-shadow: 0 0 0 3px rgba(135, 213, 169, 0.09);
 }
 
 .phase46-setup .setup__actions {
@@ -1189,7 +1061,6 @@ body {
 }
 
 /* ------------------------------ Phase 6: motion -------------------------- */
-
 .app-content > .screen,
 .phase46-system-state {
   animation: phase46-screen-in var(--p46-medium) var(--p46-ease) both;
@@ -1335,15 +1206,7 @@ body {
 @media (max-width: 1080px) and (min-width: 861px) {
   .phase46-setup .setup__options {
     grid-template-columns: 1fr;
-  }
-
-  .phase46-setup .phase46-choice-panel:first-child,
-  .phase46-setup .phase46-choice-panel:nth-child(2) {
-    grid-column: auto;
-  }
-
-  .phase46-choice-panel__heading small,
-  .phase46-selection-summary {
+  }.phase46-selection-summary {
     display: none;
   }
 
@@ -1382,34 +1245,12 @@ body {
     grid-template-rows: minmax(0, 1fr) auto auto;
   }
 
-  .phase46-setup .setup__settings-heading {
-    min-height: 50px;
-    padding-block: 9px;
-  }
-
   .phase46-setup .setup__options {
     gap: 7px;
     padding: 8px;
-  }
-
-  .phase46-setup .phase46-choice-panel {
-    padding: 7px;
-  }
-
-  .phase46-choice-panel__heading {
-    margin-bottom: 6px;
-  }
-
-  .phase46-choice-panel__heading small,
-  .phase46-setup .choice__hint,
-  .phase46-selection-summary,
-  .phase46-setup .setup__action-summary {
+  }.phase46-selection-summary,
+.phase46-setup .setup__action-summary {
     display: none;
-  }
-
-  .phase46-setup .choice {
-    min-height: 36px;
-    padding-block: 5px;
   }
 
   .phase46-setup .setup__actions {
@@ -1666,11 +1507,6 @@ body {
     grid-template-columns: 1fr;
   }
 
-  .phase46-setup .phase46-choice-panel:first-child,
-  .phase46-setup .phase46-choice-panel:nth-child(2) {
-    grid-column: auto;
-  }
-
   .phase46-selection-summary {
     grid-template-columns: 1fr;
   }
@@ -1792,16 +1628,13 @@ body {
   .phase46-solved-badge,
   .clock-face--low.clock-face--active {
     animation: none !important;
-  }
-
-  .app-shell .button,
-  .app-shell .phase2-icon-button,
-  .app-shell .choice,
-  .app-shell .chip,
-  .app-shell .phase2-back-button,
-  .app-nav__item,
-  .app-nav__indicator,
-  .phase46-button-arrow {
+  }.app-shell .button,
+.app-shell .phase2-icon-button,
+.app-shell .chip,
+.app-shell .phase2-back-button,
+.app-nav__item,
+.app-nav__indicator,
+.phase46-button-arrow {
     transition: none !important;
   }
 }
