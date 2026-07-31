@@ -113,6 +113,17 @@ erDiagram
 Four ways in, one way out. The distinction that matters is `source`: bundled
 rows are re-importable and can be deleted freely, and your own rows never can.
 
+That column is also what the interface is built on. **Championships** lists
+`championship`, `famous` and `career`; **My games** lists `played` and
+`imported`. They are one screen rendered under a scope rather than two, and
+the scope is a single clause over `game_by_source_year`.
+
+The split is not cosmetic — the behaviour already differed. Only your own rows
+can be deleted, `exportPgn()` has always read `WHERE source IN ('played',
+'imported')`, and an import only ever writes `imported`. Import and export
+therefore live on My games and nowhere else, because there is nowhere else
+they apply.
+
 ```mermaid
 flowchart TD
     PGN["public/games/*.pgn<br/><i>bundled, committed</i>"]

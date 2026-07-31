@@ -89,6 +89,30 @@ generic API. There is no second caller with the same contract. Pure, local
 rendering helpers stay near the screen that uses them, which keeps the workflow
 readable without a component directory full of one-use wrappers.
 
+## The right rail
+
+`AppShell` renders a second rail after the stage — full window height, flush
+to the edge, beside the top bar rather than inside the content — and a screen
+fills it through a portal.
+
+**Why a portal.** The rail is a column of the shell, so the shell has to own
+its position; but its contents are one screen's controls, driven by that
+screen's state. Lifting five pieces of setup state into `App` to render them
+from there would move state away from where it is used to satisfy a layout.
+The portal keeps the state local and puts only the markup out in the rail.
+
+**Payoff** — the rail hides itself when empty, so every screen that does not
+use it is untouched and the shell stays two columns. No screen learns about
+the rail except the one that fills it.
+
+**Trade-off** — the markup's position in the DOM no longer matches its
+position in the component tree, which is a real cost when reading the output.
+It buys not restructuring a screen's state to satisfy its chrome.
+
+Three earlier attempts styled a card inside the content padding instead. A
+card has a panel's surface but not a panel's shape, and it read as content on
+a background beside a rail that is genuinely structural.
+
 ## Dependency inversion
 
 Screens receive `LiveGame`, `ReplaySession`, and callback contracts; the
@@ -145,8 +169,11 @@ means adding an item and extending the navigation target union. No plugin system
 or generic route registry was introduced — the app has three primary
 destinations and no present extension requirement.
 
-**Trade-off** — a fourth destination touches `App`, `AppShell`, and the navigation
-type.
+**Trade-off** — a fourth destination touches `App`, `AppShell`, and the
+navigation type. My games proved the cost exactly: three files, plus a mobile
+bar written as `repeat(3, 1fr)` that silently wrapped the fourth item onto a
+second row inside a 72px strip. The compiler caught the first three; only
+measuring caught the fourth.
 
 **Payoff** — the flow stays statically exhaustive, traceable, and compiler-checked.
 
