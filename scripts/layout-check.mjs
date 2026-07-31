@@ -59,10 +59,19 @@ async function waitForServer(timeoutMs) {
  * of first.
  */
 const VIEWPORTS = [
-  { name: 'desktop', width: 1834, height: 835 },
-  { name: 'desktop-short', width: 1366, height: 700 },
-  { name: 'phone', width: 360, height: 800 },
+  { name: 'desktop', width: 1834, height: 835, board: 626 },
+  { name: 'desktop-short', width: 1366, height: 700, board: 547 },
+  { name: 'phone', width: 360, height: 800, board: 297 },
 ]
+
+/**
+ * How far the board may drift from the recorded width before it counts as a
+ * regression. Square is not enough on its own: every board fault this project
+ * has had produced a square board of the wrong size, from the mount-timing
+ * failure in LESSONS-LEARNED to a preview capped at 46vw. A few pixels of
+ * rounding is fine; a tenth of the board is not.
+ */
+const BOARD_TOLERANCE = 12
 
 /** Every screen reachable from the rail, and what must be on each. */
 const SCREENS = [
@@ -210,8 +219,17 @@ try {
       if (m.clippedNavLabels.length > 0) {
         note(screen.name, viewport.name, `navigation labels clipped: ${m.clippedNavLabels.join(', ')}`)
       }
-      if (m.board !== null && Math.abs(m.board.width - m.board.height) > 2) {
-        note(screen.name, viewport.name, `board is ${m.board.width}x${m.board.height}, not square`)
+      if (m.board !== null) {
+        if (Math.abs(m.board.width - m.board.height) > 2) {
+          note(screen.name, viewport.name, `board is ${m.board.width}x${m.board.height}, not square`)
+        }
+        if (Math.abs(m.board.width - viewport.board) > BOARD_TOLERANCE) {
+          note(
+            screen.name,
+            viewport.name,
+            `board is ${m.board.width}px, expected about ${viewport.board}px`,
+          )
+        }
       }
     }
 

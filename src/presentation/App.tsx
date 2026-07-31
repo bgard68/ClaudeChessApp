@@ -10,9 +10,6 @@ import { PlayScreen } from './screens/PlayScreen'
 import { PuzzleScreen } from './screens/PuzzleScreen'
 import { ReplayScreen } from './screens/ReplayScreen'
 import { useServices } from './ServicesContext'
-import './phase2.css'
-import './phase3.css'
-import './phase4-6.css'
 
 type View =
   | { readonly name: 'setup' }
