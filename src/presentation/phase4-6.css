@@ -1479,6 +1479,20 @@ body {
     min-height: calc(100dvh - var(--p46-mobile-nav-height));
     overflow: visible;
     padding: var(--p46-content-padding);
+    /*
+     * The rail is fixed over the bottom of the page, so the last screenful has
+     * to reserve its height or it simply sits underneath: the board-colour
+     * buttons at the end of setup, the last row of the archive, the actions at
+     * the end of the puzzle panel. min-height above accounts for the bar, but
+     * only padding moves content clear of it.
+     *
+     * The safe-area inset is added because the bar pads itself by the same
+     * amount, so on a phone with a home indicator it is that much taller.
+     */
+    padding-bottom: calc(
+      var(--p46-content-padding) + var(--p46-mobile-nav-height) +
+        env(safe-area-inset-bottom)
+    );
   }
 
   .app-rail {

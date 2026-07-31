@@ -68,6 +68,26 @@ h2 {
   max-width: 1200px;
 }
 
+/*
+ * On a phone a screen is as tall as its content and the page scrolls; the
+ * navigation is a fixed bar over the bottom, not a column beside it.
+ *
+ * The phase stylesheet says exactly this already, and loses: main.tsx imports
+ * App — and through it the phase sheets — before this file, so `.screen` above
+ * takes the tie and pins every screen to 100dvh. Height-locked, their content
+ * overflowed underneath the fixed bar, which is why the last board-colour
+ * buttons on setup and the end of the archive list could not be reached.
+ *
+ * Two classes deep so it also outranks `.app-content > .screen`.
+ */
+@media (max-width: 860px) {
+  .app-content > .screen {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+}
+
 .screen--play,
 .screen--replay {
   display: grid;
@@ -1522,9 +1542,21 @@ h2 {
     flex: 1 0 100%;
   }
 
+  /*
+   * The panel is as tall as its content and the page scrolls.
+   *
+   * It used to be capped at 56dvh and scroll inside itself, which is the older
+   * strategy: keep the board fixed on screen and move the panel under it. The
+   * redesign scrolls the page instead and sets `overflow: visible` here — but
+   * only the overflow was reset, not the cap. A capped box that no longer
+   * clips does not scroll, it spills: on the replay screen the move list ran
+   * straight out of the panel and under the fixed navigation bar.
+   *
+   * Landscape already asked for `max-height: none` further down, for the same
+   * reason. This makes it the rule rather than the exception.
+   */
   .play__panel {
-    max-height: 56dvh;
-    overflow-y: auto;
+    max-height: none;
     -webkit-overflow-scrolling: touch;
   }
 
