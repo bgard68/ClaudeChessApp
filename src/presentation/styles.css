@@ -2110,44 +2110,52 @@ select:focus-visible,
 
 /* --------------------------- Puzzle of the day ------------------------- */
 
+/*
+ * Two rows, one column: the header, then the board-and-panel grid, which owns
+ * its own columns.
+ *
+ * This used to be the two-column grid itself, from a markup shape that no
+ * longer exists — the redesign moved the board and side panel inside a nested
+ * grid. Because this stylesheet loads *after* the phase sheets (main.tsx pulls
+ * App, and its imports, before styles.css), the stale definition outranked the
+ * new one on equal specificity: the header took column one, the entire puzzle
+ * was squeezed into column two, and the side panel — hint button and all —
+ * started 47px beyond the right edge of a 1880px window.
+ *
+ * Centred rather than left-aligned, because the board is the thing being
+ * looked at and a page-wide screen leaves it stranded against one margin.
+ */
 .screen--puzzle {
+  width: 100%;
   max-width: 1180px;
+  margin-inline: auto;
   display: grid;
-  grid-template-columns: minmax(430px, 1fr) clamp(280px, 30vw, 360px);
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  column-gap: clamp(0.85rem, 1.5vw, 1.4rem);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   row-gap: 0.75rem;
 }
 
-.puzzle__header {
-  grid-column: 1 / -1;
-  padding-bottom: 0.2rem;
+/*
+ * Specific enough to beat two rules that would otherwise undo the above, both
+ * of which win only because this file loads last:
+ *
+ *   .app-content > .screen  sets max-width: none, un-capping the width
+ *   .screen                 sets height: 100dvh, ignoring the top bar
+ *
+ * The second is what pushed the side panel below the fold — 100dvh overshoots
+ * the content box by exactly the top bar's height, so the hint button sat
+ * just off the bottom of the screen. Filling the parent is both correct and
+ * immune to the bar changing height.
+ */
+.app-content > .screen--puzzle {
+  max-width: 1180px;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
 }
 
-.puzzle__header h1 {
-  text-align: center;
-  font-size: clamp(1.25rem, 2vw, 1.75rem);
-}
-
-.puzzle__caption {
-  grid-column: 1 / -1;
-  max-width: 58rem;
-  margin-inline: auto;
-}
-
-.screen--puzzle > .board-area {
-  grid-column: 1;
-  grid-row: 3 / span 2;
-  border-radius: calc(var(--panel-radius) + 2px);
-  padding: clamp(0.55rem, 1vw, 0.9rem);
-  background: #0c1520;
-  border: 1px solid var(--border);
-  box-shadow: var(--panel-inset), var(--panel-shadow);
-}
-
+/* Both of these now sit inside the side panel, which places them itself. */
 .puzzle__prompt {
-  grid-column: 2;
-  align-self: start;
   min-height: auto;
   margin: 0;
   padding: 1rem;
@@ -2160,19 +2168,7 @@ select:focus-visible,
   box-shadow: var(--panel-inset);
 }
 
-.puzzle__prompt::before {
-  content: "YOUR TURN";
-  display: block;
-  margin-bottom: 0.45rem;
-  color: var(--accent-strong);
-  font-size: 0.7rem;
-  letter-spacing: 0.11em;
-  font-weight: 800;
-}
-
 .puzzle__actions {
-  grid-column: 2;
-  align-self: end;
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.55rem;
@@ -2182,22 +2178,6 @@ select:focus-visible,
   color: var(--accent-strong);
   border-color: rgb(95 189 134 / 45%);
   background: var(--accent-soft);
-}
-
-.streak-pill {
-  min-height: 36px;
-  display: inline-flex;
-  align-items: center;
-  border-color: rgb(227 174 83 / 45%);
-  background: rgb(227 174 83 / 10%);
-}
-
-.puzzle__generating {
-  grid-column: 1 / -1;
-  align-self: center;
-  justify-self: center;
-  padding: 1.25rem 1.5rem;
-  background: var(--surface-raised);
 }
 
 /* -------------------------- Browse championships ----------------------- */
@@ -2344,24 +2324,33 @@ select:focus-visible,
     min-height: 72px;
   }
 
+  /*
+   * On a narrow screen the header and the puzzle grid simply stack and the
+   * page scrolls. The explicit ordering that used to live here belonged to the
+   * old flat markup; the board and panel are now nested inside the puzzle
+   * grid, which orders them itself.
+   */
   .screen--puzzle {
     display: flex;
     flex-direction: column;
     height: auto;
-    min-height: 100dvh;
+    min-height: 0;
     max-width: 760px;
   }
 
-  .screen--puzzle > .board-area {
-    min-height: min(92vw, 68dvh);
-    order: 3;
+  /*
+   * The board is what the player came for, so it should not start a third of
+   * the way down a phone. The title already names the screen and the objective
+   * card below repeats the target, which makes the description the honest
+   * thing to drop first. Desktop keeps it.
+   */
+  .screen--puzzle .screen-header__description {
+    display: none;
   }
 
-  .puzzle__header { order: 1; }
-  .puzzle__caption { order: 2; }
-  .puzzle__prompt { order: 4; }
-  .puzzle__actions { order: 5; grid-template-columns: repeat(2, 1fr); }
-  .puzzle__generating { order: 3; }
+  .puzzle__actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 600px) {
