@@ -2708,6 +2708,16 @@ select:focus-visible,
   .app-content > .screen--setup .setup__board-frame {
     margin-left: auto;
     min-height: 0;
+    /* On the item as well as the container: the frame is given align-self
+       centre by name elsewhere, and a container's align-items does not
+       override an item that states its own. */
+    align-self: stretch;
+    /* Square, so the board is bounded by the column's height rather than by
+       whatever width the frame happened to shrink to. Stretched but not
+       squared, the frame was 668 tall and 521 wide, and the board — which
+       takes the smaller of the two to stay square — came out 493. */
+    aspect-ratio: 1 / 1;
+    width: auto;
   }
 }
 
@@ -2735,5 +2745,57 @@ select:focus-visible,
 @media (max-width: 600px) {
   .setup__destinations {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ------------------ Setup: the board takes the room ---------------------
+   The screen heading is the last thing between the board and more size.
+   "NEW GAME / Choose your match" sits directly under a top bar already
+   reading "Local chess studio / New game" — the same screen named twice,
+   forty pixels apart, above the thing the screen is actually for.
+
+   Hidden rather than deleted: it stays the page's h1 for a screen reader,
+   which the top bar's <p> is not. Sighted users lose a duplicate; nobody
+   loses the heading.
+
+   Desktop only. On a phone the page scrolls, height is not the constraint,
+   and the heading is the only thing naming the screen once the top bar is
+   gone. */
+@media (min-width: 861px) {
+  .app-content > .screen--setup > .screen-header {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* The credits go under the panel, not under the board — 22px the board
+     could not otherwise reach, since it is bounded by its column's height. */
+  .app-content > .screen--setup .setup__preview {
+    grid-template-rows: minmax(0, 1fr);
+    /* Stretch, not centre. Centred, the frame kept its content height and
+       sat in the middle of the column — 521px of board in a 668px row, with
+       147px of nothing above and below it. The board is bounded by its
+       column, so the column has to actually give it the column. */
+    align-items: stretch;
+  }
+
+  .app-content > .screen--setup .setup__preview > .credits {
+    display: none;
+  }
+}
+
+.setup__panel-credits {
+  display: none;
+}
+
+@media (min-width: 861px) {
+  .setup__panel-credits {
+    display: block;
+    margin-top: 0.4rem;
   }
 }

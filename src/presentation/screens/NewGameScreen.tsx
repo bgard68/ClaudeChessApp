@@ -218,6 +218,10 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
               <span className="phase46-button-arrow" aria-hidden="true">→</span>
             </button>
           </footer>
+
+          <div className="setup__panel-credits">
+            <Credits />
+          </div>
         </section>
       </div>
     </div>
