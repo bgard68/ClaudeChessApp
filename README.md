@@ -163,11 +163,15 @@ presentation/   React
 composition/    The one place that names concrete classes
 ```
 
-[docs/ARCHITECTURE-AND-REVIEW.md](docs/ARCHITECTURE-AND-REVIEW.md) goes further:
-flow and thread diagrams, the database schema, the security review with its
-findings and their disposition, the bugs that review turned up, and an honest
-account of where the design honours SOLID, Clean Architecture and DRY — and
-where it does not, with the reasons.
+[docs/](docs/) goes further, one question per document:
+
+| | |
+| --- | --- |
+| [FLOWS.md](docs/FLOWS.md) | Component wiring, the turn loop, threads, and one game traced from **Start** to a stored result |
+| [DATA-MODEL.md](docs/DATA-MODEL.md) | The schema with its entity diagram, where the database lives, how a row gets written |
+| [LESSONS-LEARNED.md](docs/LESSONS-LEARNED.md) | What broke, what actually caused it, and the wrong explanations that looked right first |
+| [ARCHITECTURE-AND-REVIEW.md](docs/ARCHITECTURE-AND-REVIEW.md) | The security review, and where the design honours SOLID and Clean Architecture — and where it does not, with reasons |
+| [SUPPLY-CHAIN.md](docs/SUPPLY-CHAIN.md) | What the build enforces, and how to audit it |
 
 ### Where the abstractions earn their keep
 
