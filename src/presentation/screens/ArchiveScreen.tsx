@@ -10,8 +10,6 @@ import { useFederations } from '../hooks/useFederations'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import {
   SEARCH_FIELDS,
-  type ArchiveFacets,
-  type PlayerSuggestion,
   type SearchField,
   type SortColumn,
   type SortDirection,
@@ -21,17 +19,10 @@ import { AppIcon } from '../components/AppIcon'
 import { ChessBoardView } from '../components/ChessBoardView'
 import { PlayerSearch } from '../components/PlayerSearch'
 import { ScreenHeader } from '../components/ScreenHeader'
-import {
-  ArchiveFilters,
-  isFiltering,
-  NO_FILTERS,
-  RESULT_OPTIONS,
-  type FilterValues,
-} from '../components/ArchiveFilters'
-import { useDebounced } from '../hooks/useDebounced'
+import { ArchiveFilters } from '../components/ArchiveFilters'
+import { PAGE_SIZE, nextSelection } from '../archiveQuery'
+import { useArchiveQuery } from '../hooks/useArchiveQuery'
 import { useServices } from '../ServicesContext'
-
-const PAGE_SIZE = 40
 
 /** Below this, there is no room for a third column and rows open the replay
  *  directly; at or above it, a click previews and a second click replays. */
@@ -76,9 +67,12 @@ const COLUMNS: readonly {
   { id: 'moves', label: 'Moves', className: 'col-moves', initial: 'desc' },
 ]
 
-/** States plainly what is on screen and why, rather than leaving a bare list. */
-/** Exported for its own tests — the screen reaches these states only after
- *  the library has answered, which needs a database. */
+/**
+ * States plainly what is on screen and why, rather than leaving a bare list.
+ *
+ * Exported for its own tests — the screen reaches these states only after the
+ * library has answered, which needs a database.
+ */
 export function describeResults(
   total: number,
   search: string,
@@ -140,27 +134,28 @@ interface ArchiveScreenProps {
 export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
   const { services } = useServices()
   const lookup = useFederations()
-  const [search, setSearch] = useState('')
-  // The box updates instantly; the query waits for a pause in typing.
-  const query = useDebounced(search)
-  const [field, setField] = useState<SearchField>('all')
-  // Set when a player is chosen from the suggestions; clears on any new typing.
-  const [chosen, setChosen] = useState<PlayerSuggestion | null>(null)
-  const [filters, setFilters] = useState<FilterValues>(NO_FILTERS)
-  // Null until a header is clicked, which leaves the default relevance
-  // ordering in place rather than imposing an arbitrary column on arrival.
-  const [sort, setSort] = useState<SortColumn | null>(null)
-  const [direction, setDirection] = useState<SortDirection>('asc')
-  const [facets, setFacets] = useState<ArchiveFacets | null>(null)
-  const [offset, setOffset] = useState(0)
-  // Normally one page; "Load all" stretches it to whatever remains.
-  const [limit, setLimit] = useState(PAGE_SIZE)
-  // Pages accumulate: "load more" appends, and any change of question replaces.
-  const [games, setGames] = useState<readonly ArchivedGameSummary[]>([])
-  const [total, setTotal] = useState(0)
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setLoading] = useState(true)
-  const [reloadToken, setReloadToken] = useState(0)
+
+  /*
+   * The question being asked of the library, and the answer, live in a hook
+   * of their own — search, filters, sort and paging change together, and the
+   * rule for what restarts the list belongs beside the question rather than
+   * repeated in every control that can change it.
+   */
+  const archive = useArchiveQuery(scope)
+  const {
+    games,
+    total,
+    facets,
+    isLoading,
+    error,
+    chips,
+    settledSearch,
+    isFiltered,
+    libraryIsEmpty,
+    hasMore,
+  } = archive
+  const { search, field, chosen, sort, direction } = archive.question
+
   const [importing, setImporting] = useState<ImportState | null>(null)
   const [lastImport, setLastImport] = useState<number | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -172,68 +167,6 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [previewGame, setPreviewGame] = useState<ArchivedGame | null>(null)
   const selectedRow = useRef<HTMLTableRowElement | null>(null)
-
-  // Re-read after an import: it can add both events and years to filter by.
-  useEffect(() => {
-    let cancelled = false
-
-    services.archive
-      .facets(scope)
-      .then((found) => {
-        if (!cancelled) setFacets(found)
-      })
-      .catch(() => {
-        if (!cancelled) setFacets(null)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [services.archive, scope, reloadToken])
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-
-    services.archive
-      .list({
-        search: query,
-        field,
-        playerId: chosen?.id,
-        scope,
-        event: filters.event === '' ? undefined : filters.event,
-        result: filters.result === '' ? undefined : filters.result,
-        yearFrom: filters.yearFrom === '' ? undefined : Number(filters.yearFrom),
-        yearTo: filters.yearTo === '' ? undefined : Number(filters.yearTo),
-        sort: sort ?? undefined,
-        direction,
-        offset,
-        limit,
-      })
-      .then((result) => {
-        if (cancelled) return
-        setGames((current) => (offset === 0 ? result.games : [...current, ...result.games]))
-        setTotal(result.total)
-        setError(null)
-      })
-      .catch((cause: unknown) => {
-        if (cancelled) return
-        setError(cause instanceof Error ? cause.message : String(cause))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [services.archive, scope, query, field, chosen, filters, sort, direction, offset, limit, reloadToken])
-
-  /** A new question starts the list over at its first page. */
-  const restartList = () => {
-    setOffset(0)
-    setLimit(PAGE_SIZE)
-  }
 
   // A narrowed list can drop the selected game; the preview must not outlive it.
   useEffect(() => {
@@ -292,11 +225,11 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
    * data, and a file on disk does.
    */
   const exportGames = async () => {
-    setError(null)
+    archive.clearError()
     try {
       const pgn = await services.archive.exportPgn()
       if (pgn === '') {
-        setError('Nothing to export yet — no games of your own have been saved or imported.')
+        archive.setError('Nothing to export yet — no games of your own have been saved or imported.')
         return
       }
 
@@ -309,18 +242,18 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
       // cancel the download before the browser has taken the blob.
       setTimeout(() => URL.revokeObjectURL(url), 0)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      archive.setError(cause instanceof Error ? cause.message : String(cause))
     }
   }
 
   const importFile = async (file: File) => {
-    setError(null)
+    archive.clearError()
 
     // Checked before the file is read, not after: reading it is the part that
     // freezes the tab, so a message afterwards would arrive too late to help.
     const tooLarge = describeOversizeImport(file)
     if (tooLarge !== null) {
-      setError(tooLarge)
+      archive.setError(tooLarge)
       return
     }
 
@@ -333,14 +266,13 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
         // looks frozen for minutes.
         (done, totalGames) => setImporting({ done, total: totalGames, name: file.name }),
       )
-      restartList()
-      setReloadToken((token) => token + 1)
+      archive.reload()
       setLastImport(added)
       if (added === 0) {
-        setError(`Nothing new in ${file.name} — those games are already in your library.`)
+        archive.setError(`Nothing new in ${file.name} — those games are already in your library.`)
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      archive.setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
       setImporting(null)
     }
@@ -349,45 +281,10 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
   const deleteGame = async (id: string) => {
     try {
       await services.store.remove(id)
-      restartList()
-      setReloadToken((token) => token + 1)
+      archive.reload()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      archive.setError(cause instanceof Error ? cause.message : String(cause))
     }
-  }
-
-  /** Same column toggles direction; a new one starts the way it reads best. */
-  const applySort = (column: SortColumn, initial: SortDirection) => {
-    if (sort === column) {
-      setDirection(direction === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSort(column)
-      setDirection(initial)
-    }
-    restartList()
-  }
-
-  const changeFilters = (next: FilterValues) => {
-    setFilters(next)
-    restartList()
-  }
-
-  /**
-   * Asks the archive again, from the top.
-   *
-   * The archive retries a failed first load on its next query, so bumping the
-   * token is all a recovery takes — same mechanism an import uses to refresh.
-   */
-  const retryLoad = () => {
-    setError(null)
-    setOffset(0)
-    setReloadToken((token) => token + 1)
-  }
-
-  const resetFilters = () => {
-    setFilters(NO_FILTERS)
-    setSort(null)
-    restartList()
   }
 
   /**
@@ -411,71 +308,12 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
       return
     }
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
-    if (games.length === 0) return
+
+    const next = nextSelection(games, selectedId, event.key)
+    if (next === null) return
+
     event.preventDefault()
-
-    const delta = event.key === 'ArrowDown' ? 1 : -1
-    const index = games.findIndex((game) => game.id === selectedId)
-    const next =
-      index === -1
-        ? delta > 0
-          ? 0
-          : games.length - 1
-        : Math.max(0, Math.min(games.length - 1, index + delta))
-    setSelectedId(games[next]!.id)
-  }
-
-  const filtered = isFiltering(filters)
-  // The library holding nothing at all is a different problem from a filter
-  // excluding everything, and the two need different advice.
-  const libraryIsEmpty = facets !== null && facets.totalGames === 0
-
-  /** The active narrowings, each dismissible where it is shown. All of them
-   *  apply together — the chips sitting in one row is what says so. */
-  const chips: { readonly key: string; readonly label: string; readonly clear: () => void }[] = []
-  if (chosen === null && query.trim() !== '') {
-    chips.push({
-      key: 'search',
-      label: `Search: “${query.trim()}”`,
-      clear: () => {
-        setSearch('')
-        restartList()
-      },
-    })
-  }
-  if (chosen !== null) {
-    chips.push({
-      key: 'player',
-      label: `Player: ${chosen.name}`,
-      clear: () => {
-        setChosen(null)
-        setSearch('')
-        restartList()
-      },
-    })
-  }
-  if (filters.event !== '') {
-    chips.push({
-      key: 'event',
-      label: `Event: ${filters.event}`,
-      clear: () => changeFilters({ ...filters, event: '' }),
-    })
-  }
-  if (filters.result !== '') {
-    chips.push({
-      key: 'result',
-      label:
-        RESULT_OPTIONS.find((option) => option.value === filters.result)?.label ??
-        filters.result,
-      clear: () => changeFilters({ ...filters, result: '' }),
-    })
-  }
-  if (filters.yearFrom !== '' || filters.yearTo !== '') {
-    chips.push({
-      key: 'years',
-      label: `Years: ${filters.yearFrom === '' ? '…' : filters.yearFrom}–${filters.yearTo === '' ? '…' : filters.yearTo}`,
-      clear: () => changeFilters({ ...filters, yearFrom: '', yearTo: '' }),
-    })
+    setSelectedId(next)
   }
 
   const selected = games.find((game) => game.id === selectedId) ?? null
@@ -508,20 +346,13 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
                 aria-label="Search championship games"
                 placeholder={SEARCH_PLACEHOLDERS[field]}
                 value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value)
-                  setChosen(null)
-                  restartList()
-                }}
+                onChange={(event) => archive.setSearch(event.target.value)}
               />
               <select
                 className="search-bar__scope"
                 aria-label="Search within"
                 value={field}
-                onChange={(event) => {
-                  setField(event.target.value as SearchField)
-                  restartList()
-                }}
+                onChange={(event) => archive.setField(event.target.value as SearchField)}
               >
                 {SEARCH_FIELDS.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -532,11 +363,7 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
               {field === 'player' && chosen === null ? (
                 <PlayerSearch
                   term={search}
-                  onChoose={(player) => {
-                    setChosen(player)
-                    setSearch(player.name)
-                    restartList()
-                  }}
+                  onChoose={(player) => archive.choosePlayer(player)}
                 />
               ) : null}
             </div>
@@ -606,9 +433,9 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
       <div className={`archive__body${hasPane ? ' archive__body--preview' : ''}`}>
         <ArchiveFilters
           facets={facets}
-          values={filters}
-          onChange={changeFilters}
-          onReset={resetFilters}
+          values={archive.question.filters}
+          onChange={archive.setFilters}
+          onReset={archive.reset}
         />
 
         <section className="archive__results">
@@ -619,7 +446,7 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
                   key={chip.key}
                   type="button"
                   className="chip chip--selected"
-                  onClick={chip.clear}
+                  onClick={() => archive.apply(chip.without)}
                   aria-label={`Remove ${chip.label}`}
                 >
                   {chip.label} ✕
@@ -631,7 +458,7 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
           <h2 className="archive__heading" aria-live="polite">
             {chosen !== null
               ? `${total.toLocaleString()} games by ${chosen.name}`
-              : describeResults(total, query, field, isLoading || query !== search, filtered)}
+              : describeResults(total, settledSearch, field, isLoading || settledSearch !== search, isFiltered)}
           </h2>
 
           {importing !== null ? (
@@ -652,7 +479,7 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
               {games.length === 0 ? (
                 <>
                   {' '}
-                  <button type="button" className="link-button" onClick={retryLoad}>
+                  <button type="button" className="link-button" onClick={archive.reload}>
                     Try again
                   </button>
                 </>
@@ -667,7 +494,7 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
               <p className="notice notice--error">
                 The bundled games could not be loaded (
                 {services.archive.failures[0]}).{' '}
-                <button type="button" className="link-button" onClick={retryLoad}>
+                <button type="button" className="link-button" onClick={archive.reload}>
                   Try again
                 </button>
               </p>
@@ -695,29 +522,27 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
               </p>
             ) : (
               <p className="notice">
-                {query.trim() !== ''
+                {settledSearch.trim() !== ''
                   ? 'Nothing found — try a player surname, an event name, or a year like 1972.'
                   : 'No games match what you asked for.'}
-                {query.trim() !== '' ? (
+                {settledSearch.trim() !== '' ? (
                   <>
                     {' '}
                     <button
                       type="button"
                       className="link-button"
                       onClick={() => {
-                        setSearch('')
-                        setChosen(null)
-                        restartList()
+                        archive.setSearch('')
                       }}
                     >
                       Clear the search
                     </button>
                   </>
                 ) : null}
-                {filtered ? (
+                {isFiltered ? (
                   <>
                     {' '}
-                    <button type="button" className="link-button" onClick={resetFilters}>
+                    <button type="button" className="link-button" onClick={archive.reset}>
                       Clear the filters
                     </button>{' '}
                     to see the rest.
@@ -753,7 +578,7 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
                         <button
                           type="button"
                           className="game-table__sort"
-                          onClick={() => applySort(column.id, column.initial)}
+                          onClick={() => archive.applySort(column.id, column.initial)}
                         >
                           <span>{column.label}</span>
                           <span className="game-table__arrow" aria-hidden="true">
@@ -789,16 +614,13 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
               <span>
                 Showing {games.length.toLocaleString()} of {total.toLocaleString()}
               </span>
-              {games.length < total ? (
+              {hasMore ? (
                 <>
                   <button
                     type="button"
                     className="button"
                     disabled={isLoading}
-                    onClick={() => {
-                      setLimit(PAGE_SIZE)
-                      setOffset(games.length)
-                    }}
+                    onClick={archive.loadMore}
                   >
                     Load {Math.min(PAGE_SIZE, total - games.length).toLocaleString()} more
                   </button>
@@ -806,12 +628,7 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
                     type="button"
                     className="button"
                     disabled={isLoading}
-                    onClick={() => {
-                      // One request for everything left; the list keeps what
-                      // it already has and the rest arrives behind it.
-                      setLimit(total - games.length)
-                      setOffset(games.length)
-                    }}
+                    onClick={archive.loadAll}
                   >
                     Load all {total.toLocaleString()}
                   </button>
