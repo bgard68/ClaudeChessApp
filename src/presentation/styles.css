@@ -2799,3 +2799,26 @@ select:focus-visible,
     margin-top: 0.4rem;
   }
 }
+
+/* -------------------- Setup: the panel reads as one --------------------
+   The settings already carried a surface — background, border, radius,
+   shadow — and no padding at all, so every row ran to its edges and the
+   container disappeared into the page behind it. It looked like content on a
+   background rather than a panel beside the rail.
+
+   Padding costs width, so the column takes some back: at 330px with 14px
+   each side the chip rows lost 28px and Opponent and Difficulty went to two
+   lines again. 366 keeps them on one. */
+@media (min-width: 861px) {
+  .app-content > .screen--setup .setup__body {
+    grid-template-columns: minmax(0, 1fr) clamp(320px, 26vw, 366px);
+  }
+
+  .app-content > .screen--setup .setup__settings {
+    padding: 14px;
+  }
+
+  .app-content > .screen--setup .setup__options {
+    padding: 0;
+  }
+}
