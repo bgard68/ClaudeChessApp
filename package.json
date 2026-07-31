@@ -26,7 +26,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "verify": "npm run typecheck && npm test && npm audit --audit-level=moderate",
-    "layout-check": "node scripts/layout-check.mjs"
+    "layout-check": "node scripts/layout-check.mjs",
+    "behaviour-check": "node scripts/behaviour-check.mjs",
+    "a11y-check": "node scripts/a11y-check.mjs"
   },
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "^3.53.0-build1",
@@ -41,6 +43,7 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^6.0.4",
+    "axe-core": "^4.12.1",
     "playwright-core": "^1.62.0",
     "typescript": "^7.0.2",
     "vite": "^8.1.5",
