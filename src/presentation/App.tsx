@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { GameConfiguration } from '@application/GameConfiguration'
 import type { LiveGame } from '@application/LiveGame'
 import type { ReplaySession } from '@application/replay/ReplaySession'
+import { AppShell } from './components/AppShell'
 import { ArchiveScreen } from './screens/ArchiveScreen'
 import { NewGameScreen } from './screens/NewGameScreen'
 import { PlayScreen } from './screens/PlayScreen'
 import { PuzzleScreen } from './screens/PuzzleScreen'
 import { ReplayScreen } from './screens/ReplayScreen'
 import { useServices } from './ServicesContext'
+import './phase2.css'
 
 type View =
   | { readonly name: 'setup' }
@@ -18,14 +20,12 @@ type View =
   | { readonly name: 'replay'; readonly session: ReplaySession }
   | { readonly name: 'error'; readonly message: string }
 
+type ShellTarget = 'setup' | 'puzzle' | 'archive'
+
 /**
- * Owns which screen is showing, and the lifetime of whatever that screen is
- * driving.
- *
- * Games and replay sessions hold real resources — an engine worker, a running
- * timer — so every transition disposes what it replaces. Leaving that to each
- * screen's unmount would scatter the responsibility and eventually leak a
- * worker.
+ * Owns screen selection and the lifetime of resources driven by each screen.
+ * AppShell receives navigation callbacks only; it does not know about services,
+ * workers, games, or replay sessions.
  */
 export function App() {
   const { services, factory } = useServices()
@@ -38,8 +38,14 @@ export function App() {
     setView(next)
   }, [])
 
-  // Covers the last view when the whole app goes away.
   useEffect(() => () => disposeView(disposableView.current), [])
+
+  const navigate = useCallback(
+    (target: ShellTarget) => {
+      goTo({ name: target })
+    },
+    [goTo],
+  )
 
   const startGame = useCallback(
     (configuration: GameConfiguration) => {
@@ -66,55 +72,66 @@ export function App() {
     [services.archive, factory, goTo],
   )
 
-  switch (view.name) {
-    case 'setup':
-      return (
-        <NewGameScreen
-          onStart={startGame}
-          onBrowseArchive={() => goTo({ name: 'archive' })}
-          onOpenPuzzle={() => goTo({ name: 'puzzle' })}
-        />
-      )
+  const shellActive: ShellTarget =
+    view.name === 'archive' || view.name === 'replay'
+      ? 'archive'
+      : view.name === 'puzzle'
+        ? 'puzzle'
+        : 'setup'
 
-    case 'puzzle':
-      return <PuzzleScreen onBack={() => goTo({ name: 'setup' })} />
+  return (
+    <AppShell active={shellActive} onNavigate={navigate}>
+      {renderView()}
+    </AppShell>
+  )
 
-    case 'archive':
-      return (
-        <ArchiveScreen
-          onOpenGame={openArchivedGame}
-          onBack={() => goTo({ name: 'setup' })}
-        />
-      )
+  function renderView() {
+    switch (view.name) {
+      case 'setup':
+        return (
+          <NewGameScreen
+            onStart={startGame}
+            onBrowseArchive={() => goTo({ name: 'archive' })}
+            onOpenPuzzle={() => goTo({ name: 'puzzle' })}
+          />
+        )
 
-    case 'play':
-      return (
-        <PlayScreen
-          game={view.game}
-          configuration={view.configuration}
-          onNewGame={() => goTo({ name: 'setup' })}
-        />
-      )
+      case 'puzzle':
+        return <PuzzleScreen onBack={() => goTo({ name: 'setup' })} />
 
-    case 'replay':
-      return <ReplayScreen session={view.session} onBack={() => goTo({ name: 'archive' })} />
+      case 'archive':
+        return (
+          <ArchiveScreen
+            onOpenGame={openArchivedGame}
+            onBack={() => goTo({ name: 'setup' })}
+          />
+        )
 
-    case 'loading':
-      return (
-        <div className="screen">
-          <p className="notice">{view.message}</p>
-        </div>
-      )
+      case 'play':
+        return (
+          <PlayScreen
+            game={view.game}
+            configuration={view.configuration}
+            onNewGame={() => goTo({ name: 'setup' })}
+          />
+        )
 
-    case 'error':
-      return (
-        <div className="screen">
-          <p className="notice notice--error">{view.message}</p>
-          <button type="button" className="button" onClick={() => goTo({ name: 'archive' })}>
-            Back
-          </button>
-        </div>
-      )
+      case 'replay':
+        return <ReplayScreen session={view.session} onBack={() => goTo({ name: 'archive' })} />
+
+      case 'loading':
+        return <p className="notice phase2-notice">{view.message}</p>
+
+      case 'error':
+        return (
+          <section className="phase2-error">
+            <p className="notice notice--error">{view.message}</p>
+            <button type="button" className="button" onClick={() => goTo({ name: 'archive' })}>
+              Back to championships
+            </button>
+          </section>
+        )
+    }
   }
 }
 

@@ -27,15 +27,9 @@ interface PuzzleScreenProps {
   readonly onBack: () => void
 }
 
-/**
- * The daily puzzle: the engine plays itself once per day on this device, and
- * the finish of that game is yours to find. Answers are judged by the rules —
- * any move that still forces the mate counts, not just the game's own.
- */
 export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
   const { services, factory } = useServices()
   const rules = services.rules
-
   const today = useMemo(() => dayKey(new Date()), [])
   const [phase, setPhase] = useState<Phase>({ kind: 'generating', ply: 0 })
   const [position, setPosition] = useState<Position | null>(null)
@@ -59,7 +53,6 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
   const load = useCallback(() => {
     let cancelled = false
     setPhase({ kind: 'generating', ply: 0 })
-
     todaysPuzzle(today, () =>
       factory.createPuzzleGenerator().generate(dailySeed(new Date()), (ply) => {
         if (!cancelled) {
@@ -89,7 +82,6 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
 
   useEffect(() => load(), [load])
 
-  /** Judged, not compared: any move that keeps the mate forced is right. */
   const tryMove = (intent: MoveIntent): boolean => {
     if (position === null || status === 'solved') return false
     setHint(null)
@@ -112,7 +104,6 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
       return true
     }
 
-    // The defender resists as well as a lost position allows, and play goes on.
     const defence = toughestDefence(rules, played.position)!
     const defended = rules.play(played.position, defence)!
     setPosition(defended.position)
@@ -135,80 +126,111 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
       : 'white'
 
   return (
-    <div className="screen screen--puzzle">
-      <header className="puzzle__header">
-        <button type="button" className="button" onClick={onBack}>
-          ← Back
+    <div className="screen screen--puzzle phase2-puzzle">
+      <header className="phase2-page-heading">
+        <button type="button" className="phase2-back-button" onClick={onBack}>
+          ← Back to play
         </button>
-        <h1>Puzzle of the day</h1>
-        {shownStreak > 0 ? <span className="streak-pill">🔥 {shownStreak}-day streak</span> : null}
+        <div>
+          <p className="phase2-kicker">Daily training</p>
+          <h1>Puzzle of the day</h1>
+          <p>Find the forcing continuation composed locally by Stockfish.</p>
+        </div>
+        <div className="phase2-puzzle-metrics">
+          <span><strong>{shownStreak}</strong><small>day streak</small></span>
+          <span><strong>{movesLeft}</strong><small>moves left</small></span>
+        </div>
       </header>
 
       {phase.kind === 'generating' ? (
-        <div className="puzzle__generating">
-          <p>
-            <strong>Stockfish is composing today's puzzle.</strong>
-          </p>
-          <p>
-            It plays a fresh game against itself and serves you the finish —{' '}
-            {phase.ply === 0 ? 'warming up…' : `playing move ${Math.ceil(phase.ply / 2)}…`}
-          </p>
-        </div>
+        <section className="phase2-loading-card">
+          <span className="phase2-loader" aria-hidden="true" />
+          <div>
+            <strong>Stockfish is composing today’s puzzle.</strong>
+            <p>{phase.ply === 0 ? 'Warming up…' : `Playing move ${Math.ceil(phase.ply / 2)}…`}</p>
+          </div>
+        </section>
       ) : null}
 
       {phase.kind === 'error' ? (
-        <div className="puzzle__generating">
-          <p className="notice notice--error">{phase.message}</p>
-          <button type="button" className="button" onClick={() => load()}>
-            Try again
-          </button>
-        </div>
+        <section className="phase2-loading-card">
+          <div>
+            <p className="notice notice--error">{phase.message}</p>
+            <button type="button" className="button" onClick={() => load()}>
+              Try again
+            </button>
+          </div>
+        </section>
       ) : null}
 
       {phase.kind === 'ready' && position !== null ? (
-        <>
-          <p className="puzzle__caption">
-            Composed today by Stockfish playing itself — in its game, mate fell on move{' '}
-            {phase.puzzle.mateOnMove}. Everyone's board turns over at midnight.
-          </p>
+        <div className="phase2-puzzle-grid">
+          <section className="phase2-board-column">
+            <div className="phase2-board-frame">
+              {/* Same react-chessboard v5 component and prop contract. */}
+              <ChessBoardView
+                fen={position.fen}
+                orientation={sideToMove}
+                interactive={status !== 'solved'}
+                legalMoves={rules.legalMoves(position)}
+                lastMove={lastMove}
+                hint={hint}
+                onMove={tryMove}
+              />
+            </div>
+          </section>
 
-          <ChessBoardView
-            fen={position.fen}
-            orientation={sideToMove}
-            interactive={status !== 'solved'}
-            legalMoves={rules.legalMoves(position)}
-            lastMove={lastMove}
-            hint={hint}
-            onMove={tryMove}
-          />
+          <aside className="phase2-puzzle-panel">
+            <section className="phase2-panel-card phase2-puzzle-objective">
+              <p className="phase2-kicker">Objective</p>
+              <h2>{sideToMove === 'white' ? 'White' : 'Black'} to move</h2>
+              <p className="phase2-puzzle-target">Mate in {movesLeft}</p>
+              <p>
+                The answer is judged by the rules. Any move that preserves the
+                forced mate is accepted.
+              </p>
+            </section>
 
-          <p
-            className={`puzzle__prompt${
-              status === 'wrong'
-                ? ' puzzle__prompt--wrong'
-                : status === 'solved'
-                  ? ' puzzle__prompt--solved'
-                  : ''
-            }`}
-          >
-            {status === 'solved'
-              ? `Checkmate — solved!${shownStreak > 1 ? ` ${shownStreak} days running.` : ''}`
-              : status === 'wrong'
-                ? 'Not that one — the mate slips away. Take it back and look again.'
-                : `${sideToMove === 'white' ? 'White' : 'Black'} to move · mate in ${movesLeft}`}
-          </p>
+            <p
+              className={`puzzle__prompt phase2-puzzle-feedback${
+                status === 'wrong'
+                  ? ' puzzle__prompt--wrong'
+                  : status === 'solved'
+                    ? ' puzzle__prompt--solved'
+                    : ''
+              }`}
+              aria-live="polite"
+            >
+              {status === 'solved'
+                ? `Checkmate — solved!${shownStreak > 1 ? ` ${shownStreak} days running.` : ''}`
+                : status === 'wrong'
+                  ? 'That move lets the mate slip away. Look for a forcing move.'
+                  : 'Your move. Checks, captures, and threats are a good place to start.'}
+            </p>
 
-          <div className="puzzle__actions">
-            {status === 'solved' ? null : (
-              <button type="button" className="button" onClick={showHint}>
-                💡 Hint
+            <section className="phase2-panel-card">
+              <div className="phase2-section-title">
+                <span>Puzzle details</span>
+              </div>
+              <dl className="phase2-detail-list">
+                <div><dt>Composed</dt><dd>Today</dd></div>
+                <div><dt>Mate occurred</dt><dd>Move {phase.puzzle.mateOnMove}</dd></div>
+                <div><dt>Resets</dt><dd>At midnight</dd></div>
+              </dl>
+            </section>
+
+            <div className="puzzle__actions phase2-puzzle-actions">
+              {status === 'solved' ? null : (
+                <button type="button" className="button button--primary" onClick={showHint}>
+                  Show hint
+                </button>
+              )}
+              <button type="button" className="button" onClick={() => begin(phase.puzzle)}>
+                Start over
               </button>
-            )}
-            <button type="button" className="button" onClick={() => begin(phase.puzzle)}>
-              Start over
-            </button>
-          </div>
-        </>
+            </div>
+          </aside>
+        </div>
       ) : null}
     </div>
   )
