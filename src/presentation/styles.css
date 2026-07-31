@@ -2894,10 +2894,27 @@ select:focus-visible,
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /*
+   * The right rail is not the navigation bar.
+   *
+   * It carries both classes, and below 860px `.app-rail` is turned into the
+   * fixed 72px bar across the bottom of the screen — so the settings panel
+   * became a 72px strip pinned under the real navigation, with everything in
+   * it clipped away. The whole of it was missing from a phone: no
+   * destinations, no choices, no Start game, and a page exactly one screen
+   * tall because there was nothing left to scroll to.
+   *
+   * Everything the bar rule sets has to be given back, not just the parts
+   * that looked wrong.
+   */
   .app-rail--right {
+    position: static;
+    inset: auto;
+    z-index: auto;
     width: 100%;
+    height: auto;
     padding: 0 var(--p46-content-padding, 15px);
-    border-left: 0;
+    border: 0;
     background: none;
     box-shadow: none;
     backdrop-filter: none;
