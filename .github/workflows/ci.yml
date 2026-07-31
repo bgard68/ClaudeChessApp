@@ -28,12 +28,13 @@ jobs:
           node-version: 22
           cache: npm
 
-      # A lock written on Windows omits other platforms' native bindings
-      # (npm/cli#4828) - npm ci refuses it, and npm install trusts the
-      # omission and skips them too. CI resolves fresh from package.json;
-      # every gate that follows validates what that produced.
-      - run: rm package-lock.json
-      - run: npm install --no-audit --no-fund
+      # Installed from the lock, never re-resolved. What runs here is the
+      # tree that was reviewed, not whatever npm happened to pick this
+      # minute. The lock now carries every platform's optional binaries, so
+      # the Linux runner finds the bindings a Windows-written one omitted
+      # (npm/cli#4828) -- regenerate it with `npm install --package-lock-only`
+      # and no node_modules present, or those entries come back pruned.
+      - run: npm ci --no-audit --no-fund
 
       # Downloaded, verified, then extracted — in that order. Piping the
       # download straight into tar cannot check anything, because the archive

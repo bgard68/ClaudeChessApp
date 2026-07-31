@@ -10,6 +10,20 @@ Conventional Commits, matching the existing history:
 - The body explains **why**, not what the diff already shows.
 - Run `npm run verify` (typecheck + tests + audit) before committing.
 
+## The lock file
+
+CI installs with `npm ci`, so the lock is what ships — not whatever npm would
+resolve at deploy time.
+
+- Regenerate it with `npm install --package-lock-only` and **no `node_modules`
+  present**. With a tree installed, npm writes the lock from that tree and
+  keeps only the current platform's optional binaries (npm/cli#4828), which
+  drops the Linux bindings the runner needs and breaks the deploy.
+- A correct lock holds all three platforms. `@rolldown/binding-*`,
+  `@typescript/typescript-*` and `lightningcss-*` should each appear in linux,
+  win32 and darwin variants — roughly 115 packages, not 66.
+- A plain `npm install` does not prune them back, so day-to-day work is safe.
+
 ## Secrets
 
 - Never commit secrets: no tokens, API keys, passwords, or credentials in code,
