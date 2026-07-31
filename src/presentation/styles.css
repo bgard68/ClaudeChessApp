@@ -2517,7 +2517,7 @@ select:focus-visible,
   }
 }
 
-/* ---------------------- Time control chips ----------------------------
+/* -------------------------- Setup chips -------------------------------
    Ten presets used to be ten full-width rows, each repeating its category
    underneath the label — "Blitz" three times running — which made this the
    tallest panel on the setup screen by a wide margin.
@@ -2527,11 +2527,11 @@ select:focus-visible,
    Auto-fit rather than a fixed column count so it holds four across on a
    desktop panel and two on a phone without a second breakpoint. */
 
-.time-group + .time-group {
+.setup-chip-group + .setup-chip-group {
   margin-top: 0.7rem;
 }
 
-.time-group__label {
+.setup-chip-group__label {
   display: block;
   margin-bottom: 0.35rem;
   /* 12px, the floor set for phones further down — no point adding five new
@@ -2543,13 +2543,17 @@ select:focus-visible,
   color: var(--text-muted);
 }
 
-.time-group__options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+.setup-chip-row {
+  /* Flex, not grid: a uniform grid gives "Another player" and "3" the same
+     cell, so the short labels waste most of theirs and the long ones wrap.
+     Sized to their content the chips pack, which is what fits the settings
+     into one screen. */
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
 }
 
-.time-chip {
+.setup-chip {
   min-height: var(--tap);
   padding: 0.4rem 0.6rem;
   font: inherit;
@@ -2564,25 +2568,96 @@ select:focus-visible,
   touch-action: manipulation;
 }
 
-.time-chip:hover {
+.setup-chip:hover {
   background: var(--surface-hover);
 }
 
-.time-chip:focus-visible {
+.setup-chip:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-.time-chip--selected {
+.setup-chip--selected {
   color: var(--accent-strong);
   border-color: var(--accent);
   background: var(--accent-soft);
 }
 
-/* On a phone the categories read fine at two across; below this the labels
-   ("15 | 10") start to wrap, which looks worse than a narrower grid. */
-@media (max-width: 380px) {
-  .time-group__options {
-    grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+
+/* The board themes are the one group where the colour is the information and
+   the name is not, so the chip is the swatch. The name survives as the
+   accessible label and the tooltip. */
+.setup-chip--swatch {
+  padding: 5px;
+  line-height: 0;
+}
+
+.setup-chip--swatch .swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+}
+
+/* ------------------- Setup: board and settings ------------------------
+   Closer together and a narrower settings column.
+
+   Four rules set these columns — this file, phase2, phase3 and phase4-6 —
+   and phase4-6 won at minmax(430px, 1.1fr) minmax(410px, 0.9fr) with a gap
+   that clamped up to 32px. Chips need far less width than the stacked rows
+   they replaced, so the column gives its space back to the board. Specific
+   enough to settle it here rather than adding a fifth voice to the argument. */
+
+@media (min-width: 861px) {
+  .app-content > .screen--setup .setup__body {
+    grid-template-columns: minmax(0, 1fr) clamp(280px, 24vw, 330px);
+    gap: clamp(12px, 1.2vw, 18px);
+  }
+}
+
+/* The options list is a single column of full-width groups.
+
+   It was a two-column grid, which is right for five boxed panels and wrong
+   for nine label-and-chips rows: each group landed in a 142px cell, so every
+   chip wrapped onto its own line and the list came to 1090px in a 414px box.
+   One column gives each row the full 330px and lets the chips sit side by
+   side, which is the whole point of them. */
+.app-content > .screen--setup .setup__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* 44px is a finger's target, not a cursor's. Where there is a fine pointer
+   AND the room of a desktop layout, the chips step down — which is what buys
+   the last of the height the settings needed to fit without scrolling.
+   The width test is not redundant: `pointer: fine` is what an emulated phone
+   in a desktop browser reports, so on its own it takes 10px off every target
+   on a real narrow screen too. Phones keep the full 44px either way. */
+@media (min-width: 861px) and (pointer: fine) {
+  .setup-chip {
+    min-height: 34px;
+  }
+
+  .setup-chip--swatch .swatch {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* The options list keeps padding meant for boxed panels with their own
+   borders. The groups have no box, so the padding is width the chips could
+   be using — and at 295px of usable row the Opponent and Difficulty groups
+   each missed fitting on one line by under twenty pixels. */
+@media (min-width: 861px) {
+  .app-content > .screen--setup .setup__options {
+    padding: 2px 0 0;
+  }
+
+  .app-content > .screen--setup .setup-chip {
+    padding-inline: 0.45rem;
+  }
+
+  .app-content > .screen--setup .setup-chip-group + .setup-chip-group {
+    margin-top: 0.5rem;
   }
 }

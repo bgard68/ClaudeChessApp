@@ -127,10 +127,9 @@ function Player({
 
 interface ArchiveScreenProps {
   readonly onOpenGame: (id: string) => void
-  readonly onBack: () => void
 }
 
-export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
+export function ArchiveScreen({ onOpenGame }: ArchiveScreenProps) {
   const { services } = useServices()
   const lookup = useFederations()
   const [search, setSearch] = useState('')
@@ -478,8 +477,6 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
         kicker="Game library"
         title="Championship games"
         description="Search, filter, preview, and replay the bundled archive or games saved on this device."
-        onBack={onBack}
-        backLabel="Back to play"
         metrics={
           <div className="phase46-archive-metrics" aria-live="polite">
             <span><strong>{isLoading ? '—' : total.toLocaleString()}</strong><small>games found</small></span>

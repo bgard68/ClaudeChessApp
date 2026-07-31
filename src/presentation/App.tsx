@@ -105,13 +105,12 @@ export function App() {
         )
 
       case 'puzzle':
-        return <PuzzleScreen onBack={() => goTo({ name: 'setup' })} />
+        return <PuzzleScreen />
 
       case 'archive':
         return (
           <ArchiveScreen
             onOpenGame={openArchivedGame}
-            onBack={() => goTo({ name: 'setup' })}
           />
         )
 
@@ -125,7 +124,7 @@ export function App() {
         )
 
       case 'replay':
-        return <ReplayScreen session={view.session} onBack={() => goTo({ name: 'archive' })} />
+        return <ReplayScreen session={view.session} />
 
       case 'loading':
         return (
