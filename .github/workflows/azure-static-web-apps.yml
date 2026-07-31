@@ -20,7 +20,7 @@ jobs:
       # that taught us died in zero seconds — so the check rides through env.
       HAS_DEPLOY_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The gate's gitleaks scan covers the whole history.
           fetch-depth: 0
