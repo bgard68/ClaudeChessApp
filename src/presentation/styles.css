@@ -267,10 +267,10 @@ select {
 }
 
 .phase2-play {
-  display: grid !important;
-  grid-template-columns: minmax(480px, 1fr) minmax(310px, 390px) !important;
-  align-items: start !important;
-  gap: clamp(22px, 3vw, 42px) !important;
+  display: grid;
+  grid-template-columns: minmax(480px, 1fr) minmax(310px, 390px);
+  align-items: start;
+  gap: clamp(22px, 3vw, 42px);
 }
 
 .phase2-board-column {
@@ -413,9 +413,9 @@ select {
 }
 
 .phase2-action-grid {
-  display: grid !important;
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px !important;
+  gap: 9px;
 }
 
 .phase2-action-grid .button {
@@ -501,9 +501,9 @@ select {
 }
 
 .phase2-puzzle-actions {
-  display: grid !important;
+  display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 9px !important;
+  gap: 9px;
 }
 
 .phase2-loading-card {
@@ -578,7 +578,7 @@ select {
 
   .phase2-play,
   .phase2-puzzle-grid {
-    grid-template-columns: minmax(420px, 1fr) minmax(280px, 340px) !important;
+    grid-template-columns: minmax(420px, 1fr) minmax(280px, 340px);
   }
 }
 
@@ -631,7 +631,7 @@ select {
 
   .phase2-play,
   .phase2-puzzle-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
   }
 
   .phase2-game-panel,
@@ -898,15 +898,15 @@ select {
 }
 
 .visually-hidden {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .skip-link {
@@ -1271,7 +1271,7 @@ select {
 
 .phase3-replay__moves-card {
   min-height: 180px;
-  flex: 1 1 240px !important;
+  flex: 1 1 240px;
   display: flex;
   flex-direction: column;
 }
@@ -1911,10 +1911,10 @@ body {
 }.phase2-panel-card,
 .phase46-preview,
 .phase46-system-state {
-  border-color: var(--p46-line) !important;
+  border-color: var(--p46-line);
   background:
     linear-gradient(150deg, rgba(255, 255, 255, 0.035), transparent 38%),
-    var(--p46-surface) !important;
+    var(--p46-surface);
   box-shadow: var(--p46-shadow-low);
 }
 
@@ -1952,11 +1952,11 @@ body {
 }
 
 .phase46-board-frame {
-  border-color: var(--p46-line-strong) !important;
+  border-color: var(--p46-line-strong);
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.045), transparent 44%),
-    rgba(8, 20, 17, 0.94) !important;
-  box-shadow: var(--p46-shadow-high) !important;
+    rgba(8, 20, 17, 0.94);
+  box-shadow: var(--p46-shadow-high);
 }
 
 .phase46-board-column {
@@ -2106,11 +2106,11 @@ body {
 
 /* Live play fits a desktop viewport; the game panel owns its own scroll. */
 .phase46-play {
-  display: grid !important;
-  grid-template-columns: minmax(460px, 1fr) minmax(330px, 390px) !important;
+  display: grid;
+  grid-template-columns: minmax(460px, 1fr) minmax(330px, 390px);
   grid-template-rows: minmax(0, 1fr);
-  align-items: stretch !important;
-  gap: var(--p46-gap) !important;
+  align-items: stretch;
+  gap: var(--p46-gap);
   overflow: hidden;
 }
 
@@ -2219,13 +2219,13 @@ body {
 }
 
 .phase46-game-panel {
-  display: flex !important;
+  display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .phase46-game-panel > * {
@@ -2233,7 +2233,7 @@ body {
 }
 
 .phase46-clock-card {
-  padding: 13px !important;
+  padding: 13px;
 }
 
 .phase46-status-strip {
@@ -2268,7 +2268,7 @@ body {
 
 .phase46-moves-card {
   min-height: 150px;
-  flex: 1 1 220px !important;
+  flex: 1 1 220px;
   display: flex;
   flex-direction: column;
 }
@@ -2330,10 +2330,10 @@ body {
 
 .phase46-puzzle-grid {
   min-height: 0;
-  display: grid !important;
-  grid-template-columns: minmax(460px, 1fr) minmax(320px, 390px) !important;
-  gap: var(--p46-gap) !important;
-  align-items: stretch !important;
+  display: grid;
+  grid-template-columns: minmax(460px, 1fr) minmax(320px, 390px);
+  gap: var(--p46-gap);
+  align-items: stretch;
 }
 
 .phase46-puzzle-grid .phase46-board-column {
@@ -2368,12 +2368,12 @@ body {
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  display: flex !important;
+  display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .phase46-objective-card {
@@ -2809,7 +2809,7 @@ body {
   .phase46-play,
   .phase46-puzzle-grid,
   .phase46-replay {
-    grid-template-columns: minmax(420px, 1fr) minmax(300px, 355px) !important;
+    grid-template-columns: minmax(420px, 1fr) minmax(300px, 355px);
   }
 
   .phase46-archive-metrics > span:nth-child(2) {
@@ -2996,7 +2996,7 @@ body {
   }
 
   .app-nav__label {
-    display: block !important;
+    display: block;
     max-width: 100%;
     font-size: 0.67rem;
   }
@@ -3029,8 +3029,8 @@ body {
   .phase46-play,
   .phase46-puzzle-grid,
   .phase46-replay {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .phase46-setup .setup__body {
@@ -3072,7 +3072,7 @@ body {
   .phase46-game-panel,
   .phase46-puzzle-panel,
   .phase46-replay__panel {
-    display: grid !important;
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -3226,7 +3226,7 @@ body {
   *,
   *::before,
   *::after {
-    scroll-behavior: auto !important;
+    scroll-behavior: auto;
   }
 
   .app-content > .screen,
@@ -3245,7 +3245,7 @@ body {
   .phase46-loading-lines i,
   .phase46-solved-badge,
   .clock-face--low.clock-face--active {
-    animation: none !important;
+    animation: none;
   }.app-shell .button,
 .app-shell .phase2-icon-button,
 .app-shell .chip,
@@ -3253,7 +3253,7 @@ body {
 .app-nav__item,
 .app-nav__indicator,
 .phase46-button-arrow {
-    transition: none !important;
+    transition: none;
   }
 }
 
@@ -5523,10 +5523,10 @@ because the board is the thing being
   *,
   *::before,
   *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
   }
 }
 
