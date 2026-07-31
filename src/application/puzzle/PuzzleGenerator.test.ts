@@ -8,7 +8,7 @@ const rules = new ChessJsRules()
 
 /** Plays a fixed script of moves, whatever it is asked. */
 class ScriptedEngine implements ChessEngine {
-  configureCalls = 0
+  readonly configurations: EngineConfiguration[] = []
   disposed = false
   private index = 0
 
@@ -18,8 +18,8 @@ class ScriptedEngine implements ChessEngine {
     return Promise.resolve()
   }
 
-  configure(_configuration: EngineConfiguration): Promise<void> {
-    this.configureCalls += 1
+  configure(configuration: EngineConfiguration): Promise<void> {
+    this.configurations.push(configuration)
     return Promise.resolve()
   }
 
@@ -75,8 +75,30 @@ describe('PuzzleGenerator', () => {
     expect(puzzle.fen).toBe(position.fen)
 
     expect(progress).toEqual([3, 4, 5, 6, 7])
-    expect(engine.configureCalls).toBe(1)
     expect(engine.disposed).toBe(true)
+  })
+
+  it('seats a full-strength attacker against a weakened defender', async () => {
+    // The seats must differ. Matched strength does not get mated: at equal
+    // depth the self-play games ran past 130 plies and drew on insufficient
+    // material every time, so every generation attempt failed and the screen
+    // could only ever say the engine composed nothing.
+    const engine = new ScriptedEngine(SCHOLARS_FINISH)
+    await new PuzzleGenerator(rules, () => engine, BOOK).generate(0)
+
+    // Reconfigured every ply, because the seat changes every ply.
+    expect(engine.configurations).toHaveLength(SCHOLARS_FINISH.length)
+
+    // Seed 0 mates with White, and White delivers plies 1, 3 and 5 here.
+    const kinds = engine.configurations.map((c) => c.strength.kind)
+    expect(kinds).toEqual(['full', 'rated', 'full', 'rated', 'full'])
+
+    const defender = engine.configurations[1]!
+    expect(defender.strength).toMatchObject({ kind: 'rated' })
+    // A defender that searches deeply enough to see the net is no defender.
+    expect(defender.searchLimits.maxDepth).toBeLessThan(
+      engine.configurations[0]!.searchLimits.maxDepth!,
+    )
   })
 
   it('reseeds after a spoiled game instead of giving up', async () => {

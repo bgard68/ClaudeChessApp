@@ -28,6 +28,25 @@ describe('forced-mate reasoning', () => {
     expect(solvesMateWithin(rules, position, { from: 'b5', to: 'b7' }, 1)).toBe(false)
   })
 
+  // Qg6 leaves the black king with no legal move and no check: a draw, not a
+  // win. The empty reply list is the trap — `replies.every(...)` over nothing
+  // is vacuously true, so dropping the emptiness guard would score a stalemate
+  // as a solved mate and hand the player a drawn puzzle marked correct.
+  const STALEMATE_TRAP = '7k/8/8/8/8/8/6Q1/K7 w - - 0 1'
+
+  it('refuses a stalemating move as a mate solution', () => {
+    const position = rules.positionFromFen(STALEMATE_TRAP)
+    expect(solvesMateWithin(rules, position, { from: 'g2', to: 'g6' }, 2)).toBe(false)
+    expect(solvesMateWithin(rules, position, { from: 'g2', to: 'g6' }, 1)).toBe(false)
+  })
+
+  it('does not count a stalemating move as an immediate mate', () => {
+    const position = rules.positionFromFen(STALEMATE_TRAP)
+    expect(
+      matingMoves(rules, position).some((move) => move.from === 'g2' && move.to === 'g6'),
+    ).toBe(false)
+  })
+
   it('walks the full ladder: force, defend, mate', () => {
     const start = rules.positionFromFen(LADDER)
 
