@@ -4,7 +4,9 @@ import type { Position } from '@domain/chess/Position'
 import type { Square } from '@domain/chess/Square'
 import { dailySeed } from '@application/puzzle/DailyPuzzle'
 import { mateStartingMove, solvesMateWithin, toughestDefence } from '@application/puzzle/mate'
+import { AppIcon, type AppIconName } from '../components/AppIcon'
 import { ChessBoardView } from '../components/ChessBoardView'
+import { ScreenHeader } from '../components/ScreenHeader'
 import { todaysPuzzle, type StoredDailyPuzzle } from '../dailyPuzzle'
 import {
   dayKey,
@@ -27,15 +29,9 @@ interface PuzzleScreenProps {
   readonly onBack: () => void
 }
 
-/**
- * The daily puzzle: the engine plays itself once per day on this device, and
- * the finish of that game is yours to find. Answers are judged by the rules —
- * any move that still forces the mate counts, not just the game's own.
- */
 export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
   const { services, factory } = useServices()
   const rules = services.rules
-
   const today = useMemo(() => dayKey(new Date()), [])
   const [phase, setPhase] = useState<Phase>({ kind: 'generating', ply: 0 })
   const [position, setPosition] = useState<Position | null>(null)
@@ -59,7 +55,6 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
   const load = useCallback(() => {
     let cancelled = false
     setPhase({ kind: 'generating', ply: 0 })
-
     todaysPuzzle(today, () =>
       factory.createPuzzleGenerator().generate(dailySeed(new Date()), (ply) => {
         if (!cancelled) {
@@ -89,7 +84,6 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
 
   useEffect(() => load(), [load])
 
-  /** Judged, not compared: any move that keeps the mate forced is right. */
   const tryMove = (intent: MoveIntent): boolean => {
     if (position === null || status === 'solved') return false
     setHint(null)
@@ -112,7 +106,6 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
       return true
     }
 
-    // The defender resists as well as a lost position allows, and play goes on.
     const defence = toughestDefence(rules, played.position)!
     const defended = rules.play(played.position, defence)!
     setPosition(defended.position)
@@ -133,83 +126,212 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
     phase.kind === 'ready'
       ? rules.positionFromFen(phase.puzzle.fen).sideToMove
       : 'white'
+  const totalMoves = phase.kind === 'ready' ? phase.puzzle.mateIn : movesLeft
+  const feedback = puzzleFeedback(status, shownStreak)
 
   return (
-    <div className="screen screen--puzzle">
-      <header className="puzzle__header">
-        <button type="button" className="button" onClick={onBack}>
-          ← Back
-        </button>
-        <h1>Puzzle of the day</h1>
-        {shownStreak > 0 ? <span className="streak-pill">🔥 {shownStreak}-day streak</span> : null}
-      </header>
+    <div className="screen screen--puzzle phase2-puzzle phase3-puzzle phase46-puzzle">
+      <ScreenHeader
+        kicker="Daily training"
+        title="Puzzle of the day"
+        description="Find the forcing continuation composed locally by Stockfish."
+        onBack={onBack}
+        backLabel="Back to play"
+        metrics={
+          <div className="phase2-puzzle-metrics phase46-puzzle-metrics">
+            <span>
+              <AppIcon name="sparkles" size={16} />
+              <strong>{shownStreak}</strong>
+              <small>day streak</small>
+            </span>
+            <span>
+              <AppIcon name="clock" size={16} />
+              <strong>{movesLeft}</strong>
+              <small>moves left</small>
+            </span>
+          </div>
+        }
+      />
 
       {phase.kind === 'generating' ? (
-        <div className="puzzle__generating">
-          <p>
-            <strong>Stockfish is composing today's puzzle.</strong>
-          </p>
-          <p>
-            It plays a fresh game against itself and serves you the finish —{' '}
-            {phase.ply === 0 ? 'warming up…' : `playing move ${Math.ceil(phase.ply / 2)}…`}
-          </p>
-        </div>
+        <section className="phase2-loading-card phase46-loading-card" role="status">
+          <span className="phase2-loader" aria-hidden="true" />
+          <div>
+            <p className="phase2-kicker">Generating locally</p>
+            <strong>Stockfish is composing today’s puzzle.</strong>
+            <p>{phase.ply === 0 ? 'Warming up…' : `Playing move ${Math.ceil(phase.ply / 2)}…`}</p>
+          </div>
+          <div className="phase46-loading-lines" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </div>
+        </section>
       ) : null}
 
       {phase.kind === 'error' ? (
-        <div className="puzzle__generating">
-          <p className="notice notice--error">{phase.message}</p>
-          <button type="button" className="button" onClick={() => load()}>
-            Try again
-          </button>
-        </div>
+        <section className="phase2-loading-card phase46-loading-card phase46-loading-card--error" role="alert">
+          <span className="phase46-state-icon" aria-hidden="true">
+            <AppIcon name="warning" size={22} />
+          </span>
+          <div>
+            <p className="phase2-kicker">Puzzle unavailable</p>
+            <p className="notice notice--error">{phase.message}</p>
+            <button type="button" className="button" onClick={() => load()}>
+              <AppIcon name="sparkles" size={16} />
+              Try again
+            </button>
+          </div>
+        </section>
       ) : null}
 
       {phase.kind === 'ready' && position !== null ? (
-        <>
-          <p className="puzzle__caption">
-            Composed today by Stockfish playing itself — in its game, mate fell on move{' '}
-            {phase.puzzle.mateOnMove}. Everyone's board turns over at midnight.
-          </p>
+        <div className="phase2-puzzle-grid phase46-puzzle-grid">
+          <section className="phase2-board-column phase46-board-column" aria-label="Puzzle board">
+            <div className="phase46-puzzle-board-meta">
+              <span>
+                <AppIcon name="puzzle" size={16} />
+                {sideToMove === 'white' ? 'White' : 'Black'} to move
+              </span>
+              <span>Mate in {movesLeft}</span>
+            </div>
+            <div className="phase2-board-frame phase46-board-frame" data-status={status}>
+              {/* Same react-chessboard v5 component and prop contract. */}
+              <ChessBoardView
+                fen={position.fen}
+                orientation={sideToMove}
+                interactive={status !== 'solved'}
+                legalMoves={rules.legalMoves(position)}
+                lastMove={lastMove}
+                hint={hint}
+                onMove={tryMove}
+              />
+              {status === 'solved' ? (
+                <span className="phase46-solved-badge" role="status">
+                  <AppIcon name="check" size={18} />
+                  Solved
+                </span>
+              ) : null}
+            </div>
+          </section>
 
-          <ChessBoardView
-            fen={position.fen}
-            orientation={sideToMove}
-            interactive={status !== 'solved'}
-            legalMoves={rules.legalMoves(position)}
-            lastMove={lastMove}
-            hint={hint}
-            onMove={tryMove}
-          />
+          <aside className="phase2-puzzle-panel phase46-puzzle-panel">
+            <section className="phase2-panel-card phase2-puzzle-objective phase46-objective-card">
+              <div className="phase46-card-icon" aria-hidden="true">
+                <AppIcon name="puzzle" size={20} />
+              </div>
+              <div>
+                <p className="phase2-kicker">Objective</p>
+                <h2>{sideToMove === 'white' ? 'White' : 'Black'} to move</h2>
+                <p className="phase2-puzzle-target">Mate in {movesLeft}</p>
+                <p>
+                  Any legal continuation that preserves the forced mate is accepted.
+                </p>
+              </div>
+            </section>
 
-          <p
-            className={`puzzle__prompt${
-              status === 'wrong'
-                ? ' puzzle__prompt--wrong'
-                : status === 'solved'
-                  ? ' puzzle__prompt--solved'
-                  : ''
-            }`}
-          >
-            {status === 'solved'
-              ? `Checkmate — solved!${shownStreak > 1 ? ` ${shownStreak} days running.` : ''}`
-              : status === 'wrong'
-                ? 'Not that one — the mate slips away. Take it back and look again.'
-                : `${sideToMove === 'white' ? 'White' : 'Black'} to move · mate in ${movesLeft}`}
-          </p>
+            <PuzzleProgress total={totalMoves} remaining={movesLeft} solved={status === 'solved'} />
 
-          <div className="puzzle__actions">
-            {status === 'solved' ? null : (
-              <button type="button" className="button" onClick={showHint}>
-                💡 Hint
+            <p
+              className={`puzzle__prompt phase2-puzzle-feedback phase46-puzzle-feedback${
+                status === 'wrong'
+                  ? ' puzzle__prompt--wrong'
+                  : status === 'solved'
+                    ? ' puzzle__prompt--solved'
+                    : ''
+              }`}
+              data-status={status}
+              aria-live="polite"
+            >
+              <span className="phase46-state-icon" aria-hidden="true">
+                <AppIcon name={feedback.icon} size={19} />
+              </span>
+              <span>{feedback.message}</span>
+            </p>
+
+            <section className="phase2-panel-card phase46-details-card">
+              <div className="phase2-section-title">
+                <span>Puzzle details</span>
+                <small>Daily position</small>
+              </div>
+              <dl className="phase2-detail-list">
+                <div><dt>Composed</dt><dd>Today</dd></div>
+                <div><dt>Mate occurred</dt><dd>Move {phase.puzzle.mateOnMove}</dd></div>
+                <div><dt>Resets</dt><dd>At midnight</dd></div>
+              </dl>
+            </section>
+
+            <div className="puzzle__actions phase2-puzzle-actions phase46-puzzle-actions">
+              {status === 'solved' ? null : (
+                <button type="button" className="button button--primary" onClick={showHint}>
+                  <AppIcon name="hint" size={16} />
+                  Show hint
+                </button>
+              )}
+              <button type="button" className="button" onClick={() => begin(phase.puzzle)}>
+                <AppIcon name="undo" size={16} />
+                Start over
               </button>
-            )}
-            <button type="button" className="button" onClick={() => begin(phase.puzzle)}>
-              Start over
-            </button>
-          </div>
-        </>
+            </div>
+          </aside>
+        </div>
       ) : null}
     </div>
   )
+}
+
+function PuzzleProgress({
+  total,
+  remaining,
+  solved,
+}: {
+  readonly total: number
+  readonly remaining: number
+  readonly solved: boolean
+}) {
+  const completed = solved ? total : Math.max(0, total - remaining)
+
+  return (
+    <section className="phase2-panel-card phase46-puzzle-progress" aria-label="Puzzle progress">
+      <div className="phase2-section-title">
+        <span>Combination</span>
+        <small>{solved ? 'Complete' : `${completed} of ${total}`}</small>
+      </div>
+      <ol>
+        {Array.from({ length: total }, (_, index) => {
+          const step = index + 1
+          const state = solved || step <= completed ? 'complete' : step === completed + 1 ? 'current' : 'upcoming'
+          return (
+            <li key={step} data-state={state}>
+              <span>{state === 'complete' ? <AppIcon name="check" size={13} /> : step}</span>
+              <small>{state === 'complete' ? 'Found' : state === 'current' ? 'Find move' : 'Next'}</small>
+            </li>
+          )
+        })}
+      </ol>
+    </section>
+  )
+}
+
+function puzzleFeedback(
+  status: SolveStatus,
+  streak: number,
+): { readonly icon: AppIconName; readonly message: string } {
+  switch (status) {
+    case 'solved':
+      return {
+        icon: 'check',
+        message: `Checkmate — solved!${streak > 1 ? ` ${streak} days running.` : ''}`,
+      }
+    case 'wrong':
+      return {
+        icon: 'warning',
+        message: 'That move lets the mate slip away. Look for a forcing move.',
+      }
+    case 'solving':
+      return {
+        icon: 'hint',
+        message: 'Your move. Checks, captures, and threats are a good place to start.',
+      }
+  }
 }
