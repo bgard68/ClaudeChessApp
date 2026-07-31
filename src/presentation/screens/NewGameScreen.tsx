@@ -280,7 +280,10 @@ function Chip({
 
 
 
-function summarise(
+/** The one-line description of the match about to start, shown under the
+ *  settings. Exported for its own tests — the panel it appears in renders
+ *  into a portal, which a static render cannot reach. */
+export function summarise(
   opponent: OpponentChoice,
   colour: ColourChoice,
   difficultyLabel: string,

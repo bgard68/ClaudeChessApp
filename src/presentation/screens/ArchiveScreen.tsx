@@ -77,7 +77,9 @@ const COLUMNS: readonly {
 ]
 
 /** States plainly what is on screen and why, rather than leaving a bare list. */
-function describeResults(
+/** Exported for its own tests — the screen reaches these states only after
+ *  the library has answered, which needs a database. */
+export function describeResults(
   total: number,
   search: string,
   field: SearchField,
@@ -914,7 +916,7 @@ function GamePreview({
 }
 
 /** The moves as PGN movetext reads them: numbered White–Black pairs. */
-function movetext(moves: readonly RecordedMove[]): string {
+export function movetext(moves: readonly RecordedMove[]): string {
   const turns: string[] = []
   for (let index = 0; index < moves.length; index += 2) {
     const black = moves[index + 1]
@@ -934,7 +936,7 @@ const RESULT_PILLS: Readonly<
   '1/2-1/2': { kind: 'draw', label: '½–½', title: 'Drawn' },
 }
 
-function ResultPill({ result }: { result: string }) {
+export function ResultPill({ result }: { result: string }) {
   const pill = RESULT_PILLS[result]
   if (pill === undefined) {
     return (

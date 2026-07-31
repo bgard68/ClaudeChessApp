@@ -16,15 +16,28 @@ const ServicesContext = createContext<ServicesValue | null>(null)
  * were already wired in the composition root — components ask for what they
  * need instead of importing concrete classes.
  */
-export function ServicesProvider({ children }: { children: ReactNode }) {
-  const value = useMemo<ServicesValue>(() => {
+export function ServicesProvider({
+  children,
+  value,
+}: {
+  children: ReactNode
+  /**
+   * Stand-in services, for tests. Left unset by the app, which composes the
+   * real ones below — a provider that can only ever build its own dependencies
+   * is not injecting them, and opening a real database is not something a test
+   * of a screen should have to do.
+   */
+  value?: ServicesValue
+}) {
+  const resolved = useMemo<ServicesValue>(() => {
+    if (value !== undefined) return value
     // `getAppServices` is idempotent, so a second render — StrictMode does
     // exactly that — cannot open a second database connection.
     const services = getAppServices()
     return { services, factory: new GameFactory(services) }
-  }, [])
+  }, [value])
 
-  return <ServicesContext.Provider value={value}>{children}</ServicesContext.Provider>
+  return <ServicesContext.Provider value={resolved}>{children}</ServicesContext.Provider>
 }
 
 export function useServices(): ServicesValue {
