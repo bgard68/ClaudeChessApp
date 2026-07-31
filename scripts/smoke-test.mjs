@@ -63,7 +63,7 @@ try {
 
   // The setup screen, whole: board drawn, both journeys offered.
   await page.waitForSelector('[data-square="e2"]', { timeout: 20_000 })
-  for (const label of ['Start game', 'Browse championship games', 'Puzzle of the day']) {
+  for (const label of ['Start game', 'Browse championships', 'Puzzle of the day']) {
     if ((await page.locator(`button:has-text("${label}")`).count()) === 0) {
       throw new Error(`Setup screen is missing "${label}".`)
     }

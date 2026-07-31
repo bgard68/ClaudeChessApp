@@ -73,7 +73,7 @@ each screen's unmount.
 stateDiagram-v2
     [*] --> setup
     setup --> play: Start game
-    setup --> archive: Browse championship games
+    setup --> archive: Browse championships
     archive --> setup: Back
     archive --> loading: open a game
     loading --> replay: PGN parsed

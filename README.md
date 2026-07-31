@@ -94,7 +94,7 @@ deleted.
 
 ### Exporting your games to a file
 
-**Browse championship games → Export mine**. That downloads
+**Browse championships → Export my games**. That downloads
 `my-chess-games.pgn`.
 
 The file holds the games you **played or imported**, oldest first — not the
@@ -116,7 +116,7 @@ prevents that. A file on your disk is the one copy that survives.
 
 ### Importing PGN
 
-**Browse championship games → Import PGN**, then choose a `.pgn` file. Anything
+**Browse championships → Import PGN**, then choose a `.pgn` file. Anything
 a chess program can write will load, up to 128 MB per file.
 
 Re-importing the same file is safe — the app fingerprints every game and refuses
