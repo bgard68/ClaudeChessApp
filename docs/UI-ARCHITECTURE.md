@@ -293,6 +293,15 @@ judge: it drives the built app through every screen at three widths and asserts
 presence first — the board, the options, the actions, the archive table — then
 containment, tap targets, text size and board dimensions. It runs in the gate.
 
+Two more scripts joined it, on the same browser. `behaviour-check.mjs` asks
+whether the screens can be *used* — paging appends, searching replaces, reset
+clears the sort as well as the filters — because everything an effect drives is
+invisible to a suite that renders to static markup. `a11y-check.mjs` runs
+axe-core over four screens at two widths, which nothing had ever done.
+
+All three, what they cover and what they cannot, are in
+[TESTING.md](TESTING.md).
+
 Presence is the point. The suite was green, the build was green and the smoke
 test was green on a day the settings panel was absent from every phone, because
 each existing check asks whether anything present is wrong and none asked

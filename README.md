@@ -44,6 +44,9 @@ dependencies, not for setting up.
 | `npm run dev` | Dev server (copies the engine into `public/` first) |
 | `npm run build` | Typecheck and produce `dist/` |
 | `npm test` | Run the test suite |
+| `npm run layout-check` | Layout invariants, every screen at three widths (needs a build) |
+| `npm run behaviour-check` | Interaction behaviour in a real browser (needs a build) |
+| `npm run a11y-check` | axe-core accessibility pass (needs a build) |
 | `npm run fetch-games` | Re-download the World Championship games |
 | `npm run fetch-famous` | Re-extract the famous-games collection |
 | `npm run fetch-modern` | Re-fetch title matches played since 2008 |
@@ -259,17 +262,28 @@ size.
 
 ## Testing
 
-148 tests covering the clock (increments, stage transitions, flag fall), the turn
+494 tests covering the clock (increments, stage transitions, flag fall), the turn
 loop (checkmate, timeout, resignation, illegal-move rejection, late moves after
 the game ends), rules adaptation, PGN parsing, import limits, player identity,
-replay clock alignment, and archive first-load recovery.
+replay stepping and clock alignment, the archive's query and paging rules,
+federation matching, and archive first-load recovery.
 
 Presentation components are tested by rendering through `react-dom/server` and
-asserting on the markup — `AppShell`, `ScreenHeader`, and `AppIcon` have tests;
-CSS geometry deliberately does not. Those tests live in `.tsx` files, so
-vitest's `include` pattern covers `.test.tsx` as well as `.test.ts`. It once
-covered only the latter, and two component tests sat unrun for their whole
-existence while the suite reported green.
+asserting on the markup; CSS geometry deliberately is not. Those tests live in
+`.tsx` files, so vitest's `include` pattern covers `.test.tsx` as well as
+`.test.ts`. It once covered only the latter, and two component tests sat unrun
+for their whole existence while the suite reported green.
+
+Four more checks run in a real browser against the built app: `smoke-test`
+(the bundle stands up and Stockfish answers), `layout-check` (every screen at
+three widths), `behaviour-check` (paging, searching, sorting and the rest
+actually work), and `a11y-check` (axe-core, WCAG 2.1 AA). They exist because a
+suite that renders to static markup cannot see anything an effect does — which
+is where this project's expensive faults have lived.
+
+**[docs/TESTING.md](docs/TESTING.md)** covers all of it: how to run each check,
+how to write one, why Playwright rather than jsdom (and how to add jsdom
+anyway), and what is deliberately not covered.
 
 Two of them guard the architecture rather than behaviour. `architecture.test.ts`
 asserts the dependency rule — each layer imports only itself or inward, outer

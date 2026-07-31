@@ -288,6 +288,14 @@ hermetic, upstream data defects, and the react-chessboard 4 → 5 migration with
 its two-day dead end. Joined there by what the security pass later turned up
 about the build itself.
 
+Later additions, all found by writing tests rather than by anyone reporting
+them: one screen serving two libraries while querying only one, paging that
+would have skipped the page it had just loaded, and two name lookups destroying
+the same accent in two different ways — which filed one player as two.
+
+How the tests that found them are organised, and what they still cannot reach,
+is in **[TESTING.md](TESTING.md)**.
+
 ---
 
 ## 8. Principles: where the design holds, and where it does not
@@ -322,9 +330,24 @@ Strained:
   "the library" is a broad responsibility. If this file grows again, the player
   index is the natural thing to extract — see V2 in §8.10 for why that wait is
   deliberate.
-- `ArchiveScreen` holds filter state, sort state, pagination, import, and export.
-  It is a screen, so some of that is inherent; it is nonetheless the largest
-  component.
+- `ArchiveScreen` was the largest component in the app — 1,040 lines, 20
+  `useState` and 6 `useEffect` — holding the query, filters, sort, pagination,
+  selection, preview, import and export at once. The query half now lives in
+  `useArchiveQuery`, and the decisions behind it in `archiveQuery.ts` as plain
+  functions: what a query looks like, how pages accumulate, what a column click
+  does, where the arrow keys go, which narrowings are in force. The screen is
+  857 lines with 6 `useState`.
+
+  What was actually wrong was not the size. The rule that *a new question
+  restarts the list* was repeated by hand after every setter that could change
+  one — search, field, player, filters, sort — so missing it in a single place
+  meant a filtered list still showing page three of the question before it. It
+  is now applied once, inside each action. None of it needed React, so none of
+  it needs a browser to test.
+
+  Selection, preview and the import controls stayed in the screen. They are
+  genuinely screen concerns, and moving them would have been change for its own
+  sake.
 
 ### 8.2 Open/Closed (OCP) — honoured where it matters
 
@@ -565,9 +588,12 @@ ever fixed the stale permission cannot linger.
 **The violation.** 590 lines, 15 methods, and at least six distinct
 responsibilities: query construction, durability reporting and the storage
 permission request, PGN import, export, the parsed-game cache, player-index
-rebuilding, schema migration, and first-run initialisation. `ArchiveScreen.tsx`
-is the same shape from the other end — 594 lines and 17 hooks holding filter
-state, sort state, pagination, import and export.
+rebuilding, schema migration, and first-run initialisation.
+
+`ArchiveScreen.tsx` was the same shape from the other end, and has since been
+split: the question it asks of the library, and the answer, moved to
+`useArchiveQuery` with the decisions behind them in `archiveQuery.ts`. See
+§8.1. `SqliteGameArchive` remains as described.
 
 **What fixing it costs.** The natural extraction is `rebuildPlayerIndex` — about
 70 lines with its own concern, name-merging, which already has its own test file

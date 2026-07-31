@@ -9,6 +9,7 @@ what it can do. These go deeper, one question each.
 | [FLOWS.md](FLOWS.md) | Which piece talks to which? What happens between clicking **Start** and a finished game landing in the library? |
 | [DATA-MODEL.md](DATA-MODEL.md) | What is stored, where does it live, and how does a row get written? |
 | [LESSONS-LEARNED.md](LESSONS-LEARNED.md) | What broke, what actually caused it, and what was the wrong explanation that looked right first? |
+| [TESTING.md](TESTING.md) | How is it tested, why Playwright rather than jsdom, what is deliberately not covered, and how do I add a check? |
 | [SUPPLY-CHAIN.md](SUPPLY-CHAIN.md) | What does the build enforce, why, how do I audit it, and what would quietly undo it? |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | How does it get to Azure, and how do I set that up from scratch? |
 | [UI-REDESIGN.md](UI-REDESIGN.md) | What did the presentation rewrite change on each screen, what did it deliberately leave alone, and what was actually verified? |
@@ -35,6 +36,13 @@ Two more live outside this folder because convention puts them there:
   including the remedies that do not work.
 - **How to regenerate the lock file without breaking the deploy** —
   [SUPPLY-CHAIN.md § Dependencies install from the lock](SUPPLY-CHAIN.md#2-dependencies-install-from-the-lock).
+- **How to run the browser checks, or write one** —
+  [TESTING.md § Writing a new browser check](TESTING.md#writing-a-new-browser-check),
+  including the wait that passes while asserting the wrong state.
+- **Why not jsdom** — [TESTING.md § Playwright, not jsdom](TESTING.md#playwright-not-jsdom),
+  with what it costs and how to add it anyway.
+- **What the tests cannot reach** —
+  [TESTING.md § What is not covered, and why](TESTING.md#what-is-not-covered-and-why).
 - **Why there are four stylesheets in the cascade** —
   [UI-ARCHITECTURE.md § Known debt](UI-ARCHITECTURE.md#known-debt), including
   what has to exist before merging them is safe.

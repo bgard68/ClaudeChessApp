@@ -93,6 +93,116 @@ actually scrolls past. **When a layout is reported as wrong and the
 measurements come back clean, enumerate what should be on the page before
 measuring what is.**
 
+## One screen served two libraries and queried one
+
+Splitting the archive into Championships and My games gave one component two
+routes. The scope was passed as a prop, threaded into the query, and the two
+screens showed identical results.
+
+React was reusing the component across the routes, so no remount happened — and
+`scope` was missing from the query effect's dependency list. The effect had
+been written when there was only one library and nothing to depend on. Adding
+the prop changed what the query *should* ask; it did not change when the query
+*runs*.
+
+The wrong explanation that looks right: "the prop is wrong, or the SQL is." Both
+were correct. Nothing about the value was broken; the query holding the old one
+had simply never been told to run again.
+
+Fixed in two places, because either alone is fragile: `scope` is in the
+dependency list, and the routes are keyed (`<ArchiveScreen key="mine" …>`) so
+React remounts rather than reuses. **A prop added to a component with effects is
+not wired until it is in the dependency array of every effect that reads it.**
+
+## Paging that skipped the page it had just loaded
+
+Caught during review of a refactor, before it merged, which is the only reason
+it is a short entry.
+
+Extracting the archive's query into a hook, the obvious way to write "load the
+next page" is:
+
+```js
+offset: current.offset + current.limit
+```
+
+That is correct only while the limit is a page size. **Load all** sets the limit
+to whatever remains — 2,947 — so the next offset lands thousands of rows past
+the end and returns nothing. The list silently stops growing.
+
+The original code paged from `games.length` instead, which is right regardless
+of what the limit happens to be. The refactor was caught by reading the code it
+replaced rather than by trusting that the new version looked reasonable.
+
+**When rewriting something that works, read the original for the case you would
+not have thought of.** The comment above the old handler did not explain this;
+the `setLimit(PAGE_SIZE)` beside it was the only clue.
+
+## Two name lookups, two different ways of destroying the same accent
+
+The app matches player names against two ASCII tables: a hand-kept federation
+list, and a fetched FIDE directory of 120 keys with no accented character in
+any of them. PGN files are under no such discipline — the same player is
+"Ljubojevic" in one collection and "Ljubojević" in another.
+
+Both lookups handled the difference by throwing the accented letter away, and
+each did it differently:
+
+| | Did this | `Ljubojević` became |
+| --- | --- | --- |
+| `federationOf` | deleted it — `[^a-z, -]` → `''` | `ljubojevi` |
+| `identityKey` | replaced it with a space — `[^a-z, ]` → `' '` | `ljubojevi` |
+
+Neither matches `ljubojevic`, which is what both tables hold.
+
+The first cost a flag. The second was worse and less visible: `identityKey`
+decides which spellings are *the same person*, so an accented name was filed
+apart from its own plain spelling — one player appearing as two rows in the
+suggestions, each holding part of their games. The function was failing at the
+one job it exists to do.
+
+Neither was ever reported, and neither could have been: every game the app ships
+spells names in ASCII, so nothing on screen was wrong. Only imported files —
+which is precisely where diacritics arrive — would have shown it. It was found
+by writing tests for a file that had none.
+
+Both now fold through one `foldName`. NFD splits an accented letter into base
+plus combining mark and the mark is dropped; a small table covers the letters
+NFD cannot split, because **Ólafsson decomposes and Đurić does not**. A fold
+built on `normalize('NFD')` alone looks complete and silently misses every
+stroked letter — ø, đ, ł, ß, æ.
+
+**Two functions normalising the same input in two different ways is a bug
+waiting for the input that tells them apart.**
+
+## A browser check that waited for the wrong signal, and passed
+
+The first draft of `behaviour-check.mjs` asserted that searching narrows the
+archive. It passed. It was wrong.
+
+Typing into the search box restarts the paging immediately, but the query is
+debounced, so the row count runs:
+
+```
+80  →  40 (the OLD question, back at page one)  →  23 (the new one)
+```
+
+The helper waited for the count to *change* and returned the 40. Every
+assertion after it ran against the previous question's first page — and the
+narrowing assertion passed, because 40 is genuinely fewer than 80.
+
+It surfaced only because the *next* assertion — that a chip appears — failed,
+and because that failure was instrumented rather than resolved with a longer
+wait. Adding a sleep would have turned the whole sequence green while leaving
+it meaningless.
+
+The helper now waits for the count to stop changing across three polls.
+
+**A browser check that goes green after a timing change deserves more suspicion
+than one that goes red.** Red says the assertion or the app is wrong; green
+after a sleep says only that something arrived, not that it was the thing you
+meant.
+
 ## Upstream data defects
 
 - **Gelfand–Gareev, World Blitz 2019** — `Invalid move in PGN: Qxe1`. Corrupt
