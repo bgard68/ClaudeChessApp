@@ -52,17 +52,33 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
     [rules],
   )
 
+  /** Only the rules can say whether a stored FEN still loads; loading throws. */
+  const isUsable = useCallback(
+    (puzzle: StoredDailyPuzzle) => {
+      try {
+        rules.positionFromFen(puzzle.fen)
+        return true
+      } catch {
+        return false
+      }
+    },
+    [rules],
+  )
+
   const load = useCallback(() => {
     let cancelled = false
     setPhase({ kind: 'generating', ply: 0 })
-    todaysPuzzle(today, () =>
-      factory.createPuzzleGenerator().generate(dailySeed(new Date()), (ply) => {
-        if (!cancelled) {
-          setPhase((current) =>
-            current.kind === 'generating' ? { kind: 'generating', ply } : current,
-          )
-        }
-      }),
+    todaysPuzzle(
+      today,
+      () =>
+        factory.createPuzzleGenerator().generate(dailySeed(new Date()), (ply) => {
+          if (!cancelled) {
+            setPhase((current) =>
+              current.kind === 'generating' ? { kind: 'generating', ply } : current,
+            )
+          }
+        }),
+      isUsable,
     )
       .then((puzzle) => {
         if (cancelled) return
@@ -80,7 +96,7 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
     return () => {
       cancelled = true
     }
-  }, [factory, today, begin])
+  }, [factory, today, begin, isUsable])
 
   useEffect(() => load(), [load])
 
@@ -127,6 +143,10 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
       ? rules.positionFromFen(phase.puzzle.fen).sideToMove
       : 'white'
   const totalMoves = phase.kind === 'ready' ? phase.puzzle.mateIn : movesLeft
+  // The objective is fixed; only the countdown moves. Solving the last move
+  // never decrements movesLeft — it ends the puzzle — so a solved board would
+  // otherwise sit there claiming a move is still owed.
+  const remaining = status === 'solved' ? 0 : movesLeft
   const feedback = puzzleFeedback(status, shownStreak)
 
   return (
@@ -146,7 +166,7 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
             </span>
             <span>
               <AppIcon name="clock" size={16} />
-              <strong>{movesLeft}</strong>
+              <strong>{remaining}</strong>
               <small>moves left</small>
             </span>
           </div>
@@ -193,7 +213,7 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
                 <AppIcon name="puzzle" size={16} />
                 {sideToMove === 'white' ? 'White' : 'Black'} to move
               </span>
-              <span>Mate in {movesLeft}</span>
+              <span>{status === 'solved' ? 'Solved' : `Mate in ${movesLeft}`}</span>
             </div>
             <div className="phase2-board-frame phase46-board-frame" data-status={status}>
               {/* Same react-chessboard v5 component and prop contract. */}
@@ -223,14 +243,14 @@ export function PuzzleScreen({ onBack }: PuzzleScreenProps) {
               <div>
                 <p className="phase2-kicker">Objective</p>
                 <h2>{sideToMove === 'white' ? 'White' : 'Black'} to move</h2>
-                <p className="phase2-puzzle-target">Mate in {movesLeft}</p>
+                <p className="phase2-puzzle-target">Mate in {totalMoves}</p>
                 <p>
                   Any legal continuation that preserves the forced mate is accepted.
                 </p>
               </div>
             </section>
 
-            <PuzzleProgress total={totalMoves} remaining={movesLeft} solved={status === 'solved'} />
+            <PuzzleProgress total={totalMoves} remaining={remaining} solved={status === 'solved'} />
 
             <p
               className={`puzzle__prompt phase2-puzzle-feedback phase46-puzzle-feedback${

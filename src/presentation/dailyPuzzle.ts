@@ -13,16 +13,27 @@ export interface StoredDailyPuzzle extends GeneratedPuzzle {
   readonly day: string
 }
 
-const STORAGE_KEY = 'chess.daily-puzzle'
+export const STORAGE_KEY = 'chess.daily-puzzle'
 
 let inFlight: { day: string; promise: Promise<StoredDailyPuzzle> } | null = null
 
+/**
+ * `isUsable` is asked whether a *stored* puzzle can still be played, because
+ * the structural checks below cannot tell: a FEN is a string whatever it
+ * contains, and loading a bad one throws. Serving it anyway is unrecoverable —
+ * the screen fails, and Try again reads the same entry straight back. An
+ * unusable record is dropped so the day regenerates instead.
+ */
 export function todaysPuzzle(
   day: string,
   generate: () => Promise<GeneratedPuzzle>,
+  isUsable: (puzzle: StoredDailyPuzzle) => boolean = () => true,
 ): Promise<StoredDailyPuzzle> {
   const stored = readStored()
-  if (stored !== null && stored.day === day) return Promise.resolve(stored)
+  if (stored !== null && stored.day === day) {
+    if (isUsable(stored)) return Promise.resolve(stored)
+    discardStored()
+  }
   if (inFlight !== null && inFlight.day === day) return inFlight.promise
 
   const promise = generate()
@@ -41,6 +52,14 @@ export function todaysPuzzle(
 
   inFlight = { day, promise }
   return promise
+}
+
+function discardStored(): void {
+  try {
+    globalThis.localStorage?.removeItem(STORAGE_KEY)
+  } catch {
+    // Storage denied: nothing was readable to discard either.
+  }
 }
 
 function readStored(): StoredDailyPuzzle | null {

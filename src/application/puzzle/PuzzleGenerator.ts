@@ -1,4 +1,5 @@
 import type { MoveIntent } from '@domain/chess/Move'
+import type { PieceColor } from '@domain/chess/Piece'
 import type { Position } from '@domain/chess/Position'
 import type { ChessRules } from '@domain/ports/ChessRules'
 import type { ChessEngine, EngineConfiguration } from '../ports/ChessEngine'
@@ -8,14 +9,32 @@ import type { GeneratedPuzzle } from './DailyPuzzle'
 import { OPENING_LINES } from './openings'
 
 /**
- * Fixed depth, full strength: depth is what makes the game replayable from
- * the same seed on the single-threaded build, and eight plies is deep enough
- * to play a coherent game while shallow enough to walk into mating nets —
- * an engine that never gets mated would compose no puzzles.
+ * The two seats, and why they differ.
+ *
+ * An engine of equal strength on both sides does not get mated. Measured, not
+ * assumed: at a matched depth of eight the self-play games ran 136 to 156
+ * plies and ended, every one of them, in a draw by insufficient material. Six
+ * attempts of that is six failures, which is what the screen reported —
+ * "The engine could not compose a puzzle today" was the generator working
+ * exactly as written, against a premise that does not hold.
+ *
+ * So the seats are deliberately unequal. Full strength hunts; a rated, shallow
+ * defender walks into the net. The mate is the point — the game leading to it
+ * is scaffolding the player never sees.
  */
-const GENERATION: EngineConfiguration = {
+const ATTACKER: EngineConfiguration = {
   strength: { kind: 'full' },
-  searchLimits: { moveTimeMs: 1_500, maxDepth: 8 },
+  searchLimits: { moveTimeMs: 1_000, maxDepth: 12 },
+}
+
+/**
+ * 1320 is the floor Stockfish will accept for UCI_Elo; the depth cap is what
+ * actually does the work, since a two-ply search cannot see a mating net
+ * closing. Fast, too: the defender's moves are most of the game's moves.
+ */
+const DEFENDER: EngineConfiguration = {
+  strength: { kind: 'rated', elo: 1320 },
+  searchLimits: { moveTimeMs: 150, maxDepth: 2 },
 }
 
 /** A game refusing to end is a draw in the making; reseed instead of waiting. */
@@ -46,9 +65,11 @@ export class PuzzleGenerator {
   async generate(seed: number, onProgress?: (ply: number) => void): Promise<GeneratedPuzzle> {
     const engine = this.createEngine()
     try {
-      await engine.configure(GENERATION)
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-        const puzzle = await this.playOneGame(engine, seed + attempt, onProgress)
+        // Alternating the mating side keeps consecutive days from all being
+        // White to move.
+        const attacker: PieceColor = (seed + attempt) % 2 === 0 ? 'white' : 'black'
+        const puzzle = await this.playOneGame(engine, seed + attempt, attacker, onProgress)
         if (puzzle !== null) return puzzle
       }
       // Six decisive-or-reseeded games without a mate would be extraordinary.
@@ -62,6 +83,7 @@ export class PuzzleGenerator {
   private async playOneGame(
     engine: ChessEngine,
     seed: number,
+    attacker: PieceColor,
     onProgress?: (ply: number) => void,
   ): Promise<GeneratedPuzzle | null> {
     const line = this.openings[seed % this.openings.length]!
@@ -86,6 +108,9 @@ export class PuzzleGenerator {
 
       let intent: MoveIntent
       try {
+        // Re-sent each ply: the seats swap, and configure only sets options —
+        // the position travels with the search itself.
+        await engine.configure(position.sideToMove === attacker ? ATTACKER : DEFENDER)
         intent = await engine.chooseMove(position)
       } catch {
         return null // Search abandoned: the generator was disposed mid-game.
