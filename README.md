@@ -10,7 +10,7 @@ runs client-side.
 ## Running it
 
 ```bash
-npm install
+npm ci
 ```
 
 ```bash
@@ -18,6 +18,26 @@ npm run dev
 ```
 
 Then open http://localhost:5173.
+
+`npm ci` rather than `npm install`: it installs exactly what `package-lock.json`
+records, which is what CI and the deploy use. `npm install` is for *changing*
+dependencies, not for setting up.
+
+> **Run `npm ci` again after every `git pull` that touched the lock file.**
+> Skipping it is the one setup mistake that does not announce itself. `npm` does
+> not notice that your `node_modules` is behind, and TypeScript reports the
+> mismatch as an ordinary type error in whichever file happens to use the
+> outdated package:
+>
+> ```
+> ChessBoardView.tsx: Property 'options' does not exist on type ... ChessboardProps
+> ```
+>
+> That is not a bug in the file named. It is react-chessboard 4 still on disk
+> while `package.json` asks for 5, where `options` was introduced. **When a
+> typecheck fails in a file your changes never touched, run `npm ci` before
+> reading the error.** See
+> [docs/LESSONS-LEARNED.md](docs/LESSONS-LEARNED.md#a-stale-or-missing-install-fails-as-a-type-error-somewhere-else).
 
 | Command | What it does |
 | --- | --- |

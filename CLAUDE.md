@@ -15,6 +15,12 @@ Conventional Commits, matching the existing history:
 CI installs with `npm ci`, so the lock is what ships — not whatever npm would
 resolve at deploy time.
 
+- **Install with `npm ci`, and run it again after any pull that changed the
+  lock.** A stale `node_modules` does not report itself; it surfaces as a type
+  error in an unrelated file. When a typecheck fails somewhere your changes
+  never went, check the install before reading the error — the same applies to
+  a fresh worktree, which has no `node_modules` at all and silently resolves
+  against the parent checkout's.
 - Regenerate it with `npm install --package-lock-only` and **no `node_modules`
   present**. With a tree installed, npm writes the lock from that tree and
   keeps only the current platform's optional binaries (npm/cli#4828), which

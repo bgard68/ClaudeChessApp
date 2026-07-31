@@ -182,21 +182,37 @@ the point at which the underlying cause stops being investigated.
 fine, `npm ci` succeeds locally, `npm run verify` passes, and only the Linux
 deploy fails.
 
-## A worktree with no node_modules resolves against its parent
+## A stale or missing install fails as a type error somewhere else
 
-`npm run verify` failed in a fresh worktree with a type error in
-`ChessBoardView.tsx` — a file the branch had never touched. The obvious reading
-was a real regression from the react-chessboard 5 migration.
+The same error appeared twice in one day, from two different causes, and both
+times it named a file that had nothing to do with the change:
 
-It was not. The worktree had no `node_modules`, so TypeScript walked up the
-directory tree and resolved against the parent checkout's installed copy, which
-was still on **4.7.3** while `package.json` declared `^5.10.0`. The `options`
-prop genuinely does not exist in v4. CI was green throughout, because CI
-installs.
+```
+ChessBoardView.tsx:201 - error TS2322:
+  Property 'options' does not exist on type ... ChessboardProps
+```
 
-Run `npm ci` in a new worktree before trusting any gate result. When a check
-fails on a file outside the diff, the environment is the first suspect, not the
-code.
+It reads as a regression in the react-chessboard 5 migration. It never was. In
+both cases the installed library was **4.7.3** while `package.json` asked for
+`^5.10.0`, and `options` is the prop v5 introduced. The source was correct; the
+packages on disk were not.
+
+| Cause | What made it silent |
+| --- | --- |
+| A fresh worktree with no `node_modules` | TypeScript walks *up* the directory tree and resolves against the parent checkout's install. Nothing reports a missing dependency, because one was found. |
+| A pull that changed the lock, without reinstalling | `node_modules` still exists and looks fine. npm does not notice it is behind until asked. |
+
+CI was green throughout both, because CI installs from the lock every run. That
+is the tell: **a failure your machine has and CI does not is usually the
+install, not the code.**
+
+The rule this produces:
+
+> When a typecheck fails in a file your changes never touched, run `npm ci`
+> before reading the error.
+
+And run it after every pull that touched `package-lock.json`, and once in every
+new worktree before trusting any gate result.
 
 ## A required review that nobody can give
 
