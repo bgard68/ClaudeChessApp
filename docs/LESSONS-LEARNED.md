@@ -254,6 +254,33 @@ The rule this produces:
 And run it after every pull that touched `package-lock.json`, and once in every
 new worktree before trusting any gate result.
 
+## Load order was the design, not an accident to be corrected
+
+Four stylesheets loaded in an order nobody chose: `main.tsx` imported `App` —
+and the phase sheets through it — before the base, so the base loaded last and
+won every tie at equal specificity. That looked like a bug worth fixing, and
+the 37 `!important` declarations in phase4-6.css looked like the evidence.
+
+Fixing it was attempted twice and reverted twice.
+
+Swapping the imports worked, and changed what the board measures at mount: the
+replay board came back 314x490 against a 314x314 area. Reordering the sections
+after the four sheets were merged into one avoided mount timing entirely, and
+broke the right rail instead — `.app-rail--right` sets 366px in the base
+section, phase4-6's `.app-rail` sets 224px, equal specificity, and the phase
+now came second. The rails overlapped and the navigation stopped responding.
+
+An exact-selector scan found 28 base declarations that a later section also
+sets. The fault that actually broke it was not among them: it was a shorter
+selector beating a longer-looking one, which no static scan enumerates.
+
+**A cascade that has been compensated for is not the same as one that is
+wrong.** Hundreds of rules were written, knowingly or not, against the order
+that existed. Correcting the order does not correct them — it inverts them, and
+the ones that matter are only findable by running the application. Merging the
+files was worth doing and delivered the real benefit: one place to look. The
+order stays as it was, documented, with the nine `!important` it costs.
+
 ## A branch cut before a squash merge cannot be merged, only replayed
 
 `feat/archive-split` was branched from `main` before the previous PR merged,

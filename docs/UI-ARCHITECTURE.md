@@ -228,22 +228,38 @@ no lifecycle interaction with the chessboard, and a straightforward
 
 ## Known debt
 
-### Three stylesheets in sequence
+### The base section is last, and has to stay there
 
-`phase2.css`, `phase3.css`, and `phase4-6.css` are additive layers imported
-after `styles.css`, each overriding the last rather than rewriting it.
+The four stylesheets are now one file, but its sections are concatenated in the
+order the browser used to apply them — phase2, phase3, phase4-6, then base.
+Base last reads wrong. It is load-bearing.
 
-**Trade-off** — the cascade has four files, and some selectors override earlier
-rules instead of replacing them.
+Reordering it to the natural sequence has been attempted twice and reverted
+twice.
 
-**Payoff** — each phase stayed isolated, auditable, and independently revertible
-while it was under review, and every final override is visible in one file. No
-runtime styling dependency or CSS-in-JS layer was introduced.
+The first attempt swapped the imports in `main.tsx`, before the merge. It
+worked, and it changed what the board measures at mount: the replay board came
+back 314×490 against a 314×314 area. That is the mount-timing failure in
+[LESSONS-LEARNED.md](LESSONS-LEARNED.md#react-chessboard-4--5-the-migration-and-a-two-day-dead-end),
+and not worth reopening for tidiness.
 
-**The reason to consolidate is now stronger than the reason not to.** The phases
-are merged and accepted; the isolation they bought has been spent. A
-maintenance-only pass merging the four stylesheets is worth doing once visual
-regression coverage exists.
+The second attempt reordered the sections after the merge, where mount timing
+was not in play. It broke the right rail immediately: `.app-rail--right` sets a
+366px width in the base section, and phase4-6's `.app-rail` sets 224px — equal
+specificity, and the phase now came later. The rails overlapped and the
+navigation stopped being clickable.
+
+An exact-selector scan finds 28 base declarations a later section also sets.
+That number is a floor, not the scope: the fault that actually broke it was a
+*different* selector winning over a more specific-sounding one, which no static
+scan enumerates. The real work is not reordering the sections — it is deciding,
+for every conflict discoverable only by running the app, which rule was meant to
+win. That is a rewrite of the phase sections, not a refactor.
+
+**What that leaves.** Nine `!important` declarations that exist because the base
+section wins by position. They are the price of not doing the rewrite, and they
+are documented here rather than removed, because removing them without the
+rewrite silently changes which rule applies.
 
 ### `ArchiveScreen` remains large
 
@@ -271,6 +287,16 @@ test. CSS geometry is not unit tested.
 **Payoff** — no DOM-testing dependency and no brittle pixel assertions. Logic stays
 covered by unit tests; layout is verified in real browser viewports, per the QA
 matrix in [UI-REDESIGN.md](UI-REDESIGN.md#browser-qa-still-worth-doing).
+
+`scripts/layout-check.mjs` now automates the part of that matrix a machine can
+judge: it drives the built app through every screen at three widths and asserts
+presence first — the board, the options, the actions, the archive table — then
+containment, tap targets, text size and board dimensions. It runs in the gate.
+
+Presence is the point. The suite was green, the build was green and the smoke
+test was green on a day the settings panel was absent from every phone, because
+each existing check asks whether anything present is wrong and none asked
+whether everything was there.
 
 One caveat learned the hard way: presentation tests live in `.tsx` files, and
 vitest's `include` pattern must say so. A `src/**/*.test.ts` pattern skips them
