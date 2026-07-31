@@ -59,7 +59,16 @@ export class SqliteClient {
   }
 
   open(): Promise<void> {
-    this.opened ??= this.send({ kind: 'open', filename: DATABASE_FILE }).then(() => undefined)
+    // A failed open is an attempt, not a state: forgotten so the next call can
+    // try again — the worker's open is idempotent, and caching the rejection
+    // would keep the database unreachable for the rest of the session.
+    this.opened ??= this.send({ kind: 'open', filename: DATABASE_FILE }).then(
+      () => undefined,
+      (error: unknown) => {
+        this.opened = null
+        throw error
+      },
+    )
     return this.opened
   }
 
