@@ -89,11 +89,7 @@ export function App() {
     switch (view.name) {
       case 'setup':
         return (
-          <NewGameScreen
-            onStart={startGame}
-            onBrowseArchive={() => goTo({ name: 'archive' })}
-            onOpenPuzzle={() => goTo({ name: 'puzzle' })}
-          />
+          <NewGameScreen onStart={startGame} />
         )
 
       case 'puzzle':

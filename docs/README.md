@@ -11,6 +11,7 @@ what it can do. These go deeper, one question each.
 | [LESSONS-LEARNED.md](LESSONS-LEARNED.md) | What broke, what actually caused it, and what was the wrong explanation that looked right first? |
 | [SUPPLY-CHAIN.md](SUPPLY-CHAIN.md) | What does the build enforce, why, how do I audit it, and what would quietly undo it? |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | How does it get to Azure, and how do I set that up from scratch? |
+| [PHASE-2-UI-ARCHITECTURE.md](PHASE-2-UI-ARCHITECTURE.md) | How does the Phase 2 redesign apply Clean Architecture, SOLID, DRY, DIP, and SRP, and what trade-offs were intentional? |
 
 Two more live outside this folder because convention puts them there:
 

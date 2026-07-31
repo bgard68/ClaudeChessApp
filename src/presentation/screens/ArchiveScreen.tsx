@@ -460,11 +460,15 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
 
   return (
     <div className="screen screen--archive">
-      <header className="archive__header">
-        <button type="button" className="button" onClick={onBack}>
-          ← Back
+      <header className="archive__header phase2-archive-heading">
+        <button type="button" className="phase2-back-button" onClick={onBack}>
+          ← Back to play
         </button>
-        <h1>Championship games</h1>
+        <div className="phase2-archive-heading__copy">
+          <p className="phase2-kicker">Game library</p>
+          <h1>Browse championships</h1>
+          <p>Search, filter, preview, and replay games without leaving the library.</p>
+        </div>
         <div className="archive__tools">
           {/* Field and scope share one bordered container, so they read as a
               single control rather than two that happen to sit together. */}

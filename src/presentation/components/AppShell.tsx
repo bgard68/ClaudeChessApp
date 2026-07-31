@@ -72,7 +72,7 @@ export function AppShell({ active, children, onNavigate }: AppShellProps) {
             <p className="app-topbar__title">{pageTitle(active)}</p>
           </div>
           <div className="app-topbar__meta">
-            <span className="app-chip">React Chessboard v5</span>
+            <span className="app-chip">Stockfish 18</span>
             <span className="app-chip app-chip--accent">Local-first</span>
           </div>
         </header>

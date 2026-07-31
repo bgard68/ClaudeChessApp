@@ -18,11 +18,17 @@ const DEFAULT_TIME_CONTROL_ID = '10+0'
 
 interface NewGameScreenProps {
   readonly onStart: (configuration: GameConfiguration) => void
-  readonly onBrowseArchive: () => void
-  readonly onOpenPuzzle: () => void
 }
 
-export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGameScreenProps) {
+/**
+ * Coordinates the new-game form and translates presentation choices into the
+ * application-layer GameConfiguration contract.
+ *
+ * The screen owns only temporary UI state. Game creation remains in App and
+ * the composition root, so this component never names a concrete opponent,
+ * engine, clock, rules implementation, or storage adapter.
+ */
+export function NewGameScreen({ onStart }: NewGameScreenProps) {
   const [opponent, setOpponent] = useState<OpponentChoice>('computer')
   const [colour, setColour] = useState<ColourChoice>('white')
   const [timeControlId, setTimeControlId] = useState(DEFAULT_TIME_CONTROL_ID)
@@ -44,146 +50,167 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
     })
   }
 
+  const summary = summarise(opponent, colour, difficulty.label, preset?.label ?? '')
+
   return (
-    <div className="screen screen--setup">
-      <header className="setup__header">
-        <h1>Chess</h1>
-        <div className="setup__nav">
-          <button type="button" className="button" onClick={onOpenPuzzle}>
-            🧩 Puzzle of the day
-          </button>
-          <button type="button" className="button" onClick={onBrowseArchive}>
-            Browse championship games
-          </button>
+    <div className="screen screen--setup phase2-setup">
+      <header className="phase2-setup__intro">
+        <div>
+          <p className="phase2-kicker">New game</p>
+          <h1>Choose how you want to play</h1>
+          <p>Configure the opponent, board, and clock before the first move.</p>
         </div>
       </header>
 
-      <div className="setup__body">
-        <div className="setup__preview">
-          {/* Shows the seat you have chosen: picking Black turns the board. */}
-          <ChessBoardView
-            fen={STARTING_FEN}
-            orientation={colour === 'black' ? 'black' : 'white'}
-            interactive={false}
-            legalMoves={[]}
-          />
-          <p className="setup__summary">
-            {summarise(opponent, colour, difficulty.label, preset?.label ?? '')}
-          </p>
+      <div className="phase2-setup__layout">
+        <section className="phase2-setup__preview-card" aria-label="Board preview">
+          <div className="phase2-setup__board">
+            {/* The preview uses the same react-chessboard v5 wrapper as play,
+                puzzle, archive preview, and replay. The wrapper remains mounted
+                on the first commit to preserve its measured-container lifecycle. */}
+            <ChessBoardView
+              fen={STARTING_FEN}
+              orientation={colour === 'black' ? 'black' : 'white'}
+              interactive={false}
+              legalMoves={[]}
+            />
+          </div>
+
+          <div className="phase2-setup__summary">
+            <span className="phase2-setup__summary-label">Current setup</span>
+            <strong>{summary}</strong>
+          </div>
+
           <Credits />
-        </div>
+        </section>
 
-        <div className="setup__options">
-          <Panel title="Opponent">
-            <Choice
-              label="Another player"
-              hint="Share this device"
-              isSelected={opponent === 'human'}
-              onSelect={() => setOpponent('human')}
-            />
-            <Choice
-              label="Computer"
-              hint="Stockfish, offline"
-              isSelected={opponent === 'computer'}
-              onSelect={() => setOpponent('computer')}
-            />
-            <Choice
-              label="Computer vs computer"
-              hint="Watch Stockfish play itself"
-              isSelected={opponent === 'engines'}
-              onSelect={() => setOpponent('engines')}
-            />
-          </Panel>
+        <aside className="phase2-setup__configuration" aria-label="Game settings">
+          <header className="phase2-setup__configuration-header">
+            <div>
+              <p className="phase2-kicker">Game settings</p>
+              <h2>Prepare the board</h2>
+            </div>
+            <span className="phase2-step-pill">5 choices</span>
+          </header>
 
-          {opponent !== 'human' ? (
-            <Panel title="Difficulty">
-              {DIFFICULTY_LEVELS.map((level) => (
+          <div className="phase2-setup__configuration-scroll">
+            <Panel title="Opponent">
+              <Choice
+                label="Another player"
+                hint="Share this device"
+                isSelected={opponent === 'human'}
+                onSelect={() => setOpponent('human')}
+              />
+              <Choice
+                label="Computer"
+                hint="Stockfish, offline"
+                isSelected={opponent === 'computer'}
+                onSelect={() => setOpponent('computer')}
+              />
+              <Choice
+                label="Computer vs computer"
+                hint="Watch Stockfish play itself"
+                isSelected={opponent === 'engines'}
+                onSelect={() => setOpponent('engines')}
+              />
+            </Panel>
+
+            {opponent !== 'human' ? (
+              <Panel title="Difficulty" wide>
+                {DIFFICULTY_LEVELS.map((level) => (
+                  <Choice
+                    key={level.id}
+                    label={level.rating === null ? level.label : `${level.label} · ${level.rating}`}
+                    hint={level.description}
+                    isSelected={difficultyId === level.id}
+                    onSelect={() => setDifficultyId(level.id)}
+                  />
+                ))}
+              </Panel>
+            ) : null}
+
+            <Panel title={opponent === 'computer' ? 'Your colour' : 'Board faces'}>
+              <Choice
+                label="White"
+                isSelected={colour === 'white'}
+                onSelect={() => setColour('white')}
+              />
+              <Choice
+                label="Black"
+                isSelected={colour === 'black'}
+                onSelect={() => setColour('black')}
+              />
+              <Choice
+                label="Random"
+                isSelected={colour === 'random'}
+                onSelect={() => setColour('random')}
+              />
+            </Panel>
+
+            <Panel title="Time control" wide>
+              {TIME_CONTROL_PRESETS.map((option) => (
                 <Choice
-                  key={level.id}
-                  // The rating rides in the label rather than the hint so the
-                  // levels can be compared at a glance, which is the whole point
-                  // of showing a number. Maximum has none to show.
-                  label={level.rating === null ? level.label : `${level.label} · ${level.rating}`}
-                  hint={level.description}
-                  isSelected={difficultyId === level.id}
-                  onSelect={() => setDifficultyId(level.id)}
+                  key={option.id}
+                  label={option.label}
+                  hint={option.category}
+                  isSelected={timeControlId === option.id}
+                  onSelect={() => setTimeControlId(option.id)}
                 />
               ))}
             </Panel>
-          ) : null}
 
-          <Panel title={opponent === 'computer' ? 'Your colour' : 'Board faces'}>
-            <Choice
-              label="White"
-              isSelected={colour === 'white'}
-              onSelect={() => setColour('white')}
-            />
-            <Choice
-              label="Black"
-              isSelected={colour === 'black'}
-              onSelect={() => setColour('black')}
-            />
-            <Choice
-              label="Random"
-              isSelected={colour === 'random'}
-              onSelect={() => setColour('random')}
-            />
-          </Panel>
+            <Panel title="Board colours">
+              {BOARD_THEMES.map((theme) => (
+                <button
+                  key={theme.id}
+                  type="button"
+                  className={`choice choice--swatch${themeId === theme.id ? ' choice--selected' : ''}`}
+                  aria-pressed={themeId === theme.id}
+                  onClick={() => {
+                    rememberBoardTheme(theme.id)
+                    setThemeId(theme.id)
+                  }}
+                >
+                  <span className="swatch" aria-hidden="true">
+                    <i style={{ background: theme.light }} />
+                    <i style={{ background: theme.dark }} />
+                    <i style={{ background: theme.dark }} />
+                    <i style={{ background: theme.light }} />
+                  </span>
+                  <span className="choice__label">{theme.label}</span>
+                </button>
+              ))}
+            </Panel>
+          </div>
 
-          <Panel title="Time control">
-            {TIME_CONTROL_PRESETS.map((option) => (
-              <Choice
-                key={option.id}
-                label={option.label}
-                hint={option.category}
-                isSelected={timeControlId === option.id}
-                onSelect={() => setTimeControlId(option.id)}
-              />
-            ))}
-          </Panel>
-
-          <Panel title="Board colours">
-            {BOARD_THEMES.map((theme) => (
-              <button
-                key={theme.id}
-                type="button"
-                className={`choice choice--swatch${themeId === theme.id ? ' choice--selected' : ''}`}
-                aria-pressed={themeId === theme.id}
-                onClick={() => {
-                  rememberBoardTheme(theme.id)
-                  setThemeId(theme.id)
-                }}
-              >
-                <span className="swatch" aria-hidden="true">
-                  <i style={{ background: theme.light }} />
-                  <i style={{ background: theme.dark }} />
-                  <i style={{ background: theme.dark }} />
-                  <i style={{ background: theme.light }} />
-                </span>
-                <span className="choice__label">{theme.label}</span>
-              </button>
-            ))}
-          </Panel>
-        </div>
+          <footer className="phase2-setup__configuration-footer">
+            <button
+              type="button"
+              className="button button--primary button--large setup__start"
+              onClick={start}
+            >
+              Start game
+            </button>
+          </footer>
+        </aside>
       </div>
-
-      {/* Outside the scrolling column, so it never sits below the fold. */}
-      <button
-        type="button"
-        className="button button--primary button--large setup__start"
-        onClick={start}
-      >
-        Start game
-      </button>
     </div>
   )
 }
 
-/** One labelled group of choices, boxed so the four decisions read separately. */
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+/** A labelled group of mutually comparable choices. */
+function Panel({
+  title,
+  wide = false,
+  children,
+}: {
+  readonly title: string
+  readonly wide?: boolean
+  readonly children: ReactNode
+}) {
   return (
-    <section className="panel">
-      <h2 className="panel__title">{title}</h2>
+    <section className={`panel${wide ? ' panel--wide' : ''}`}>
+      <h3 className="panel__title">{title}</h3>
       <div className="panel__options" role="group" aria-label={title}>
         {children}
       </div>
@@ -197,10 +224,10 @@ function Choice({
   isSelected,
   onSelect,
 }: {
-  label: string
-  hint?: string
-  isSelected: boolean
-  onSelect: () => void
+  readonly label: string
+  readonly hint?: string
+  readonly isSelected: boolean
+  readonly onSelect: () => void
 }) {
   return (
     <button
@@ -215,7 +242,6 @@ function Choice({
   )
 }
 
-/** Restates the four choices as one sentence, under the board. */
 function summarise(
   opponent: OpponentChoice,
   colour: ColourChoice,
