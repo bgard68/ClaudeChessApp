@@ -31,3 +31,17 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # Azure/static-web-apps-deploy has two refs named v1: a tag left at
+      # 1a947af (2021-03-03) and a branch still maintained at 4d27395
+      # (2024-09-11). Dependabot follows the tag, so it proposes the 2021
+      # commit as an upgrade over the 2024 one the pin already carries --
+      # a three-and-a-half year rollback of the step that deploys.
+      #
+      # The cost of this line is real: nothing now watches that action for
+      # us. Check it by hand when touching the deploy, and pin to whichever
+      # ref is genuinely newer rather than to the tag by reflex:
+      #
+      #   gh api repos/Azure/static-web-apps-deploy/commits/v1 --jq .sha
+      #   gh api repos/Azure/static-web-apps-deploy/tags --jq '.[].name'
+      - dependency-name: Azure/static-web-apps-deploy
