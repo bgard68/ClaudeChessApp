@@ -297,7 +297,9 @@ export function PuzzleScreen() {
   )
 }
 
-function PuzzleProgress({
+/** Exported for its own tests: the screen only reaches its solved and
+ *  part-solved states through play, which a static render cannot drive. */
+export function PuzzleProgress({
   total,
   remaining,
   solved,
@@ -330,7 +332,8 @@ function PuzzleProgress({
   )
 }
 
-function puzzleFeedback(
+/** Exported for its own tests, for the same reason as `PuzzleProgress`. */
+export function puzzleFeedback(
   status: SolveStatus,
   streak: number,
 ): { readonly icon: AppIconName; readonly message: string } {
