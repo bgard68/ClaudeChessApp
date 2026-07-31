@@ -22,8 +22,6 @@ const DEFAULT_TIME_CONTROL_ID = '10+0'
 
 interface NewGameScreenProps {
   readonly onStart: (configuration: GameConfiguration) => void
-  readonly onBrowseArchive: () => void
-  readonly onOpenPuzzle: () => void
 }
 
 /** The rail is mounted by the shell, so it is only there after first paint. */
@@ -33,7 +31,7 @@ function useRightRail(): HTMLElement | null {
   return rail
 }
 
-export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGameScreenProps) {
+export function NewGameScreen({ onStart }: NewGameScreenProps) {
   const rightRail = useRightRail()
   const [opponent, setOpponent] = useState<OpponentChoice>('computer')
   const [colour, setColour] = useState<ColourChoice>('white')
@@ -95,24 +93,6 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
 
       {rightRail === null ? null : createPortal(
         <section className="setup__settings" aria-label="Game settings">
-          {/*
-            The two destinations live here rather than in the screen heading.
-            In the heading they sat above the board and left the settings
-            beginning 42px to their right, so nothing on the right-hand side
-            lined up with anything else on it. In the panel they share its
-            edges, and the heading is left to name the screen.
-          */}
-          <nav className="setup__destinations" aria-label="Other screens">
-            <button type="button" className="button" onClick={onOpenPuzzle}>
-              <AppIcon name="puzzle" size={17} />
-              Puzzle of the day
-            </button>
-            <button type="button" className="button" onClick={onBrowseArchive}>
-              <AppIcon name="trophy" size={17} />
-              Browse championships
-            </button>
-          </nav>
-
           <div className="setup__options">
             <ChipGroup label="Opponent">
               <Chip

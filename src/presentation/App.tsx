@@ -17,13 +17,14 @@ import './phase4-6.css'
 type View =
   | { readonly name: 'setup' }
   | { readonly name: 'archive' }
+  | { readonly name: 'mine' }
   | { readonly name: 'puzzle' }
   | { readonly name: 'loading'; readonly message: string }
   | { readonly name: 'play'; readonly game: LiveGame; readonly configuration: GameConfiguration }
   | { readonly name: 'replay'; readonly session: ReplaySession }
   | { readonly name: 'error'; readonly message: string }
 
-type ShellTarget = 'setup' | 'puzzle' | 'archive'
+type ShellTarget = 'setup' | 'puzzle' | 'archive' | 'mine'
 
 /**
  * Owns screen selection and the lifetime of resources driven by each screen.
@@ -97,22 +98,19 @@ export function App() {
     switch (view.name) {
       case 'setup':
         return (
-          <NewGameScreen
-            onStart={startGame}
-            onBrowseArchive={() => goTo({ name: 'archive' })}
-            onOpenPuzzle={() => goTo({ name: 'puzzle' })}
-          />
+          <NewGameScreen onStart={startGame} />
         )
 
       case 'puzzle':
         return <PuzzleScreen />
 
       case 'archive':
-        return (
-          <ArchiveScreen
-            onOpenGame={openArchivedGame}
-          />
-        )
+        // Keyed so the two halves do not inherit each other's search,
+        // filters, sort or page — they are different libraries.
+        return <ArchiveScreen key="reference" scope="reference" onOpenGame={openArchivedGame} />
+
+      case 'mine':
+        return <ArchiveScreen key="mine" scope="mine" onOpenGame={openArchivedGame} />
 
       case 'play':
         return (
@@ -176,7 +174,9 @@ function shellTitle(view: View): string {
     case 'puzzle':
       return 'Puzzle of the day'
     case 'archive':
-      return 'Championship archive'
+      return 'Championships'
+    case 'mine':
+      return 'My games'
     case 'replay':
       return 'Game replay'
     case 'loading':
@@ -193,7 +193,9 @@ function shellContext(view: View): string {
     case 'replay':
       return 'Analysis room'
     case 'archive':
-      return 'Local game library'
+      return 'Reference library'
+    case 'mine':
+      return 'Games you have saved'
     case 'puzzle':
       return 'Daily training'
     case 'loading':
