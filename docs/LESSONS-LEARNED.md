@@ -53,6 +53,23 @@ one, which is how a gate teaches people to reach for `--no-verify`. Now a
 declared `describe.skipIf`, so vitest lists the checks as skipped and the gap
 stays visible.
 
+## Tests that never ran, in a suite that reported green
+
+The UI redesign shipped `AppIcon.test.tsx` and `ScreenHeader.test.tsx`. Neither
+had ever executed. `vite.config.ts` declared
+`include: ['src/**/*.test.ts']`, and a `.ts` glob does not match `.tsx`.
+
+Nothing failed, which is the whole problem. A skipped test announces itself; an
+*unmatched* one does not exist as far as the runner is concerned. The suite
+passed, the count went up over time from other work, and two component tests sat
+inert for their entire existence.
+
+The wrong explanation that looks right: "the tests pass, so the components are
+covered." The tell was arithmetic — merging a branch that adds two test files
+left `Test Files 18 passed (18)` exactly where it had been. **Watch the file
+count, not just the pass count, when a merge adds tests.** The pattern now reads
+`['src/**/*.test.ts', 'src/**/*.test.tsx']`.
+
 ## Upstream data defects
 
 - **Gelfand–Gareev, World Blitz 2019** — `Invalid move in PGN: Qxe1`. Corrupt

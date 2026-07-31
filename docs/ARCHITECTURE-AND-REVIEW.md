@@ -129,7 +129,7 @@ They live in `library/` for you to import by hand:
 
 ### 5.2 Importing
 
-**Browse championship games → Import PGN**, then pick a `.pgn` file. Anything a
+**Browse championships → Import PGN**, then pick a `.pgn` file. Anything a
 chess program can write, this can read.
 
 What happens to it:
@@ -153,7 +153,7 @@ enter the database.
 
 ### 5.3 Exporting
 
-**Browse championship games → Export mine** downloads `my-chess-games.pgn`.
+**Browse championships → Export my games** downloads `my-chess-games.pgn`.
 
 It contains the games you **played or imported**, oldest first — not the bundled
 collections, which ship with the app and are re-importable. The stored PGN is
@@ -294,6 +294,11 @@ about the build itself.
 
 The honest position is that this codebase applies these ideas **selectively**,
 and the omissions are as considered as the applications.
+
+This section covers the app as a whole. The same questions asked of the
+presentation layer specifically — which UI abstractions were added, which were
+refused, and what each bought — are answered in
+[UI-ARCHITECTURE.md](UI-ARCHITECTURE.md).
 
 ### 8.1 Single Responsibility (SRP) — largely honoured
 

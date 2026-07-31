@@ -94,7 +94,7 @@ deleted.
 
 ### Exporting your games to a file
 
-**Browse championship games → Export mine**. That downloads
+**Browse championships → Export my games**. That downloads
 `my-chess-games.pgn`.
 
 The file holds the games you **played or imported**, oldest first — not the
@@ -116,7 +116,7 @@ prevents that. A file on your disk is the one copy that survives.
 
 ### Importing PGN
 
-**Browse championship games → Import PGN**, then choose a `.pgn` file. Anything
+**Browse championships → Import PGN**, then choose a `.pgn` file. Anything
 a chess program can write will load, up to 128 MB per file.
 
 Re-importing the same file is safe — the app fingerprints every game and refuses
@@ -192,6 +192,8 @@ composition/    The one place that names concrete classes
 | [LESSONS-LEARNED.md](docs/LESSONS-LEARNED.md) | What broke, what actually caused it, and the wrong explanations that looked right first |
 | [ARCHITECTURE-AND-REVIEW.md](docs/ARCHITECTURE-AND-REVIEW.md) | The security review, and where the design honours SOLID and Clean Architecture — and where it does not, with reasons |
 | [SUPPLY-CHAIN.md](docs/SUPPLY-CHAIN.md) | What the build enforces, and how to audit it |
+| [UI-REDESIGN.md](docs/UI-REDESIGN.md) | What the presentation rewrite changed on each screen, what it left alone, and what was actually verified |
+| [UI-ARCHITECTURE.md](docs/UI-ARCHITECTURE.md) | Which UI abstractions were added, which were refused, and what each choice bought |
 
 ### Where the abstractions earn their keep
 
@@ -253,10 +255,17 @@ size.
 
 ## Testing
 
-126 tests covering the clock (increments, stage transitions, flag fall), the turn
+139 tests covering the clock (increments, stage transitions, flag fall), the turn
 loop (checkmate, timeout, resignation, illegal-move rejection, late moves after
 the game ends), rules adaptation, PGN parsing, import limits, player identity,
-and replay clock alignment.
+replay clock alignment, and archive first-load recovery.
+
+Presentation components are tested by rendering through `react-dom/server` and
+asserting on the markup — `AppShell`, `ScreenHeader`, and `AppIcon` have tests;
+CSS geometry deliberately does not. Those tests live in `.tsx` files, so
+vitest's `include` pattern covers `.test.tsx` as well as `.test.ts`. It once
+covered only the latter, and two component tests sat unrun for their whole
+existence while the suite reported green.
 
 Two of them guard the architecture rather than behaviour. `architecture.test.ts`
 asserts the dependency rule — each layer imports only itself or inward, outer

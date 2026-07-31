@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { GameOutcome } from '@domain/chess/GameOutcome'
+import { AppIcon } from './AppIcon'
 
 const DRAW_REASONS: Readonly<Record<string, string>> = {
   stalemate: 'Stalemate',
@@ -43,12 +44,17 @@ export function OutcomeBanner({
   if (outcome.status === 'in_progress') return null
 
   return (
-    <div className="outcome-banner">
-      <strong>{describeOutcome(outcome)}</strong>
+    <div className="outcome-banner phase46-outcome-banner" role="status">
+      <span className="phase46-outcome-banner__icon" aria-hidden="true"><AppIcon name="trophy" size={20} /></span>
+      <div className="phase46-outcome-banner__copy">
+        <small>Game complete</small>
+        <strong>{describeOutcome(outcome)}</strong>
+      </div>
       <div className="outcome-banner__actions">
         {children}
         {onNewGame ? (
           <button type="button" className="button button--primary" onClick={onNewGame}>
+            <AppIcon name="play" size={16} />
             New game
           </button>
         ) : null}

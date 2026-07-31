@@ -7,6 +7,7 @@ import type { GameConfiguration } from '@application/GameConfiguration'
 import type { HintAdviser } from '@application/HintAdviser'
 import type { LiveGame } from '@application/LiveGame'
 import { recordGame } from '@application/recordGame'
+import { AppIcon, type AppIconName } from '../components/AppIcon'
 import { ChessBoardView } from '../components/ChessBoardView'
 import { ClockPanel } from '../components/ClockPanel'
 import { MoveList } from '../components/MoveList'
@@ -36,34 +37,23 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [hint, setHint] = useState<Hint | null>(null)
   const [isAdvising, setAdvising] = useState(false)
-  // Created on the first hint, so a game with no hints never starts the extra
-  // worker; nulled on dispose so StrictMode's double-mount cannot reuse a dead one.
   const adviser = useRef<HintAdviser | null>(null)
-  // Pass-and-play turns the board to whoever is on the move; against the
-  // computer the player keeps their own side of the board throughout.
   const [autoFlip, setAutoFlip] = useState(configuration.opponent === 'human')
   const [manualOrientation, setManualOrientation] = useState<PieceColor>(
     configuration.playerColor,
   )
-
   const orientation =
     autoFlip && !isOver(state.outcome) ? state.position.sideToMove : manualOrientation
 
   const gameOver = isOver(state.outcome)
   const isHumanToMove = state.awaiting?.kind === 'human'
   const lastMove = state.history.at(-1) ?? null
-  // Watching the computer play itself: nobody at the keyboard has a game to
-  // undo, a draw to agree, anything to resign — or any use for a hint.
   const isWatching = configuration.opponent === 'engines'
-
   const names = seatNames(configuration)
-
   const fen = state.position.fen
   const fenNow = useRef(fen)
   fenNow.current = fen
 
-  // A hint is advice about one position; the moment the position moves on —
-  // move made, taken back, game over — the arrow comes down.
   useEffect(() => setHint(null), [fen, gameOver])
 
   useEffect(
@@ -81,13 +71,11 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
     try {
       adviser.current ??= factory.createHintAdviser()
       const intent = await adviser.current.advise(askedFor)
-      // The player may have moved while the engine thought; advice about a
-      // position that is gone would draw an arrow that makes no sense.
       if (fenNow.current !== askedFor.fen) return
       const san = services.rules.play(askedFor, intent)?.move.san ?? null
       setHint({ from: intent.from, to: intent.to, san })
     } catch {
-      // Search abandoned — the screen is closing. Nothing to show.
+      // The screen closed while the worker was searching.
     } finally {
       setAdvising(false)
     }
@@ -119,50 +107,141 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
       disabled={state.history.length === 0 || saveState === 'saving' || saveState === 'saved'}
       onClick={() => void saveGame()}
     >
+      <AppIcon name="save" size={16} />
       {saveLabel(saveState)}
     </button>
   )
 
   const durabilityWarning = describeDurability(durability)
+  const currentStatus = statusForGame({
+    gameOver,
+    isAdvising,
+    isCheck: state.isCheck,
+    hintSan: hint?.san ?? null,
+    awaitingKind: state.awaiting?.kind ?? null,
+    awaitingName: state.awaiting?.name ?? null,
+  })
 
   return (
-    <div className="screen screen--play">
-      <ChessBoardView
-        fen={state.position.fen}
-        orientation={orientation}
-        interactive={isHumanToMove && !gameOver}
-        legalMoves={state.legalMoves}
-        lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
-        hint={hint}
-        onMove={(intent) => game.submitMove(intent)}
-      />
-
-      <aside className="play__panel">
-        <ClockPanel
-          whiteMs={state.clock.whiteMs}
-          blackMs={state.clock.blackMs}
-          activeColor={state.clock.running}
-          orientation={orientation}
-          whiteName={names.white}
-          blackName={names.black}
-          note={describeTimeControl(state.timeControl)}
-        />
-
-        <div className="play__status">
-          {gameOver ? null : (
-            <>
+    <div className="screen screen--play phase2-play phase3-play phase46-play">
+      <section className="phase2-board-column phase46-board-column" aria-label="Game board">
+        <div className="phase2-board-heading phase46-board-heading">
+          <div className="phase46-board-heading__copy">
+            <p className="phase2-kicker">{eventName(configuration)}</p>
+            <h1>{names.white} vs {names.black}</h1>
+            <div className="phase46-game-meta" aria-label="Game details">
               <span>
-                {state.awaiting === null
-                  ? 'Starting…'
-                  : `${state.awaiting.name} to move`}
+                <AppIcon name="clock" size={14} />
+                {describeTimeControl(state.timeControl)}
               </span>
-              {state.awaiting?.kind === 'engine' ? (
-                <span className="play__thinking">thinking…</span>
-              ) : null}
-              {state.isCheck ? <span className="play__check">Check</span> : null}
-              {hint?.san ? <span className="play__hint">Try {hint.san}</span> : null}
+              <span>Move {Math.floor(state.history.length / 2) + 1}</span>
+              <span>{orientation === 'white' ? 'White' : 'Black'} perspective</span>
+            </div>
+          </div>
+          <span
+            className={`phase2-turn phase46-turn${state.isCheck ? ' phase2-turn--check' : ''}`}
+            data-tone={state.isCheck ? 'warning' : gameOver ? 'complete' : 'live'}
+          >
+            <span className="phase46-live-dot" aria-hidden="true" />
+            {gameOver
+              ? 'Game complete'
+              : state.awaiting === null
+                ? 'Starting…'
+                : `${state.awaiting.name} to move`}
+          </span>
+        </div>
+
+        <div className="phase2-board-frame phase46-board-frame">
+          {/* Keep ChessBoardView mounted directly and preserve its v5 API and
+              first-commit sizing behavior. Only its surrounding layout changes. */}
+          <ChessBoardView
+            fen={state.position.fen}
+            orientation={orientation}
+            interactive={isHumanToMove && !gameOver}
+            legalMoves={state.legalMoves}
+            lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
+            hint={hint}
+            onMove={(intent) => game.submitMove(intent)}
+          />
+        </div>
+
+        <div className="phase2-board-toolbar phase46-board-toolbar" aria-label="Board controls">
+          <button
+            type="button"
+            className="phase2-icon-button"
+            aria-label="Flip board orientation"
+            onClick={() => {
+              if (autoFlip) {
+                setManualOrientation(state.position.sideToMove)
+                setAutoFlip(false)
+              } else {
+                setManualOrientation(opposite(manualOrientation))
+              }
+            }}
+          >
+            <AppIcon name="flip" size={17} />
+            Flip board
+          </button>
+          {!isWatching ? (
+            <>
+              <button
+                type="button"
+                className="phase2-icon-button"
+                disabled={!isHumanToMove || gameOver || isAdvising}
+                aria-busy={isAdvising}
+                onClick={() => void requestHint()}
+              >
+                <AppIcon name="hint" size={17} />
+                {isAdvising ? 'Thinking…' : 'Hint'}
+              </button>
+              <button
+                type="button"
+                className="phase2-icon-button"
+                disabled={!state.canUndo}
+                onClick={() => game.undo()}
+              >
+                <AppIcon name="undo" size={17} />
+                Undo move
+              </button>
             </>
-          )}
+          ) : null}
+          {configuration.opponent === 'human' ? (
+            <label className="toggle phase2-auto-flip">
+              <input
+                type="checkbox"
+                checked={autoFlip}
+                onChange={(event) => setAutoFlip(event.target.checked)}
+              />
+              Auto-flip after each move
+            </label>
+          ) : null}
+        </div>
+      </section>
+
+      <aside className="play__panel phase2-game-panel phase46-game-panel">
+        <section className="phase2-panel-card phase2-clock-card phase46-clock-card">
+          <div className="phase2-section-title">
+            <span>Game clock</span>
+            <small>{describeTimeControl(state.timeControl)}</small>
+          </div>
+          <ClockPanel
+            whiteMs={state.clock.whiteMs}
+            blackMs={state.clock.blackMs}
+            activeColor={state.clock.running}
+            orientation={orientation}
+            whiteName={names.white}
+            blackName={names.black}
+            note={describeTimeControl(state.timeControl)}
+          />
+        </section>
+
+        <div
+          className="play__status phase2-status-strip phase46-status-strip"
+          data-tone={currentStatus.tone}
+          aria-live="polite"
+        >
+          <AppIcon name={currentStatus.icon} size={17} />
+          <span>{currentStatus.label}</span>
         </div>
 
         <OutcomeBanner outcome={state.outcome} onNewGame={onNewGame}>
@@ -176,83 +255,82 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
           <p className="clock-note">{durabilityWarning}</p>
         ) : null}
 
-        <div className="play__moves">
-          <MoveList sanMoves={state.history.map((move) => move.san)} />
-        </div>
+        <section className="phase2-panel-card phase2-moves-card phase46-moves-card">
+          <div className="phase2-section-title">
+            <span>Move history</span>
+            <small>{state.history.length} ply</small>
+          </div>
+          <div className="play__moves">
+            <MoveList sanMoves={state.history.map((move) => move.san)} />
+          </div>
+        </section>
 
-        <div className="play__actions">
-          <button
-            type="button"
-            className="button"
-            onClick={() => {
-              if (autoFlip) {
-                setManualOrientation(state.position.sideToMove)
-                setAutoFlip(false)
-              } else {
-                setManualOrientation(opposite(manualOrientation))
-              }
-            }}
-          >
-            Flip board
-          </button>
-          {configuration.opponent === 'human' ? (
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={autoFlip}
-                onChange={(event) => setAutoFlip(event.target.checked)}
-              />
-              Turn board each move
-            </label>
-          ) : null}
-          {isWatching ? null : (
-            <>
-              <button
-                type="button"
-                className="button"
-                disabled={!isHumanToMove || gameOver || isAdvising}
-                onClick={() => void requestHint()}
-              >
-                {isAdvising ? 'Hint…' : 'Hint'}
-              </button>
-              <button
-                type="button"
-                className="button"
-                disabled={!state.canUndo}
-                onClick={() => game.undo()}
-              >
-                Undo
-              </button>
-              <button
-                type="button"
-                className="button"
-                disabled={gameOver}
-                onClick={() => game.agreeDraw()}
-              >
-                Draw
-              </button>
-            </>
-          )}
-          {/* While the game runs, saving lives here; once it ends the banner
-              carries it, which is the moment you actually decide. */}
-          {gameOver ? null : saveButton}
-          {isWatching ? null : (
-            <button
-              type="button"
-              className="button button--danger"
-              disabled={gameOver}
-              onClick={() => game.resign(state.position.sideToMove)}
-            >
-              Resign
+        <section className="phase2-panel-card phase46-actions-card">
+          <div className="phase2-section-title">
+            <span>Game actions</span>
+            <small>{gameOver ? 'Finished' : 'In progress'}</small>
+          </div>
+          <div className="play__actions phase2-action-grid">
+            {!isWatching ? (
+              <>
+                <button
+                  type="button"
+                  className="button"
+                  disabled={gameOver}
+                  onClick={() => game.agreeDraw()}
+                >
+                  <AppIcon name="draw" size={16} />
+                  Offer draw
+                </button>
+                {gameOver ? null : saveButton}
+                <button
+                  type="button"
+                  className="button button--danger"
+                  disabled={gameOver}
+                  onClick={() => game.resign(state.position.sideToMove)}
+                >
+                  <AppIcon name="resign" size={16} />
+                  Resign
+                </button>
+              </>
+            ) : null}
+            <button type="button" className="button button--primary" onClick={onNewGame}>
+              <AppIcon name="play" size={16} />
+              New game
             </button>
-          )}
-          <button type="button" className="button" onClick={onNewGame}>
-            New game
-          </button>
-        </div>
+          </div>
+        </section>
       </aside>
     </div>
   )
+}
+
+function statusForGame({
+  gameOver,
+  isAdvising,
+  isCheck,
+  hintSan,
+  awaitingKind,
+  awaitingName,
+}: {
+  readonly gameOver: boolean
+  readonly isAdvising: boolean
+  readonly isCheck: boolean
+  readonly hintSan: string | null
+  readonly awaitingKind: 'human' | 'engine' | null
+  readonly awaitingName: string | null
+}): { readonly icon: AppIconName; readonly label: string; readonly tone: string } {
+  if (gameOver) return { icon: 'check', label: 'The game is complete.', tone: 'complete' }
+  if (isCheck) return { icon: 'warning', label: 'Check — respond to the attack.', tone: 'warning' }
+  if (isAdvising) return { icon: 'sparkles', label: 'Stockfish is finding a useful idea…', tone: 'thinking' }
+  if (hintSan !== null) return { icon: 'hint', label: `Suggested move: ${hintSan}`, tone: 'hint' }
+  if (awaitingKind === 'engine') {
+    return { icon: 'computer', label: `${awaitingName ?? 'Stockfish'} is thinking…`, tone: 'thinking' }
+  }
+  if (awaitingKind === 'human') {
+    return { icon: 'play', label: `${awaitingName ?? 'Player'} can move.`, tone: 'live' }
+  }
+  return { icon: 'clock', label: 'Starting the game…', tone: 'neutral' }
 }
 
 function saveLabel(state: SaveState): string {
@@ -281,13 +359,12 @@ function seatNames(configuration: GameConfiguration): Record<PieceColor, string>
     : { white: computer, black: 'You' }
 }
 
-/** What the saved record calls the occasion. */
 function eventName(configuration: GameConfiguration): string {
   switch (configuration.opponent) {
     case 'computer':
-      return `Game vs computer (${configuration.difficulty.label})`
+      return `Game vs computer · ${configuration.difficulty.label}`
     case 'engines':
-      return `Stockfish match (${configuration.difficulty.label})`
+      return `Stockfish match · ${configuration.difficulty.label}`
     case 'human':
       return 'Two-player game'
   }
