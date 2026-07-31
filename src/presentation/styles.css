@@ -2721,3 +2721,40 @@ because the board is the thing being
     white-space: nowrap;
   }
 }
+/* ------------------- Archive on a phone --------------------------------
+   The legibility floor set for setup and puzzle never reached this screen,
+   because it was written against `.app-content .button` and the archive is
+   built from table cells and bare buttons. A layout check across every screen
+   found it: rows were 42px against a 44px standard, the filter controls 17px,
+   and the country badges 9.92px.
+
+   The table stays dense — it is a list of three thousand games, and matching
+   a settings panel's spacing would make it unusable. What changes is the size
+   of the things you tap and the things you read. */
+@media (max-width: 600px) {
+  .game-table__open,
+  .game-table__sort,
+  .archive__results button,
+  .filters__toggle,
+  .filters button {
+    min-height: var(--tap);
+  }
+
+  .game-table__open,
+  .game-table__sort,
+  .stats-line,
+  .filter__label,
+  .player__elo,
+  .player__title,
+  .game-table__detail,
+  .result-pill {
+    font-size: 0.75rem;
+  }
+
+  /* The country code is a badge, not prose — it keeps its own size but earns
+     enough contrast and padding to stay legible at it. */
+  .player__flag {
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+  }
+}
