@@ -56,6 +56,7 @@ Invoke-Gate 'tests'     { & npx vitest run }
 Invoke-Gate 'audit'     { & npm audit --audit-level=moderate }
 Invoke-Gate 'build'     { & npm run build }
 Invoke-Gate 'smoke test against the built app' { & node scripts/smoke-test.mjs }
+Invoke-Gate 'layout invariants on every screen' { & node scripts/layout-check.mjs }
 
 $gitleaks = Get-Command gitleaks -ErrorAction SilentlyContinue
 if ($null -ne $gitleaks) {
