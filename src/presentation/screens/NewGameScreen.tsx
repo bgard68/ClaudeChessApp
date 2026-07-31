@@ -53,18 +53,6 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
         kicker="New game"
         title="Choose your match"
         description="Configure the opponent, seat, clock, and board before the first move."
-        actions={
-          <>
-            <button type="button" className="button" onClick={onOpenPuzzle}>
-              <AppIcon name="puzzle" size={17} />
-              Puzzle of the day
-            </button>
-            <button type="button" className="button" onClick={onBrowseArchive}>
-              <AppIcon name="trophy" size={17} />
-              Browse championships
-            </button>
-          </>
-        }
       />
 
       <div className="setup__body">
@@ -89,20 +77,28 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
               legalMoves={[]}
             />
           </div>
-          <p id="setup-summary" className="setup__summary" aria-live="polite">
-            {summary}
-          </p>
+
           <Credits />
         </section>
 
         <section className="setup__settings" aria-label="Game settings">
-          <div className="setup__settings-heading">
-            <div>
-              <p className="phase2-kicker">Game settings</p>
-              <h2>Ready your board</h2>
-            </div>
-            <span className="setup__step-count">5 choices</span>
-          </div>
+          {/*
+            The two destinations live here rather than in the screen heading.
+            In the heading they sat above the board and left the settings
+            beginning 42px to their right, so nothing on the right-hand side
+            lined up with anything else on it. In the panel they share its
+            edges, and the heading is left to name the screen.
+          */}
+          <nav className="setup__destinations" aria-label="Other screens">
+            <button type="button" className="button" onClick={onOpenPuzzle}>
+              <AppIcon name="puzzle" size={17} />
+              Puzzle of the day
+            </button>
+            <button type="button" className="button" onClick={onBrowseArchive}>
+              <AppIcon name="trophy" size={17} />
+              Browse championships
+            </button>
+          </nav>
 
           <div className="setup__options">
             <ChipGroup label="Opponent">
@@ -208,7 +204,9 @@ export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGam
                 {BOARD_THEMES.find((theme) => theme.id === themeId)?.label ?? 'Board'}
               </span>
             </div>
-            <p className="setup__action-summary">{summary}</p>
+            <p id="setup-summary" className="setup__action-summary" aria-live="polite">
+              {summary}
+            </p>
             <button
               type="button"
               className="button button--primary button--large setup__start"

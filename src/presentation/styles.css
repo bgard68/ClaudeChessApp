@@ -2661,3 +2661,79 @@ select:focus-visible,
     margin-top: 0.5rem;
   }
 }
+
+/* ------------------ Setup: one panel on the right ---------------------
+   Puzzle of the day, Browse championships, the settings and Start game are
+   one column now. They used to be two: the destinations sat in the screen
+   heading, above the board, so the right-hand side had two different left
+   edges 42px apart and neither lined up with the other.
+
+   The board moves across to meet the panel. It cannot grow into that space
+   — it is square and bounded by the height, not the width — so the 250px it
+   was floating in becomes one margin on the left instead of a gap down the
+   middle. */
+
+@media (min-width: 861px) {
+  .app-content > .screen--setup .setup__settings {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  /* The board takes the preview heading's room. "Live preview / Your board"
+     labels a board that is plainly a board, and the perspective it also
+     carried is already stated in the summary underneath it. */
+  .app-content > .screen--setup .phase46-preview-heading {
+    display: none;
+  }
+
+  /* And the screen description with it. "Configure the opponent, seat, clock
+     and board" describes five labelled groups that now say so themselves,
+     and the board is the thing competing for the height. */
+  .app-content > .screen--setup .screen-header__description {
+    display: none;
+  }
+
+  .app-content > .screen--setup .setup__preview {
+    justify-items: end;
+  }
+
+  /* The frame takes the flexible row; credits is the fixed one under it. */
+  .app-content > .screen--setup .setup__preview {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  /* The frame takes what is left after the summary and the credits, rather
+     than its own square and then some: it was 569px tall in a 574px column
+     that also had 40px of text under it, so the column overflowed by 35 and
+     the board sat lower than the panel beside it. */
+  .app-content > .screen--setup .setup__board-frame {
+    margin-left: auto;
+    min-height: 0;
+  }
+}
+
+.setup__destinations {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.setup__destinations .button {
+  justify-content: center;
+  padding-inline: 0.5rem;
+}
+
+/* Shorter only where the chips are, and for the same reason: a cursor does
+   not need 44px, a finger does. Gated on width as well as pointer, because
+   an emulated phone reports a fine pointer too. */
+@media (min-width: 861px) and (pointer: fine) {
+  .setup__destinations .button {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 600px) {
+  .setup__destinations {
+    grid-template-columns: 1fr;
+  }
+}
