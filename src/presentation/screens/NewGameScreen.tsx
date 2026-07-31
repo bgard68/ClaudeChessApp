@@ -9,8 +9,10 @@ import {
 } from '@application/Difficulty'
 import type { GameConfiguration, OpponentChoice } from '@application/GameConfiguration'
 import { BOARD_THEMES, currentBoardTheme, rememberBoardTheme } from '../boardThemes'
+import { AppIcon, type AppIconName } from '../components/AppIcon'
 import { ChessBoardView } from '../components/ChessBoardView'
 import { Credits } from '../components/Credits'
+import { ScreenHeader } from '../components/ScreenHeader'
 
 type ColourChoice = PieceColor | 'random'
 
@@ -18,17 +20,11 @@ const DEFAULT_TIME_CONTROL_ID = '10+0'
 
 interface NewGameScreenProps {
   readonly onStart: (configuration: GameConfiguration) => void
+  readonly onBrowseArchive: () => void
+  readonly onOpenPuzzle: () => void
 }
 
-/**
- * Coordinates the new-game form and translates presentation choices into the
- * application-layer GameConfiguration contract.
- *
- * The screen owns only temporary UI state. Game creation remains in App and
- * the composition root, so this component never names a concrete opponent,
- * engine, clock, rules implementation, or storage adapter.
- */
-export function NewGameScreen({ onStart }: NewGameScreenProps) {
+export function NewGameScreen({ onStart, onBrowseArchive, onOpenPuzzle }: NewGameScreenProps) {
   const [opponent, setOpponent] = useState<OpponentChoice>('computer')
   const [colour, setColour] = useState<ColourChoice>('white')
   const [timeControlId, setTimeControlId] = useState(DEFAULT_TIME_CONTROL_ID)
@@ -39,6 +35,7 @@ export function NewGameScreen({ onStart }: NewGameScreenProps) {
     TIME_CONTROL_PRESETS.find((candidate) => candidate.id === timeControlId) ??
     TIME_CONTROL_PRESETS[0]
   const difficulty = difficultyById(difficultyId)
+  const summary = summarise(opponent, colour, difficulty.label, preset?.label ?? '')
 
   const start = () => {
     if (preset === undefined) return
@@ -50,24 +47,41 @@ export function NewGameScreen({ onStart }: NewGameScreenProps) {
     })
   }
 
-  const summary = summarise(opponent, colour, difficulty.label, preset?.label ?? '')
-
   return (
-    <div className="screen screen--setup phase2-setup">
-      <header className="phase2-setup__intro">
-        <div>
-          <p className="phase2-kicker">New game</p>
-          <h1>Choose how you want to play</h1>
-          <p>Configure the opponent, board, and clock before the first move.</p>
-        </div>
-      </header>
+    <div className="screen screen--setup phase3-setup phase46-setup">
+      <ScreenHeader
+        kicker="New game"
+        title="Choose your match"
+        description="Configure the opponent, seat, clock, and board before the first move."
+        actions={
+          <>
+            <button type="button" className="button" onClick={onOpenPuzzle}>
+              <AppIcon name="puzzle" size={17} />
+              Puzzle of the day
+            </button>
+            <button type="button" className="button" onClick={onBrowseArchive}>
+              <AppIcon name="trophy" size={17} />
+              Browse championships
+            </button>
+          </>
+        }
+      />
 
-      <div className="phase2-setup__layout">
-        <section className="phase2-setup__preview-card" aria-label="Board preview">
-          <div className="phase2-setup__board">
-            {/* The preview uses the same react-chessboard v5 wrapper as play,
-                puzzle, archive preview, and replay. The wrapper remains mounted
-                on the first commit to preserve its measured-container lifecycle. */}
+      <div className="setup__body">
+        <section className="setup__preview" aria-labelledby="setup-preview-title">
+          <div className="phase46-preview-heading">
+            <div>
+              <p className="phase2-kicker">Live preview</p>
+              <h2 id="setup-preview-title">Your board</h2>
+            </div>
+            <span className="phase46-preview-badge">
+              <AppIcon name={colour === 'black' ? 'flip' : 'check'} size={15} />
+              {colour === 'black' ? 'Black perspective' : 'White perspective'}
+            </span>
+          </div>
+
+          {/* Shows the selected seat without changing the board component's v5 contract. */}
+          <div className="setup__board-frame">
             <ChessBoardView
               fen={STARTING_FEN}
               orientation={colour === 'black' ? 'black' : 'white'}
@@ -75,26 +89,28 @@ export function NewGameScreen({ onStart }: NewGameScreenProps) {
               legalMoves={[]}
             />
           </div>
-
-          <div className="phase2-setup__summary">
-            <span className="phase2-setup__summary-label">Current setup</span>
-            <strong>{summary}</strong>
-          </div>
-
+          <p id="setup-summary" className="setup__summary" aria-live="polite">
+            {summary}
+          </p>
           <Credits />
         </section>
 
-        <aside className="phase2-setup__configuration" aria-label="Game settings">
-          <header className="phase2-setup__configuration-header">
+        <section className="setup__settings" aria-label="Game settings">
+          <div className="setup__settings-heading">
             <div>
               <p className="phase2-kicker">Game settings</p>
-              <h2>Prepare the board</h2>
+              <h2>Ready your board</h2>
             </div>
-            <span className="phase2-step-pill">5 choices</span>
-          </header>
+            <span className="setup__step-count">5 choices</span>
+          </div>
 
-          <div className="phase2-setup__configuration-scroll">
-            <Panel title="Opponent">
+          <div className="setup__options">
+            <Panel
+              index={1}
+              title="Opponent"
+              description="Choose who controls the other side."
+              icon="computer"
+            >
               <Choice
                 label="Another player"
                 hint="Share this device"
@@ -116,7 +132,12 @@ export function NewGameScreen({ onStart }: NewGameScreenProps) {
             </Panel>
 
             {opponent !== 'human' ? (
-              <Panel title="Difficulty" wide>
+              <Panel
+                index={2}
+                title="Difficulty"
+                description="Tune Stockfish for the kind of game you want."
+                icon="sparkles"
+              >
                 {DIFFICULTY_LEVELS.map((level) => (
                   <Choice
                     key={level.id}
@@ -129,7 +150,12 @@ export function NewGameScreen({ onStart }: NewGameScreenProps) {
               </Panel>
             ) : null}
 
-            <Panel title={opponent === 'computer' ? 'Your colour' : 'Board faces'}>
+            <Panel
+              index={opponent === 'human' ? 2 : 3}
+              title={opponent === 'computer' ? 'Your colour' : 'Board faces'}
+              description="Set the opening orientation."
+              icon="user"
+            >
               <Choice
                 label="White"
                 isSelected={colour === 'white'}
@@ -147,7 +173,12 @@ export function NewGameScreen({ onStart }: NewGameScreenProps) {
               />
             </Panel>
 
-            <Panel title="Time control" wide>
+            <Panel
+              index={opponent === 'human' ? 3 : 4}
+              title="Time control"
+              description="Pick a relaxed game or a faster test."
+              icon="clock"
+            >
               {TIME_CONTROL_PRESETS.map((option) => (
                 <Choice
                   key={option.id}
@@ -159,7 +190,12 @@ export function NewGameScreen({ onStart }: NewGameScreenProps) {
               ))}
             </Panel>
 
-            <Panel title="Board colours">
+            <Panel
+              index={opponent === 'human' ? 4 : 5}
+              title="Board colours"
+              description="Choose a board theme for every game screen."
+              icon="palette"
+            >
               {BOARD_THEMES.map((theme) => (
                 <button
                   key={theme.id}
@@ -178,39 +214,71 @@ export function NewGameScreen({ onStart }: NewGameScreenProps) {
                     <i style={{ background: theme.light }} />
                   </span>
                   <span className="choice__label">{theme.label}</span>
+                  <SelectedMark selected={themeId === theme.id} />
                 </button>
               ))}
             </Panel>
           </div>
 
-          <footer className="phase2-setup__configuration-footer">
+          <footer className="setup__actions">
+            <div className="phase46-selection-summary" aria-hidden="true">
+              <span>
+                <AppIcon name={opponentIcon(opponent)} size={15} />
+                {opponentLabel(opponent)}
+              </span>
+              <span>
+                <AppIcon name="clock" size={15} />
+                {preset?.label ?? ''}
+              </span>
+              <span>
+                <AppIcon name="palette" size={15} />
+                {BOARD_THEMES.find((theme) => theme.id === themeId)?.label ?? 'Board'}
+              </span>
+            </div>
+            <p className="setup__action-summary">{summary}</p>
             <button
               type="button"
               className="button button--primary button--large setup__start"
+              aria-describedby="setup-summary"
               onClick={start}
             >
+              <AppIcon name="play" size={18} />
               Start game
+              <span className="phase46-button-arrow" aria-hidden="true">→</span>
             </button>
           </footer>
-        </aside>
+        </section>
       </div>
     </div>
   )
 }
 
-/** A labelled group of mutually comparable choices. */
+/** One labelled group of choices, kept local because it is specific to setup. */
 function Panel({
+  index,
   title,
-  wide = false,
+  description,
+  icon,
   children,
 }: {
+  readonly index: number
   readonly title: string
-  readonly wide?: boolean
+  readonly description: string
+  readonly icon: AppIconName
   readonly children: ReactNode
 }) {
   return (
-    <section className={`panel${wide ? ' panel--wide' : ''}`}>
-      <h3 className="panel__title">{title}</h3>
+    <section className="panel phase46-choice-panel">
+      <header className="phase46-choice-panel__heading">
+        <span className="phase46-choice-panel__step" aria-hidden="true">{index}</span>
+        <span className="phase46-choice-panel__icon" aria-hidden="true">
+          <AppIcon name={icon} size={17} />
+        </span>
+        <span>
+          <h3 className="panel__title">{title}</h3>
+          <small>{description}</small>
+        </span>
+      </header>
       <div className="panel__options" role="group" aria-label={title}>
         {children}
       </div>
@@ -236,9 +304,20 @@ function Choice({
       aria-pressed={isSelected}
       onClick={onSelect}
     >
-      <span className="choice__label">{label}</span>
-      {hint ? <span className="choice__hint">{hint}</span> : null}
+      <span className="choice__copy">
+        <span className="choice__label">{label}</span>
+        {hint ? <span className="choice__hint">{hint}</span> : null}
+      </span>
+      <SelectedMark selected={isSelected} />
     </button>
+  )
+}
+
+function SelectedMark({ selected }: { readonly selected: boolean }) {
+  return (
+    <span className="phase46-selected-mark" aria-hidden="true">
+      {selected ? <AppIcon name="check" size={13} /> : null}
+    </span>
   )
 }
 
@@ -260,6 +339,28 @@ function summarise(
     opponent === 'computer' ? `Computer · ${difficultyLabel}` : 'Two players, one device'
 
   return `${seat} · ${against} · ${timeLabel}`
+}
+
+function opponentLabel(opponent: OpponentChoice): string {
+  switch (opponent) {
+    case 'human':
+      return 'Local player'
+    case 'computer':
+      return 'Computer'
+    case 'engines':
+      return 'Engine match'
+  }
+}
+
+function opponentIcon(opponent: OpponentChoice): AppIconName {
+  switch (opponent) {
+    case 'human':
+      return 'user'
+    case 'computer':
+      return 'computer'
+    case 'engines':
+      return 'engines'
+  }
 }
 
 function randomColour(): PieceColor {

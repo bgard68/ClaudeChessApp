@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { AppIcon, type AppIconName } from './AppIcon'
 
 type NavigationTarget = 'setup' | 'puzzle' | 'archive'
 
@@ -6,30 +7,43 @@ interface AppShellProps {
   readonly active: NavigationTarget
   readonly children: ReactNode
   readonly onNavigate: (target: NavigationTarget) => void
+  readonly title?: string
+  readonly context?: string
 }
 
 interface NavItem {
   readonly target: NavigationTarget
   readonly label: string
-  readonly icon: ReactNode
+  readonly shortLabel: string
+  readonly icon: AppIconName
 }
 
 const navItems: readonly NavItem[] = [
-  { target: 'setup', label: 'Play', icon: <PlayIcon /> },
-  { target: 'puzzle', label: 'Puzzle', icon: <PuzzleIcon /> },
-  { target: 'archive', label: 'Championships', icon: <TrophyIcon /> },
+  { target: 'setup', label: 'Play chess', shortLabel: 'Play', icon: 'play' },
+  { target: 'puzzle', label: 'Puzzle of the day', shortLabel: 'Puzzle', icon: 'puzzle' },
+  { target: 'archive', label: 'Browse championships', shortLabel: 'Archive', icon: 'trophy' },
 ]
 
 /**
  * Presentation-only application chrome.
  *
- * Navigation intent is injected by App rather than reaching into application
- * services. That keeps routing responsibility in the composition-facing App
- * while this component owns only visual structure and accessible controls.
+ * Navigation intent and page context are injected by App. The shell therefore
+ * owns visual structure and responsive navigation without reaching into game,
+ * archive, engine, or persistence services.
  */
-export function AppShell({ active, children, onNavigate }: AppShellProps) {
+export function AppShell({
+  active,
+  children,
+  onNavigate,
+  title = pageTitle(active),
+  context = 'Local chess studio',
+}: AppShellProps) {
   return (
-    <div className="app-shell">
+    <div className="app-shell phase46-shell" data-active={active}>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
+
       <aside className="app-rail" aria-label="Primary navigation">
         <button
           type="button"
@@ -45,18 +59,26 @@ export function AppShell({ active, children, onNavigate }: AppShellProps) {
         </button>
 
         <nav className="app-nav">
-          {navItems.map((item) => (
-            <button
-              key={item.target}
-              type="button"
-              className={`app-nav__item${active === item.target ? ' app-nav__item--active' : ''}`}
-              aria-current={active === item.target ? 'page' : undefined}
-              onClick={() => onNavigate(item.target)}
-            >
-              <span className="app-nav__icon" aria-hidden="true">{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
+          {navItems.map((item) => {
+            const isActive = active === item.target
+            return (
+              <button
+                key={item.target}
+                type="button"
+                className={`app-nav__item${isActive ? ' app-nav__item--active' : ''}`}
+                aria-current={isActive ? 'page' : undefined}
+                aria-label={item.label}
+                title={item.label}
+                onClick={() => onNavigate(item.target)}
+              >
+                <span className="app-nav__icon" aria-hidden="true">
+                  <AppIcon name={item.icon} size={19} />
+                </span>
+                <span className="app-nav__label">{item.shortLabel}</span>
+                <span className="app-nav__indicator" aria-hidden="true" />
+              </button>
+            )
+          })}
         </nav>
 
         <div className="app-rail__footer">
@@ -67,16 +89,22 @@ export function AppShell({ active, children, onNavigate }: AppShellProps) {
 
       <div className="app-stage">
         <header className="app-topbar">
-          <div>
-            <p className="app-topbar__eyebrow">ClaudeChess</p>
-            <p className="app-topbar__title">{pageTitle(active)}</p>
+          <div className="app-topbar__context">
+            <p className="app-topbar__eyebrow">{context}</p>
+            <p className="app-topbar__title">{title}</p>
           </div>
-          <div className="app-topbar__meta">
-            <span className="app-chip">Stockfish 18</span>
-            <span className="app-chip app-chip--accent">Local-first</span>
+          <div className="app-topbar__meta" aria-label="Application capabilities">
+            <span className="app-chip">React Chessboard v5</span>
+            <span className="app-chip app-chip--accent">
+              <span className="app-status-dot" aria-hidden="true" />
+              Local-first
+            </span>
           </div>
         </header>
-        <main className="app-content">{children}</main>
+
+        <main id="main-content" className="app-content" tabIndex={-1}>
+          {children}
+        </main>
       </div>
     </div>
   )
@@ -91,28 +119,4 @@ function pageTitle(active: NavigationTarget): string {
     case 'archive':
       return 'Browse championships'
   }
-}
-
-function PlayIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M8 5v14l11-7z" />
-    </svg>
-  )
-}
-
-function PuzzleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M9 3h6v4a2 2 0 1 0 0 4v4h-4a2 2 0 1 0-4 0H3V9h4a2 2 0 1 0 0-4h2z" />
-    </svg>
-  )
-}
-
-function TrophyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M7 4h10v3c0 4-2 7-5 8-3-1-5-4-5-8V4zm-3 2h3v2c0 2-1 3-3 3V6zm13 0h3v5c-2 0-3-1-3-3V6zM9 18h6v2H9z" />
-    </svg>
-  )
 }

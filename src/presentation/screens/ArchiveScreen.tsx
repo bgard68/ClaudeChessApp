@@ -17,8 +17,10 @@ import {
   type SortDirection,
 } from '@application/ports/GameArchive'
 import { describeOversizeImport } from '@application/importLimits'
+import { AppIcon } from '../components/AppIcon'
 import { ChessBoardView } from '../components/ChessBoardView'
 import { PlayerSearch } from '../components/PlayerSearch'
+import { ScreenHeader } from '../components/ScreenHeader'
 import {
   ArchiveFilters,
   isFiltering,
@@ -459,109 +461,118 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
   const selected = games.find((game) => game.id === selectedId) ?? null
 
   return (
-    <div className="screen screen--archive">
-      <header className="archive__header phase2-archive-heading">
-        <button type="button" className="phase2-back-button" onClick={onBack}>
-          ← Back to play
-        </button>
-        <div className="phase2-archive-heading__copy">
-          <p className="phase2-kicker">Game library</p>
-          <h1>Browse championships</h1>
-          <p>Search, filter, preview, and replay games without leaving the library.</p>
-        </div>
-        <div className="archive__tools">
-          {/* Field and scope share one bordered container, so they read as a
-              single control rather than two that happen to sit together. */}
-          <div className="search-bar">
-            <input
-              type="search"
-              className="search-bar__input"
-              placeholder={SEARCH_PLACEHOLDERS[field]}
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value)
-                setChosen(null)
-                restartList()
-              }}
-            />
-            <select
-              className="search-bar__scope"
-              aria-label="Search within"
-              value={field}
-              onChange={(event) => {
-                setField(event.target.value as SearchField)
-                restartList()
-              }}
-            >
-              {SEARCH_FIELDS.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {field === 'player' && chosen === null ? (
-              <PlayerSearch
-                term={search}
-                onChoose={(player) => {
-                  setChosen(player)
-                  setSearch(player.name)
+    <div className="screen screen--archive phase3-archive phase46-archive">
+      <ScreenHeader
+        kicker="Game library"
+        title="Championship games"
+        description="Search, filter, preview, and replay the bundled archive or games saved on this device."
+        onBack={onBack}
+        backLabel="Back to play"
+        metrics={
+          <div className="phase46-archive-metrics" aria-live="polite">
+            <span><strong>{isLoading ? '—' : total.toLocaleString()}</strong><small>games found</small></span>
+            <span><strong>{games.length.toLocaleString()}</strong><small>loaded</small></span>
+            <span><strong>{chips.length}</strong><small>active filters</small></span>
+          </div>
+        }
+        actions={
+          <div className="archive__tools">
+            {/* Field and scope share one bordered container, so they read as a
+                single control rather than two that happen to sit together. */}
+            <div className="search-bar">
+              <input
+                type="search"
+                className="search-bar__input"
+                aria-label="Search championship games"
+                placeholder={SEARCH_PLACEHOLDERS[field]}
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value)
+                  setChosen(null)
                   restartList()
                 }}
               />
-            ) : null}
-          </div>
-          {/* Data management, not browsing — parked behind one quiet button. */}
-          <div className="menu" ref={menu}>
-            <button
-              type="button"
-              className="button"
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              aria-label="Import and export"
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              ⋯
-            </button>
-            {menuOpen ? (
-              <div className="menu__popup" role="menu">
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="menu__item"
-                  onClick={() => {
-                    setMenuOpen(false)
-                    fileInput.current?.click()
+              <select
+                className="search-bar__scope"
+                aria-label="Search within"
+                value={field}
+                onChange={(event) => {
+                  setField(event.target.value as SearchField)
+                  restartList()
+                }}
+              >
+                {SEARCH_FIELDS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {field === 'player' && chosen === null ? (
+                <PlayerSearch
+                  term={search}
+                  onChoose={(player) => {
+                    setChosen(player)
+                    setSearch(player.name)
+                    restartList()
                   }}
-                >
-                  Import PGN…
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="menu__item"
-                  onClick={() => {
-                    setMenuOpen(false)
-                    void exportGames()
-                  }}
-                >
-                  Export my games
-                </button>
-              </div>
-            ) : null}
+                />
+              ) : null}
+            </div>
+
+            {/* Data management, not browsing — parked behind one quiet button. */}
+            <div className="menu" ref={menu}>
+              <button
+                type="button"
+                className="button"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                aria-label="Import and export"
+                onClick={() => setMenuOpen((open) => !open)}
+              >
+                <AppIcon name="menu" size={18} />
+              </button>
+              {menuOpen ? (
+                <div className="menu__popup" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="menu__item"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      fileInput.current?.click()
+                    }}
+                  >
+                    Import PGN…
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="menu__item"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      void exportGames()
+                    }}
+                  >
+                    Export my games
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".pgn,text/plain"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) void importFile(file)
+                event.target.value = ''
+              }}
+            />
           </div>
-          <input
-            ref={fileInput}
-            type="file"
-            accept=".pgn,text/plain"
-            hidden
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) void importFile(file)
-              event.target.value = ''
-            }}
-          />
-        </div>
-      </header>
+        }
+      />
 
       <div className={`archive__body${hasPane ? ' archive__body--preview' : ''}`}>
         <ArchiveFilters
@@ -588,7 +599,7 @@ export function ArchiveScreen({ onOpenGame, onBack }: ArchiveScreenProps) {
             </div>
           ) : null}
 
-          <h2 className="archive__heading">
+          <h2 className="archive__heading" aria-live="polite">
             {chosen !== null
               ? `${total.toLocaleString()} games by ${chosen.name}`
               : describeResults(total, query, field, isLoading || query !== search, filtered)}
@@ -776,7 +787,7 @@ function GamePreview({
 }) {
   if (selected === null) {
     return (
-      <aside className="preview">
+      <aside className="preview phase3-preview phase46-preview">
         <p className="preview__empty">
           Click a game to preview it here. Click it again — or press Enter — to replay it.
         </p>
@@ -796,7 +807,7 @@ function GamePreview({
   ].filter((part): part is string => part !== null && part !== '')
 
   return (
-    <aside className="preview">
+    <aside className="preview phase3-preview phase46-preview">
       {selected.nickname !== null ? (
         <p className="preview__nickname">{selected.nickname}</p>
       ) : null}
@@ -836,7 +847,8 @@ function GamePreview({
         className="button button--primary"
         onClick={() => onReplay(selected.id)}
       >
-        ▶ Replay game
+        <AppIcon name="play" size={16} />
+        Replay game
       </button>
     </aside>
   )

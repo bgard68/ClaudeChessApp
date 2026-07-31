@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { GameConfiguration } from '@application/GameConfiguration'
 import type { LiveGame } from '@application/LiveGame'
 import type { ReplaySession } from '@application/replay/ReplaySession'
+import { AppIcon } from './components/AppIcon'
 import { AppShell } from './components/AppShell'
 import { ArchiveScreen } from './screens/ArchiveScreen'
 import { NewGameScreen } from './screens/NewGameScreen'
@@ -10,6 +11,8 @@ import { PuzzleScreen } from './screens/PuzzleScreen'
 import { ReplayScreen } from './screens/ReplayScreen'
 import { useServices } from './ServicesContext'
 import './phase2.css'
+import './phase3.css'
+import './phase4-6.css'
 
 type View =
   | { readonly name: 'setup' }
@@ -80,7 +83,12 @@ export function App() {
         : 'setup'
 
   return (
-    <AppShell active={shellActive} onNavigate={navigate}>
+    <AppShell
+      active={shellActive}
+      title={shellTitle(view)}
+      context={shellContext(view)}
+      onNavigate={navigate}
+    >
       {renderView()}
     </AppShell>
   )
@@ -89,7 +97,11 @@ export function App() {
     switch (view.name) {
       case 'setup':
         return (
-          <NewGameScreen onStart={startGame} />
+          <NewGameScreen
+            onStart={startGame}
+            onBrowseArchive={() => goTo({ name: 'archive' })}
+            onOpenPuzzle={() => goTo({ name: 'puzzle' })}
+          />
         )
 
       case 'puzzle':
@@ -116,15 +128,34 @@ export function App() {
         return <ReplayScreen session={view.session} onBack={() => goTo({ name: 'archive' })} />
 
       case 'loading':
-        return <p className="notice phase2-notice">{view.message}</p>
+        return (
+          <section className="phase46-system-state" role="status" aria-live="polite">
+            <span className="phase46-system-state__icon phase46-system-state__icon--loading" aria-hidden="true">
+              <AppIcon name="sparkles" size={24} />
+            </span>
+            <div>
+              <p className="phase2-kicker">Preparing replay</p>
+              <h1>{view.message}</h1>
+              <p>The selected game is being loaded from your local archive.</p>
+            </div>
+          </section>
+        )
 
       case 'error':
         return (
-          <section className="phase2-error">
-            <p className="notice notice--error">{view.message}</p>
-            <button type="button" className="button" onClick={() => goTo({ name: 'archive' })}>
-              Back to championships
-            </button>
+          <section className="phase46-system-state phase46-system-state--error" role="alert">
+            <span className="phase46-system-state__icon" aria-hidden="true">
+              <AppIcon name="warning" size={24} />
+            </span>
+            <div>
+              <p className="phase2-kicker">Unable to open game</p>
+              <h1>Replay unavailable</h1>
+              <p>{view.message}</p>
+              <button type="button" className="button" onClick={() => goTo({ name: 'archive' })}>
+                <AppIcon name="arrow-left" size={16} />
+                Back to championships
+              </button>
+            </div>
           </section>
         )
     }
@@ -135,4 +166,41 @@ function disposeView(view: View | null): void {
   if (view === null) return
   if (view.name === 'play') view.game.dispose()
   if (view.name === 'replay') view.session.dispose()
+}
+
+function shellTitle(view: View): string {
+  switch (view.name) {
+    case 'setup':
+      return 'New game'
+    case 'play':
+      return 'Live game'
+    case 'puzzle':
+      return 'Puzzle of the day'
+    case 'archive':
+      return 'Championship archive'
+    case 'replay':
+      return 'Game replay'
+    case 'loading':
+      return 'Loading replay'
+    case 'error':
+      return 'Replay unavailable'
+  }
+}
+
+function shellContext(view: View): string {
+  switch (view.name) {
+    case 'play':
+      return 'Match room'
+    case 'replay':
+      return 'Analysis room'
+    case 'archive':
+      return 'Local game library'
+    case 'puzzle':
+      return 'Daily training'
+    case 'loading':
+    case 'error':
+      return 'Championship archive'
+    case 'setup':
+      return 'Local chess studio'
+  }
 }

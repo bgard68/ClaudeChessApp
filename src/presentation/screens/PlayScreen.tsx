@@ -7,6 +7,7 @@ import type { GameConfiguration } from '@application/GameConfiguration'
 import type { HintAdviser } from '@application/HintAdviser'
 import type { LiveGame } from '@application/LiveGame'
 import { recordGame } from '@application/recordGame'
+import { AppIcon, type AppIconName } from '../components/AppIcon'
 import { ChessBoardView } from '../components/ChessBoardView'
 import { ClockPanel } from '../components/ClockPanel'
 import { MoveList } from '../components/MoveList'
@@ -106,22 +107,42 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
       disabled={state.history.length === 0 || saveState === 'saving' || saveState === 'saved'}
       onClick={() => void saveGame()}
     >
-      <span aria-hidden="true">⌁</span>
+      <AppIcon name="save" size={16} />
       {saveLabel(saveState)}
     </button>
   )
 
   const durabilityWarning = describeDurability(durability)
+  const currentStatus = statusForGame({
+    gameOver,
+    isAdvising,
+    isCheck: state.isCheck,
+    hintSan: hint?.san ?? null,
+    awaitingKind: state.awaiting?.kind ?? null,
+    awaitingName: state.awaiting?.name ?? null,
+  })
 
   return (
-    <div className="screen screen--play phase2-play">
-      <section className="phase2-board-column" aria-label="Game board">
-        <div className="phase2-board-heading">
-          <div>
+    <div className="screen screen--play phase2-play phase3-play phase46-play">
+      <section className="phase2-board-column phase46-board-column" aria-label="Game board">
+        <div className="phase2-board-heading phase46-board-heading">
+          <div className="phase46-board-heading__copy">
             <p className="phase2-kicker">{eventName(configuration)}</p>
             <h1>{names.white} vs {names.black}</h1>
+            <div className="phase46-game-meta" aria-label="Game details">
+              <span>
+                <AppIcon name="clock" size={14} />
+                {describeTimeControl(state.timeControl)}
+              </span>
+              <span>Move {Math.floor(state.history.length / 2) + 1}</span>
+              <span>{orientation === 'white' ? 'White' : 'Black'} perspective</span>
+            </div>
           </div>
-          <span className={`phase2-turn${state.isCheck ? ' phase2-turn--check' : ''}`}>
+          <span
+            className={`phase2-turn phase46-turn${state.isCheck ? ' phase2-turn--check' : ''}`}
+            data-tone={state.isCheck ? 'warning' : gameOver ? 'complete' : 'live'}
+          >
+            <span className="phase46-live-dot" aria-hidden="true" />
             {gameOver
               ? 'Game complete'
               : state.awaiting === null
@@ -130,7 +151,7 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
           </span>
         </div>
 
-        <div className="phase2-board-frame">
+        <div className="phase2-board-frame phase46-board-frame">
           {/* Keep ChessBoardView mounted directly and preserve its v5 API and
               first-commit sizing behavior. Only its surrounding layout changes. */}
           <ChessBoardView
@@ -144,10 +165,11 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
           />
         </div>
 
-        <div className="phase2-board-toolbar" aria-label="Board controls">
+        <div className="phase2-board-toolbar phase46-board-toolbar" aria-label="Board controls">
           <button
             type="button"
             className="phase2-icon-button"
+            aria-label="Flip board orientation"
             onClick={() => {
               if (autoFlip) {
                 setManualOrientation(state.position.sideToMove)
@@ -157,8 +179,8 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
               }
             }}
           >
-            <span aria-hidden="true">↻</span>
-            Flip
+            <AppIcon name="flip" size={17} />
+            Flip board
           </button>
           {!isWatching ? (
             <>
@@ -166,9 +188,10 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
                 type="button"
                 className="phase2-icon-button"
                 disabled={!isHumanToMove || gameOver || isAdvising}
+                aria-busy={isAdvising}
                 onClick={() => void requestHint()}
               >
-                <span aria-hidden="true">◇</span>
+                <AppIcon name="hint" size={17} />
                 {isAdvising ? 'Thinking…' : 'Hint'}
               </button>
               <button
@@ -177,8 +200,8 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
                 disabled={!state.canUndo}
                 onClick={() => game.undo()}
               >
-                <span aria-hidden="true">↶</span>
-                Undo
+                <AppIcon name="undo" size={17} />
+                Undo move
               </button>
             </>
           ) : null}
@@ -189,14 +212,14 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
                 checked={autoFlip}
                 onChange={(event) => setAutoFlip(event.target.checked)}
               />
-              Auto-flip
+              Auto-flip after each move
             </label>
           ) : null}
         </div>
       </section>
 
-      <aside className="play__panel phase2-game-panel">
-        <section className="phase2-panel-card phase2-clock-card">
+      <aside className="play__panel phase2-game-panel phase46-game-panel">
+        <section className="phase2-panel-card phase2-clock-card phase46-clock-card">
           <div className="phase2-section-title">
             <span>Game clock</span>
             <small>{describeTimeControl(state.timeControl)}</small>
@@ -212,16 +235,13 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
           />
         </section>
 
-        <div className="play__status phase2-status-strip" aria-live="polite">
-          {gameOver ? null : (
-            <>
-              {state.awaiting?.kind === 'engine' ? (
-                <span className="play__thinking">Stockfish is thinking…</span>
-              ) : null}
-              {state.isCheck ? <span className="play__check">Check</span> : null}
-              {hint?.san ? <span className="play__hint">Suggested: {hint.san}</span> : null}
-            </>
-          )}
+        <div
+          className="play__status phase2-status-strip phase46-status-strip"
+          data-tone={currentStatus.tone}
+          aria-live="polite"
+        >
+          <AppIcon name={currentStatus.icon} size={17} />
+          <span>{currentStatus.label}</span>
         </div>
 
         <OutcomeBanner outcome={state.outcome} onNewGame={onNewGame}>
@@ -235,7 +255,7 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
           <p className="clock-note">{durabilityWarning}</p>
         ) : null}
 
-        <section className="phase2-panel-card phase2-moves-card">
+        <section className="phase2-panel-card phase2-moves-card phase46-moves-card">
           <div className="phase2-section-title">
             <span>Move history</span>
             <small>{state.history.length} ply</small>
@@ -245,9 +265,10 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
           </div>
         </section>
 
-        <section className="phase2-panel-card">
+        <section className="phase2-panel-card phase46-actions-card">
           <div className="phase2-section-title">
             <span>Game actions</span>
+            <small>{gameOver ? 'Finished' : 'In progress'}</small>
           </div>
           <div className="play__actions phase2-action-grid">
             {!isWatching ? (
@@ -258,6 +279,7 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
                   disabled={gameOver}
                   onClick={() => game.agreeDraw()}
                 >
+                  <AppIcon name="draw" size={16} />
                   Offer draw
                 </button>
                 {gameOver ? null : saveButton}
@@ -267,11 +289,13 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
                   disabled={gameOver}
                   onClick={() => game.resign(state.position.sideToMove)}
                 >
+                  <AppIcon name="resign" size={16} />
                   Resign
                 </button>
               </>
             ) : null}
             <button type="button" className="button button--primary" onClick={onNewGame}>
+              <AppIcon name="play" size={16} />
               New game
             </button>
           </div>
@@ -279,6 +303,34 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
       </aside>
     </div>
   )
+}
+
+function statusForGame({
+  gameOver,
+  isAdvising,
+  isCheck,
+  hintSan,
+  awaitingKind,
+  awaitingName,
+}: {
+  readonly gameOver: boolean
+  readonly isAdvising: boolean
+  readonly isCheck: boolean
+  readonly hintSan: string | null
+  readonly awaitingKind: 'human' | 'engine' | null
+  readonly awaitingName: string | null
+}): { readonly icon: AppIconName; readonly label: string; readonly tone: string } {
+  if (gameOver) return { icon: 'check', label: 'The game is complete.', tone: 'complete' }
+  if (isCheck) return { icon: 'warning', label: 'Check — respond to the attack.', tone: 'warning' }
+  if (isAdvising) return { icon: 'sparkles', label: 'Stockfish is finding a useful idea…', tone: 'thinking' }
+  if (hintSan !== null) return { icon: 'hint', label: `Suggested move: ${hintSan}`, tone: 'hint' }
+  if (awaitingKind === 'engine') {
+    return { icon: 'computer', label: `${awaitingName ?? 'Stockfish'} is thinking…`, tone: 'thinking' }
+  }
+  if (awaitingKind === 'human') {
+    return { icon: 'play', label: `${awaitingName ?? 'Player'} can move.`, tone: 'live' }
+  }
+  return { icon: 'clock', label: 'Starting the game…', tone: 'neutral' }
 }
 
 function saveLabel(state: SaveState): string {

@@ -1,88 +1,39 @@
-# ClaudeChess Phase 2 — Consolidated UI release
+# ClaudeChess Phase 2 — Full presentation redesign
 
-This package is the complete Phase 2 presentation release built from the uploaded
-`feature/ui-redesign` snapshot. It replaces the earlier incremental ZIPs. No
-previous Phase 2 package or CSS patch is required.
+> **Superseded layout note:** Phase 3 replaces the Phase 2 New Game action layout. The final `Start game` button is structurally inside the right-hand Game settings panel. See `PHASE-3.md`.
 
-## What is included
+Source baseline: public `feature/ui-redesign` branch.
 
-- Shared application shell and responsive navigation
-- New Game redesign
-- Live Play redesign
-- Puzzle of the Day redesign
-- Championship Archive visual redesign
-- Championship Replay redesign
-- One consolidated Phase 2 stylesheet
-- Architecture and trade-off documentation
+## Included
 
-The package includes the complete project source so the Phase 2 files are not
-separated from the branch state they were built against.
+- `src/presentation/App.tsx`
+- `src/presentation/components/AppShell.tsx`
+- `src/presentation/screens/PlayScreen.tsx`
+- `src/presentation/screens/PuzzleScreen.tsx`
+- `src/presentation/phase2.css`
 
-## New Game correction
+## Deliberately unchanged
 
-The **Start game** button is structurally inside the right-hand **Game settings**
-panel:
+- `ChessBoardView.tsx`
+- `react-chessboard` v5
+- Board prop contract and lifecycle
+- Domain/application/infrastructure/composition layers
+- Archive querying, filtering, import/export, and replay logic
+- Game, puzzle, clock, engine, storage, and PGN behavior
 
-- It spans only the settings panel.
-- It does not span the bottom of the application window.
-- It is separated from the settings by the panel's own footer and border.
-- The desktop page uses the available viewport without introducing document
-  scrolling. On short displays, only the settings list may scroll inside its
-  panel so the board and primary action remain visible.
+The championship screen is modernized through the shared shell and additive CSS.
+Its 900+ line behavior-heavy component is intentionally not duplicated or
+refactored merely to satisfy a visual change.
 
-This is a JSX layout change in `NewGameScreen.tsx`, not another CSS positioning
-workaround.
+## Apply
 
-## react-chessboard v5
+Copy the included `src` folder over the repository root on
+`feature/ui-redesign`. The new `phase2.css` is imported by `App.tsx`; do not
+replace the original `styles.css`.
 
-The project remains on:
-
-```json
-"react-chessboard": "^5.10.0"
-```
-
-`ChessBoardView.tsx` and its lifecycle protections remain unchanged. In
-particular, the board still mounts on the component's first commit and receives
-memoized v5 options, preserving the behavior documented in
-`docs/LESSONS-LEARNED.md`.
-
-## Architecture boundaries
-
-Phase 2 changes stay in `src/presentation` and documentation. They do not alter:
-
-- domain rules or chess entities
-- application use cases
-- engine, SQLite, PGN, or clock adapters
-- composition-root wiring
-- storage, puzzle generation, replay, or game behavior
-
-Detailed SOLID, Clean Architecture, DRY, DIP, and SRP decisions—including
-intentional trade-offs—are documented in
-[`docs/PHASE-2-UI-ARCHITECTURE.md`](docs/PHASE-2-UI-ARCHITECTURE.md).
-
-## Primary files changed
-
-```text
-src/presentation/App.tsx
-src/presentation/components/AppShell.tsx
-src/presentation/screens/NewGameScreen.tsx
-src/presentation/screens/PlayScreen.tsx
-src/presentation/screens/PuzzleScreen.tsx
-src/presentation/screens/ArchiveScreen.tsx
-src/presentation/screens/ReplayScreen.tsx
-src/presentation/phase2.css
-PHASE-2.md
-docs/PHASE-2-UI-ARCHITECTURE.md
-docs/README.md
-PHASE-2-VALIDATION.md
-```
-
-## Verification
-
-Run from the repository root:
+Run:
 
 ```powershell
-npm ci
 npm run typecheck
 npm test
 npm run build
@@ -90,19 +41,37 @@ git diff --check
 npm run dev
 ```
 
-Recommended visual checks:
-
-- 2560×1440 desktop
-- 1920×1080 desktop
-- 1366×768 laptop
-- 768px tablet
-- 390px mobile
-- keyboard focus and reduced-motion preference
-
-## Suggested commit
+Suggested commit:
 
 ```powershell
-git add src/presentation PHASE-2.md docs
-
-git commit -m "refactor(ui): consolidate phase 2 presentation redesign"
+git add src/presentation
+git commit -m "refactor(ui): implement phase 2 application redesign"
 ```
+
+## Architecture decisions
+
+- `App` retains navigation and resource disposal.
+- `AppShell` owns visual chrome only and receives navigation intent by callback.
+- Play and Puzzle retain their existing use cases and state transitions.
+- Shared visual rules live in one additive stylesheet to avoid duplicating
+  screen-specific token values.
+- No new abstraction was introduced for one-off content blocks.
+
+## New Game viewport adjustment
+
+The setup screen now uses the available desktop viewport instead of extending
+the page vertically:
+
+- The existing board preview and settings remain unchanged functionally.
+- Settings use a compact two-column arrangement where space permits.
+- The existing `Start game` button spans the full bottom of the screen.
+- At shorter desktop heights, secondary choice descriptions collapse before
+  the screen itself needs to scroll.
+- Tablet and mobile layouts return to normal document flow so content remains
+  accessible rather than being clipped.
+
+No `NewGameScreen.tsx` logic or component contract was changed.
+
+
+### Button layout correction
+The Start Game button remains inside the options panel and spans only that panel. It is pinned to the bottom of the right-hand panel on desktop while preserving the compact no-scroll layout.
