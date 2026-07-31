@@ -295,6 +295,11 @@ about the build itself.
 The honest position is that this codebase applies these ideas **selectively**,
 and the omissions are as considered as the applications.
 
+This section covers the app as a whole. The same questions asked of the
+presentation layer specifically — which UI abstractions were added, which were
+refused, and what each bought — are answered in
+[UI-ARCHITECTURE.md](UI-ARCHITECTURE.md).
+
 ### 8.1 Single Responsibility (SRP) — largely honoured
 
 Held well:

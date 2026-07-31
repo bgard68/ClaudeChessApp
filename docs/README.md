@@ -11,7 +11,8 @@ what it can do. These go deeper, one question each.
 | [LESSONS-LEARNED.md](LESSONS-LEARNED.md) | What broke, what actually caused it, and what was the wrong explanation that looked right first? |
 | [SUPPLY-CHAIN.md](SUPPLY-CHAIN.md) | What does the build enforce, why, how do I audit it, and what would quietly undo it? |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | How does it get to Azure, and how do I set that up from scratch? |
-| [PHASES-4-6-TRADEOFFS.md](PHASES-4-6-TRADEOFFS.md) | Which architecture and UI abstractions were added in the final presentation pass, and which were deliberately not added? |
+| [UI-REDESIGN.md](UI-REDESIGN.md) | What did the presentation rewrite change on each screen, what did it deliberately leave alone, and what was actually verified? |
+| [UI-ARCHITECTURE.md](UI-ARCHITECTURE.md) | Which UI abstractions were added, which were deliberately refused, and what did each choice buy? |
 
 Two more live outside this folder because convention puts them there:
 
@@ -34,3 +35,6 @@ Two more live outside this folder because convention puts them there:
   including the remedies that do not work.
 - **How to regenerate the lock file without breaking the deploy** —
   [SUPPLY-CHAIN.md § Dependencies install from the lock](SUPPLY-CHAIN.md#2-dependencies-install-from-the-lock).
+- **Why there are four stylesheets in the cascade** —
+  [UI-ARCHITECTURE.md § Known debt](UI-ARCHITECTURE.md#known-debt), including
+  what has to exist before merging them is safe.
