@@ -1,6 +1,7 @@
 #!/bin/sh
 #
-# Quality gate: typecheck and tests must pass before a commit is written.
+# Quality gate: no forbidden path, and typecheck and tests pass, before a
+# commit is written.
 #
 # Enable it once per clone — git will not do this for you:
 #
@@ -22,6 +23,17 @@ if [ ! -d node_modules ]; then
   printf 'pre-commit: run "npm install" here first, or commit with --no-verify.\n' >&2
   exit 1
 fi
+
+# First, and not last: this is the only moment when the fix is free. Once the
+# commit exists the path is in history, and history is what `git push` sends —
+# deleting the file in a later commit does not take it back out. Here it is
+# still `git rm --cached`.
+#
+# The index, not the range: the range check needs a base to compare against and
+# belongs in the gate, where there is one. This asks the cheaper question — is
+# anything forbidden staged right now.
+printf 'pre-commit: forbidden paths\n'
+node scripts/paths-check.mjs --range ''
 
 # --no-install matters: without it npx silently downloads a tool it cannot find
 # locally, so a missing dependency would be checked by some other version of

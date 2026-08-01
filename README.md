@@ -47,6 +47,7 @@ dependencies, not for setting up.
 | `npm run layout-check` | Layout invariants, every screen at four widths (needs a build) |
 | `npm run behaviour-check` | Interaction behaviour in a real browser (needs a build) |
 | `npm run a11y-check` | axe-core accessibility pass (needs a build) |
+| `npm run paths-check` | Nothing forbidden is tracked, or ever was in this change |
 | `npm run screens` | Screenshot every screen at phone size, with touch (needs `npm run dev`) |
 | `npm run fetch-games` | Re-download the World Championship games |
 | `npm run fetch-famous` | Re-extract the famous-games collection |

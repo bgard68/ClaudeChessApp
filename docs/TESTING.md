@@ -89,6 +89,23 @@ query for a while, and nothing that ran on a commit could have noticed.
 **`a11y-check.mjs`** — *can any of it be used?* axe-core over four screens at
 two widths, against WCAG 2.1 A and AA.
 
+**`paths-check.mjs`** — *is anything tracked that should not be?* Two questions,
+because one of them cannot be asked yet at the moment it matters. First: which
+tracked files does the repository's own `.gitignore` now disown — `git ls-files
+--cached --ignored --exclude-standard`, which must come back empty. Second: a
+denylist of paths that must never be tracked whatever `.gitignore` says, since
+the first check cannot fire until somebody remembers to write the rule.
+
+Both run against the index, and the denylist also runs across every commit a
+change adds. That last part is the one that would have mattered: `.claude/`
+was deleted from the tip and added to `.gitignore` five hours before this
+repository first existed on GitHub, and it went up anyway, because `git push`
+sends history and deleting a file in a later commit does not take it back out.
+A check that examined the tip would have passed while it was exposed.
+
+It runs in the gate and in the pre-commit hook — the hook first, because that
+is the only moment when the fix is still free.
+
 ---
 
 ## Playwright, not jsdom
