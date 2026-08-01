@@ -43,6 +43,11 @@ Two more live outside this folder because convention puts them there:
   with what it costs and how to add it anyway.
 - **What the tests cannot reach** —
   [TESTING.md § What is not covered, and why](TESTING.md#what-is-not-covered-and-why).
-- **Why there are four stylesheets in the cascade** —
-  [UI-ARCHITECTURE.md § Known debt](UI-ARCHITECTURE.md#known-debt), including
-  what has to exist before merging them is safe.
+- **Why the cascade is ordered the way it is** —
+  [UI-ARCHITECTURE.md § Known debt](UI-ARCHITECTURE.md#known-debt): four
+  stylesheets became sections of one file in the order the browser used to
+  apply them, base last and load-bearing, with a phone section after it that is
+  last on purpose. Includes what has to exist before reordering is safe.
+- **Why a screen looks different on a phone** —
+  [LESSONS-LEARNED.md § Present, and a screen and a half below the point](LESSONS-LEARNED.md#present-and-a-screen-and-a-half-below-the-point),
+  and the `@media (max-width: 620px)` section at the end of `styles.css`.
