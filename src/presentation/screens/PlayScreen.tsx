@@ -123,6 +123,44 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
     awaitingName: state.awaiting?.name ?? null,
   })
 
+  const compactStatus = (
+    <div
+      className="play__status phase2-status-strip phase46-status-strip"
+      data-tone={currentStatus.tone}
+      aria-live="polite"
+    >
+      <AppIcon name={currentStatus.icon} size={17} />
+      <span>{currentStatus.label}</span>
+    </div>
+  )
+
+  const gameActions = (
+    <div className="play__actions phase2-action-grid">
+      {!isWatching ? (
+        <>
+          <button type="button" className="button" disabled={gameOver} onClick={() => game.agreeDraw()}>
+            <AppIcon name="draw" size={16} />
+            Offer draw
+          </button>
+          {gameOver ? null : saveButton}
+          <button
+            type="button"
+            className="button button--danger"
+            disabled={gameOver}
+            onClick={() => game.resign(state.position.sideToMove)}
+          >
+            <AppIcon name="resign" size={16} />
+            Resign
+          </button>
+        </>
+      ) : null}
+      <button type="button" className="button button--primary" onClick={onNewGame}>
+        <AppIcon name="play" size={16} />
+        New game
+      </button>
+    </div>
+  )
+
   return (
     <div className="screen screen--play phase2-play phase3-play phase46-play">
       <section className="phase2-board-column phase46-board-column" aria-label="Game board">
@@ -150,6 +188,18 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
                 ? 'Starting…'
                 : `${state.awaiting.name} to move`}
           </span>
+        </div>
+
+        <div className="phase46-mobile-game-head">
+          <ClockPanel
+            whiteMs={state.clock.whiteMs}
+            blackMs={state.clock.blackMs}
+            activeColor={state.clock.running}
+            orientation={orientation}
+            whiteName={names.white}
+            blackName={names.black}
+          />
+          {compactStatus}
         </div>
 
         <div className="phase2-board-frame phase46-board-frame">
@@ -217,6 +267,20 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
             </label>
           ) : null}
         </div>
+
+        <details className="phase46-mobile-game-menu">
+          <summary>Game &amp; moves</summary>
+          <PanelDrawer
+            className="phase2-panel-card phase2-moves-card phase46-moves-card"
+            title="Move history"
+            note={`${state.history.length} ply`}
+          >
+            <div className="play__moves">
+              <MoveList sanMoves={state.history.map((move) => move.san)} />
+            </div>
+          </PanelDrawer>
+          {gameActions}
+        </details>
       </section>
 
       <aside className="play__panel phase2-game-panel phase46-game-panel">
@@ -236,14 +300,7 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
           />
         </section>
 
-        <div
-          className="play__status phase2-status-strip phase46-status-strip"
-          data-tone={currentStatus.tone}
-          aria-live="polite"
-        >
-          <AppIcon name={currentStatus.icon} size={17} />
-          <span>{currentStatus.label}</span>
-        </div>
+        {compactStatus}
 
         <OutcomeBanner outcome={state.outcome} onNewGame={onNewGame}>
           {saveButton}
@@ -271,35 +328,7 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
             <span>Game actions</span>
             <small>{gameOver ? 'Finished' : 'In progress'}</small>
           </div>
-          <div className="play__actions phase2-action-grid">
-            {!isWatching ? (
-              <>
-                <button
-                  type="button"
-                  className="button"
-                  disabled={gameOver}
-                  onClick={() => game.agreeDraw()}
-                >
-                  <AppIcon name="draw" size={16} />
-                  Offer draw
-                </button>
-                {gameOver ? null : saveButton}
-                <button
-                  type="button"
-                  className="button button--danger"
-                  disabled={gameOver}
-                  onClick={() => game.resign(state.position.sideToMove)}
-                >
-                  <AppIcon name="resign" size={16} />
-                  Resign
-                </button>
-              </>
-            ) : null}
-            <button type="button" className="button button--primary" onClick={onNewGame}>
-              <AppIcon name="play" size={16} />
-              New game
-            </button>
-          </div>
+          {gameActions}
         </section>
       </aside>
     </div>

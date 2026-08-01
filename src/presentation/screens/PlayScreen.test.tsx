@@ -153,6 +153,15 @@ describe('PlayScreen', () => {
   })
 
   describe('what you can do', () => {
+    it('keeps primary play controls outside the compact game menu', () => {
+      const markup = render()
+      expect(markup).toContain('phase46-mobile-game-head')
+      expect(markup).toContain('Flip board')
+      expect(markup).toContain('Hint')
+      expect(markup).toContain('Undo move')
+      expect(markup).toContain('Game &amp; moves')
+    })
+
     it('offers no undo until there is something to take back', () => {
       expect(buttonFor(render({ canUndo: false }), 'Undo')).toContain('disabled')
       expect(buttonFor(render({ canUndo: true }), 'Undo')).not.toContain('disabled')
