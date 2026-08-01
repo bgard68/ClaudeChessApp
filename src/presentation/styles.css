@@ -5650,18 +5650,47 @@ because the board is the thing being
   background: var(--accent-soft);
 }
 
-/* The board themes are the one group where the colour is the information and
-   the name is not, so the chip is the swatch. The name survives as the
-   accessible label and the tooltip. */
+/* The board themes were the one group where the colour was held to be the
+   information and the name not, so the chip was the swatch alone and the name
+   survived only as the accessible label and the tooltip.
+
+   That holds for a swatch you can see. These sit at 30px on a page whose own
+   surface is near-black, they are five muted variations of the same board —
+   green, walnut, ocean, violet, charcoal — and two of the five differ mainly
+   in how warm the dark square is. A tooltip needs a cursor to hover, which a
+   phone has not got; an accessible label needs a screen reader running. Every
+   other reader was left comparing five small rectangles.
+
+   So the name is drawn. The swatch keeps its job of showing the two square
+   colours; the name does the telling apart. */
 .setup-chip--swatch {
-  padding: 5px;
-  line-height: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px 5px 5px;
+  line-height: 1.1;
 }
 
 .setup-chip--swatch .swatch {
   width: 30px;
   height: 30px;
   border-radius: 6px;
+  /* Fill the square. The shared `.swatch` sizes its cells at 0.6rem, which is
+     what a swatch inline in a sentence wants; at 30px that left the four
+     colours occupying 19px of the box and the button's own background showing
+     through the remaining L — which is why ocean and charcoal read as pale
+     rectangles rather than as boards. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  /* A lighter edge than the shared border, so a dark tile reads as a square
+     with an outline rather than as a hole in the button. Charcoal's dark is
+     #787670 against a #0b1714 surface, and the default border loses it. */
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.setup-chip__swatch-name {
+  font-size: 0.78rem;
+  white-space: nowrap;
 }
 
 /* ------------------- Setup: board and settings ------------------------
@@ -6023,3 +6052,534 @@ because the board is the thing being
   }
 }
 
+
+/* ======================================================================
+   PHONE — one screen at a time
+   (loaded last, and therefore wins ties. See the note at the top.)
+   ====================================================================== */
+
+/*
+ * Everything above this line makes the app *fit* a phone: 100dvh, safe-area
+ * padding, 44px targets, a fixed bar with four destinations, a board that
+ * never overflows its column. It fits. What it never did was choose.
+ *
+ * A Pixel is 393x727 and the bar takes 72 of that, so a screen has about 650
+ * points in which to say what it is for. These screens were laid out for a
+ * desktop and then allowed to stack, and stacking spends that budget in DOM
+ * order rather than in order of use. Measured at 393x727, before this:
+ *
+ *   setup     1845pt — a full-height board first, every choice below it, and
+ *                      Start game 1100pt past the fold
+ *   play      2000pt — clocks, status, actions and moves each a scroll away
+ *                      from the board they describe
+ *   puzzle    1453pt — Show hint at 1400
+ *   replay    1605pt — the transport at 1100, driving a board you cannot see
+ *   archive          — a five-column table with Year off the right edge, and
+ *                      a search box clipped by its own scope select
+ *
+ * What follows decides what belongs on the first screen of each and sends the
+ * rest below it. It adds no markup, and it changes nothing above 620px.
+ */
+@media (max-width: 620px) {
+  :root {
+    /* What the fixed bar occupies, for anything that pins itself above it. */
+    --phone-bar: calc(var(--p46-mobile-nav-height, 72px) + env(safe-area-inset-bottom));
+  }
+
+  /* --------------------------------------------------------------- setup
+     The board was the whole first screen and every choice was under it, so
+     starting a game began by scrolling past a board that had not been
+     configured yet. It keeps the top — it is the thing being configured —
+     but two fifths of the height rather than all of it. */
+  /* The screen is given a height of its own — a viewport's worth, with a
+     600pt floor — from when the board and the settings were two columns that
+     had to fill it. On a phone they are not: the settings are in the rail
+     below, and the floor became 90pt of empty page between the board and the
+     first choice, which is the same scroll being paid for twice. */
+  .screen--setup.phase3-setup {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .phase46-setup .setup__board-frame {
+    width: min(100%, 40vh);
+    margin-inline: auto;
+    padding: 6px;
+  }
+
+  /* "Live preview / Your board" labels a board that is plainly a board, and
+     the perspective badge repeats the seat chosen two rows below it. Both
+     were dropped above 861px for that reason; the phone needs the height
+     more than the desktop did. */
+  .phase46-setup .phase46-preview-heading,
+  .phase46-setup .screen-header__description {
+    display: none;
+  }
+
+  .phase46-setup .setup__preview .credits {
+    margin: 4px 0 0;
+    font-size: 0.72rem;
+  }
+
+  .phase46-setup .setup__options {
+    gap: 8px;
+    padding: 8px 0 0;
+  }
+
+  /* Start game pins itself above the navigation bar. The choices scroll under
+     it, so the game is one tap away rather than one scroll and then a tap. */
+  /* The pinned bar costs its height on every screenful, so it carries only
+     what a decision needs. The icon row restates the sentence directly under
+     it — opponent, clock, board — in three glyphs, and below 620px it was
+     already down to showing just the first of the three. */
+  .app-rail--right .phase46-selection-summary {
+    display: none;
+  }
+
+  .app-rail--right .setup__actions {
+    position: sticky;
+    bottom: var(--phone-bar);
+    z-index: 5;
+    border-radius: 14px;
+    background: rgba(3, 12, 10, 0.94);
+    backdrop-filter: blur(14px);
+  }
+
+  /* Room for it to come to rest at the end of the list instead of covering
+     the last group. The rail sits outside .app-content, so the padding that
+     clears the bar for every other screen never applied here. */
+  .app-rail--right {
+    padding-bottom: calc(var(--phone-bar) + 14px);
+  }
+
+  .app-rail--right .setup__settings {
+    overflow: visible;
+  }
+
+  /* The content area reserves a full screen — `min-height: 100dvh - bar` plus
+     a bar's worth of padding — because on every other screen it is the last
+     thing on the page. On setup it is not: the settings rail follows it. That
+     reservation became a screenful of empty page between the board and the
+     first choice, which is the scroll this section exists to remove. */
+  .app-shell:has(.app-rail--right:not(:empty)) .app-content {
+    min-height: 0;
+    padding-bottom: 0;
+  }
+
+  .app-shell:has(.app-rail--right:not(:empty)) .app-stage {
+    min-height: 0;
+  }
+
+  /* ---------------------------------------------------------------- play
+     Board, both clocks, and what the game is waiting for, together. They were
+     three cards a scroll apart, which on a phone means the clock you are
+     losing on is a thing you have to go and look at. */
+  .phase46-play .phase46-board-frame {
+    width: min(100%, 46vh);
+    margin-inline: auto;
+  }
+
+  /* The heading gave the event, the players, the time control, the move
+     number, the perspective and whose turn it is. The clocks below name both
+     players and the time control, the toolbar states the perspective, and the
+     status strip states the turn. What is left that nothing else says is who
+     is playing whom. */
+  .phase46-play .phase2-kicker,
+  .phase46-play .phase46-game-meta,
+  .phase46-play .phase46-turn {
+    display: none;
+  }
+
+  .phase46-play .phase46-board-heading h1 {
+    font-size: 1.05rem;
+    line-height: 1.25;
+  }
+
+  /* The clock is two faces and a caption. The caption repeats the section
+     title, which repeats the time control setup has just been through. */
+  .phase46-play .phase46-clock-card .phase2-section-title,
+  .phase46-play .phase46-clock-card .clock-note {
+    display: none;
+  }
+
+  .phase46-play .phase46-clock-card {
+    padding: 8px;
+  }
+
+  /* Order of use, not order of markup: the clocks and the status belong to
+     the board, the actions to the decision taken next, and the move list to
+     afterwards. The durability warning is true but it is not urgent, and it
+     was sitting between the status and the moves. */
+  .screen--play .play__panel > * {
+    order: 5;
+  }
+
+  .screen--play .phase46-clock-card {
+    order: 1;
+  }
+
+  .screen--play .phase46-status-strip {
+    order: 2;
+  }
+
+  .screen--play .phase46-outcome-banner {
+    order: 3;
+  }
+
+  .screen--play .phase46-actions-card {
+    order: 4;
+  }
+
+  .screen--play .phase2-moves-card {
+    order: 6;
+  }
+
+  .screen--play .clock-note,
+  .screen--play .play__panel > .notice {
+    order: 7;
+  }
+
+  /* -------------------------------------------------------------- puzzle
+     Show hint was the last thing on a 1453pt page — past the objective, the
+     combination, the feedback and a three-row details list, all of which are
+     about a board you can no longer see. The feedback and the actions come up
+     to meet it; the reference material goes to the bottom. */
+  /* 42 and not 44: the puzzle carries a metrics row and a feedback card that
+     the play screen does not, and at 44 the hint button finished five points
+     under the navigation bar on a 393x727 screen. It cleared the fold on a
+     360x800 one, which is why the check now measures both. */
+  .phase46-puzzle .phase46-board-frame {
+    width: min(100%, 42vh);
+    margin-inline: auto;
+  }
+
+  /* The streak and the moves left were two cards 90 points tall stacked on a
+     heading, for two numbers — one of which the strip above the board gives
+     again as "Mate in 2". One row, read left to right. */
+  .phase46-puzzle-metrics {
+    display: flex;
+    gap: 14px;
+  }
+
+  .phase46-puzzle-metrics > span {
+    flex: 1 1 0;
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 6px 10px;
+  }
+
+  .phase46-puzzle-metrics svg {
+    align-self: center;
+  }
+
+  .phase46-puzzle-panel > * {
+    order: 5;
+  }
+
+  .phase46-puzzle-panel .phase46-puzzle-feedback {
+    order: 1;
+  }
+
+  .phase46-puzzle-panel .phase46-puzzle-actions {
+    order: 2;
+  }
+
+  .phase46-puzzle-panel .phase46-puzzle-progress {
+    order: 3;
+  }
+
+  .phase46-puzzle-panel .phase46-objective-card {
+    order: 4;
+  }
+
+  .phase46-puzzle-panel .phase46-details-card {
+    order: 6;
+  }
+
+  /* The objective card states the side to move and the mate length, and the
+     strip above the board states both already. What it adds is the rule for
+     what counts as a solution — worth one line, not a card with an icon and
+     a heading. */
+  .phase46-puzzle-panel .phase46-objective-card h2,
+  .phase46-puzzle-panel .phase46-objective-card .phase2-kicker,
+  .phase46-puzzle-panel .phase46-objective-card .phase46-card-icon,
+  .phase46-puzzle-panel .phase46-objective-card .phase2-puzzle-target {
+    display: none;
+  }
+
+  .phase46-puzzle-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  /* -------------------------------------------------------------- replay
+     The transport drove a board 1100pt above it: step forward, and the move
+     you asked for happened somewhere off the top of the screen. */
+  .phase46-replay .phase46-board-frame {
+    width: min(100%, 42vh);
+    margin-inline: auto;
+  }
+
+  /* "0 of 45 ply" in a card of its own, above a board, above a transport card
+     whose own title says "Move 0 of 23". Two counts of the same progress in
+     two units, and the one in the card you cannot act from goes.
+
+     The wrapper and not just the summary: it is the header's metrics slot,
+     which keeps its own height and padding once emptied — 200 points of gap
+     between the title and the board. */
+  .phase46-replay .screen-header__metrics {
+    display: none;
+  }
+
+  /* Replay shares the play screen's grid, and below 860px that grid is
+     `minmax(120px, 1fr) auto` — a floor written for a board column. Play's
+     first child is its board; replay's is a heading of one line, which was
+     handed a 120pt track and left 96 of it empty above the board. Replay has
+     three children to play's two, so it wants three auto rows, not two. */
+  .screen--replay.phase46-replay {
+    grid-template-rows: auto;
+  }
+
+  .phase46-replay .screen-header__copy h1 {
+    font-size: 1.05rem;
+    line-height: 1.25;
+  }
+
+  /* "Championship replay" over the two names of the game being replayed. */
+  .phase46-replay .screen-header__copy .phase2-kicker {
+    display: none;
+  }
+
+  .phase46-replay__panel > * {
+    order: 5;
+  }
+
+  .phase46-replay__panel .phase46-transport-card {
+    order: 1;
+  }
+
+  .phase46-replay__panel .phase46-clock-card {
+    order: 2;
+  }
+
+  .phase46-replay__panel .phase2-moves-card {
+    order: 3;
+  }
+
+  /* Keyboard shortcuts, on a device with no keyboard. */
+  .phase46-replay .phase46-replay__shortcuts {
+    display: none;
+  }
+
+  /* ------------------------------------------------------- the move drawer
+     Closed, the move list is its own title row. The summary keeps that row's
+     layout and drops the marker, because "Move history        45 ply" with a
+     triangle wedged in front of it is the one arrangement of those three
+     things that reads as a mistake. */
+  .panel-drawer > .panel-drawer__summary {
+    cursor: pointer;
+    list-style: none;
+    min-height: var(--tap);
+  }
+
+  .panel-drawer > .panel-drawer__summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* At the end of the row rather than the start, so the title still begins
+     where every other section title on the screen begins. */
+  .panel-drawer > .panel-drawer__summary::after {
+    content: '';
+    width: 7px;
+    height: 7px;
+    margin-left: 8px;
+    border-right: 2px solid var(--text-muted);
+    border-bottom: 2px solid var(--text-muted);
+    transform: rotate(45deg);
+  }
+
+  .panel-drawer[open] > .panel-drawer__summary::after {
+    transform: rotate(-135deg);
+  }
+
+  /* The moves card is the panel's flexible one — `flex: 1 1 220px` with a
+     150px floor, so it takes whatever height is going. Closed, it should take
+     the height of its own title row and nothing else, or collapsing it buys
+     a chevron and no room. */
+  .panel-drawer:not([open]) {
+    flex: 0 0 auto;
+    min-height: 0;
+    padding: 4px 12px;
+  }
+
+  /* ------------------------------------------------------------- archive
+     A table of five columns in 393 points. Year and Moves fell off the right
+     edge, the players wrapped to two lines mid-name, and reaching the year a
+     game was played meant scrolling a list sideways.
+
+     So each row becomes a card. Not a decorative one — the same five facts,
+     laid out in two dimensions instead of one, because a row 393 wide and 90
+     tall has room for all of them and a row 393 wide and 42 tall has room for
+     two. The header row stays, as a strip of sort buttons that scrolls on its
+     own; sorting three thousand games is not a desktop-only need. */
+  .archive__results .game-table,
+  .archive__results .game-table thead,
+  .archive__results .game-table tbody,
+  .archive__results .game-table tr,
+  .archive__results .game-table th,
+  .archive__results .game-table td {
+    display: block;
+  }
+
+  /* Wrapped, not scrolled sideways. Five sort buttons do not fit across 393
+     points, and a strip that runs off the edge hides the fact that Year and
+     Moves are sortable at all — which is the whole reason for keeping the
+     header row on a screen that no longer has columns. */
+  .archive__results .game-table thead tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .archive__results .game-table thead th {
+    flex: 0 0 auto;
+    position: static;
+  }
+
+  .archive__results .game-table th.col-actions {
+    display: none;
+  }
+
+  .archive__results .game-table__sort {
+    white-space: nowrap;
+  }
+
+  /* Players and result on the first line, event and year on the second, and
+     Delete — which only your own games have — on its own. */
+  /* `tr.` and not just the class: the reset above it reaches these rows
+     through `.game-table tr`, which carries a type selector this one would
+     otherwise be losing to on specificity — the row stayed `display: block`
+     with a grid template it could not use, and the result and the year fell
+     down the card in source order. */
+  .archive__results .game-table tr.game-table__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'players result'
+      'event   year';
+    align-items: start;
+    gap: 2px 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .archive__results .game-table tr.game-table__row:has(.button--danger) {
+    grid-template-areas:
+      'players result'
+      'event   year'
+      'actions actions';
+  }
+
+  .archive__results .game-table__row td {
+    padding: 0;
+    border: 0;
+  }
+
+  .archive__results .col-players {
+    grid-area: players;
+  }
+
+  .archive__results .col-result {
+    grid-area: result;
+    justify-self: end;
+  }
+
+  /* Back, because a phone is where you are least likely to recognise a game
+     from the players alone: "Carlsen vs Nepomniachtchi" is fourteen games and
+     the event is what separates them. It was hidden at 520px because it was
+     the widest column of a table; it is not a column any more. */
+  .archive__results td.col-event {
+    display: block;
+    grid-area: event;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .archive__results .game-table__detail {
+    display: none;
+  }
+
+  .archive__results .col-year {
+    grid-area: year;
+    justify-self: end;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The move count is the one fact that does not help you pick a game out of
+     a list. It stays sortable in the strip above. */
+  .archive__results td.col-moves {
+    display: none;
+  }
+
+  /* Only on the rows that have the area. Named-area placement against a
+     template that does not declare it creates implicit tracks instead — two
+     zero-width columns on every reference game, for a cell that is empty. */
+  .archive__results tr.game-table__row:has(.button--danger) td.col-actions {
+    grid-area: actions;
+    margin-top: 6px;
+  }
+
+  .archive__results tr.game-table__row:not(:has(.button--danger)) td.col-actions {
+    display: none;
+  }
+
+  .archive__results .game-table__open {
+    width: 100%;
+    padding: 0;
+    text-align: left;
+  }
+
+  .archive__results .game-table__pair {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 6px;
+  }
+
+  /* The list no longer has anything to scroll sideways to. */
+  .archive__results .game-table-scroll {
+    overflow-x: hidden;
+  }
+
+  /* The search box lost about a third of its width to the scope select beside
+     it and the import menu beside that, so the placeholder was cut mid-word
+     on both archive screens. The scope goes under it, full width. */
+  .archive__tools .search-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  /* `max-width` and not only `width`: the scope was capped at 112px to stop
+     it eating the input when the two shared a row. They no longer share one,
+     and a cap set for the old arrangement was still winning. */
+  .archive__tools .search-bar .search-bar__scope {
+    width: 100%;
+    max-width: none;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Three numbers in boxes, above the search, before anything has been
+     searched for. The count is repeated verbatim by the results heading a row
+     below — "All games · 2,987 games" — and the filter count by the filter
+     panel's own summary. */
+  .phase46-archive-metrics {
+    display: none;
+  }
+}

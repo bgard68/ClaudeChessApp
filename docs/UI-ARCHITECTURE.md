@@ -66,6 +66,7 @@ before the board fills the square it is given.
 | `AppShell` | Application chrome and navigation controls |
 | `ScreenHeader` | Semantic heading composition — heading, optional back action, supporting text, metrics, screen actions |
 | `AppIcon` | Rendering the project's small decorative SVG set |
+| `PanelDrawer` | Whether a panel card is a section or a collapsed drawer, which depends only on the width |
 
 `AppShell` receives navigation intent through a callback and knows nothing of
 games, workers, storage, or archives. `ScreenHeader` owns no routing, services,
@@ -217,6 +218,16 @@ Responsive layout is expressed in CSS rather than calculated in React.
 **Payoff** — viewport changes trigger no JavaScript layout state, media behaviour
 stays declarative, and presentation stays separate from application logic.
 
+Two components read a media query in JavaScript anyway, and both are here
+because CSS cannot express the thing being decided. `ArchiveScreen` asks whether
+there is a preview pane, because that changes what a *click* means — select, or
+open the replay. `PanelDrawer` asks whether it is on a phone, because a
+`<details>` and a `<section>` are different elements and a stylesheet cannot
+turn one into the other; a CSS-only disclosure would have to exist at every
+width, which is a control the desktop never needed. Both use `useMediaQuery`,
+which returns `false` where there is no browser to ask — a static render — so
+neither can take a `renderToStaticMarkup` pass down with it.
+
 Motion is CSS transitions and keyframes, with no animation library.
 
 **Trade-off** — there is no centralized JavaScript animation timeline or route
@@ -233,6 +244,14 @@ no lifecycle interaction with the chessboard, and a straightforward
 The four stylesheets are now one file, but its sections are concatenated in the
 order the browser used to apply them — phase2, phase3, phase4-6, then base.
 Base last reads wrong. It is load-bearing.
+
+A fifth section, **phone**, now follows base. That is not the same kind of
+ordering: base is last because moving it breaks things, and phone is last
+because it is *meant* to be — it is one `@media (max-width: 620px)` block whose
+whole job is to overrule what four desktop-era sections decided about a screen
+393 points wide, and position is how it does that without raising specificity
+in four places. Everything in it is inside that query, so it is inert above
+620px and cannot participate in the base-ordering problem below.
 
 Reordering it to the natural sequence has been attempted twice and reverted
 twice.
@@ -279,8 +298,8 @@ covered by behaviour tests written *first*, and land as its own commit.
 ## Verification boundary
 
 Component behaviour is tested by rendering through `react-dom/server` and
-asserting on the markup — `AppIcon`, `ScreenHeader`, and `AppShell` each have a
-test. CSS geometry is not unit tested.
+asserting on the markup — `AppIcon`, `ScreenHeader`, `AppShell`, and
+`PanelDrawer` each have a test. CSS geometry is not unit tested.
 
 **Trade-off** — layout regressions are not caught by the suite.
 
@@ -289,9 +308,10 @@ covered by unit tests; layout is verified in real browser viewports, per the QA
 matrix in [UI-REDESIGN.md](UI-REDESIGN.md#browser-qa-still-worth-doing).
 
 `scripts/layout-check.mjs` now automates the part of that matrix a machine can
-judge: it drives the built app through every screen at three widths and asserts
+judge: it drives the built app through every screen at four widths and asserts
 presence first — the board, the options, the actions, the archive table — then
-containment, tap targets, text size and board dimensions. It runs in the gate.
+containment, tap targets, text size, board dimensions, and on a phone whether
+the screen's primary action is above the fold. It runs in the gate.
 
 Two more scripts joined it, on the same browser. `behaviour-check.mjs` asks
 whether the screens can be *used* — paging appends, searching replaces, reset

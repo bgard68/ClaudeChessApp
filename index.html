@@ -6,6 +6,13 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
+    <!--
+      The app is dark and only dark. The stylesheet says so too, but not until
+      it has loaded and been parsed — and a browser decides whether to force
+      its own dark treatment on a page, and what to paint before the first
+      stylesheet arrives, from this.
+    -->
+    <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#1c1b19" />
     <!-- Inline, so there is no favicon request to 404 on. -->
     <link

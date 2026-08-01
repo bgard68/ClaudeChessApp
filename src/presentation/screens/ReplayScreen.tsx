@@ -7,6 +7,7 @@ import { ChessBoardView } from '../components/ChessBoardView'
 import { ClockPanel } from '../components/ClockPanel'
 import { MoveList } from '../components/MoveList'
 import { describeOutcome } from '../components/OutcomeBanner'
+import { PanelDrawer } from '../components/PanelDrawer'
 import { ScreenHeader } from '../components/ScreenHeader'
 import { useObservableStore } from '../hooks/useObservableStore'
 
@@ -172,11 +173,11 @@ export function ReplayScreen({ session }: ReplayScreenProps) {
           </div>
         </section>
 
-        <section className="phase2-panel-card phase2-moves-card phase3-replay__moves-card phase46-moves-card">
-          <div className="phase2-section-title">
-            <span>Move history</span>
-            <small>{state.totalPlies} ply</small>
-          </div>
+        <PanelDrawer
+          className="phase2-panel-card phase2-moves-card phase3-replay__moves-card phase46-moves-card"
+          title="Move history"
+          note={`${state.totalPlies} ply`}
+        >
           <div className="play__moves">
             <MoveList
               sanMoves={game.moves.map((move) => move.san)}
@@ -184,7 +185,7 @@ export function ReplayScreen({ session }: ReplayScreenProps) {
               onSelectPly={(ply) => session.goTo(ply)}
             />
           </div>
-        </section>
+        </PanelDrawer>
       </aside>
     </div>
   )

@@ -62,6 +62,15 @@ const VIEWPORTS = [
   { name: 'desktop', width: 1834, height: 835, board: 626 },
   { name: 'desktop-short', width: 1366, height: 700, board: 547 },
   { name: 'phone', width: 360, height: 800, board: 297 },
+  /*
+   * A second phone, taller and narrower — a Pixel rather than the narrowest
+   * common handset. It is here because the two disagree: the phone rules cap
+   * the boards against the viewport height, so 393x727 is the one where a
+   * board is bounded by the height and 360x800 is the one where it is bounded
+   * by the width. Sized only against 360, the puzzle's hint button finished
+   * five points under the navigation bar here and nothing said so.
+   */
+  { name: 'phone-tall', width: 393, height: 727, board: 276 },
 ]
 
 /**
@@ -73,12 +82,31 @@ const VIEWPORTS = [
  */
 const BOARD_TOLERANCE = 12
 
-/** Every screen reachable from the rail, and what must be on each. */
+/**
+ * Every screen reachable from the rail, and what must be on each.
+ *
+ * `reach` is the thing you came to the screen to do, and on a phone it must be
+ * on the first screenful. Presence was not enough here either: every one of
+ * these existed before, at 1100 to 1400 points down a page, which is present
+ * and unusable — Show hint below a board you could no longer see, a replay
+ * transport below the game it drives. Asserted only on the phone, and only
+ * when the element is there at all: My games is empty until you have played.
+ */
 const SCREENS = [
-  { name: 'Play', rail: 'Play', requires: ['.board', '.setup__options', '.setup__actions'] },
-  { name: 'Puzzle', rail: 'Puzzle', requires: ['.screen--puzzle'] },
-  { name: 'Championships', rail: 'Titles', requires: ['.screen--archive', 'table'] },
-  { name: 'My games', rail: 'My games', requires: ['.screen--archive'] },
+  {
+    name: 'Play',
+    rail: 'Play',
+    requires: ['.board', '.setup__options', '.setup__actions'],
+    reach: '.setup__actions .button--primary',
+  },
+  { name: 'Puzzle', rail: 'Puzzle', requires: ['.screen--puzzle'], reach: '.puzzle__actions button' },
+  {
+    name: 'Championships',
+    rail: 'Titles',
+    requires: ['.screen--archive', 'table'],
+    reach: '.game-table__row',
+  },
+  { name: 'My games', rail: 'My games', requires: ['.screen--archive'], reach: '.game-table__row' },
 ]
 
 /**
@@ -86,7 +114,7 @@ const SCREENS = [
  * reads as a layout offset while it is still running, and a headless run can
  * hold one at its first frame indefinitely.
  */
-function measure() {
+function measure(reach) {
   document.querySelectorAll('*').forEach((el) => {
     if (el.getAnimations) el.getAnimations().forEach((a) => { try { a.finish() } catch { /* not finishable */ } })
   })
@@ -95,6 +123,16 @@ function measure() {
   const rail = document.querySelector('.app-rail:not(.app-rail--right)')
   const railBox = rail.getBoundingClientRect()
   const railFixed = getComputedStyle(rail).position === 'fixed'
+
+  // Where the first screenful ends: the top of the bar where there is one, and
+  // the bottom of the window where there is not.
+  const fold = railFixed ? Math.round(railBox.top) : window.innerHeight
+
+  // Measured from the top of the page, which is where a screen opens — not
+  // from wherever the previous assertion left the scroll position.
+  window.scrollTo(0, 0)
+  const reachEl = reach ? document.querySelector(reach) : null
+  const reachBottom = reachEl === null ? null : Math.round(reachEl.getBoundingClientRect().bottom)
 
   // What is painted underneath a fixed navigation bar, at the end of the page.
   const before = window.scrollY
@@ -147,6 +185,8 @@ function measure() {
 
   return {
     horizontalOverflow: de.scrollWidth > window.innerWidth,
+    fold,
+    reachBottom,
     behindNav: [...behindNav],
     smallTargets,
     smallText: [...smallText],
@@ -198,22 +238,30 @@ try {
         }
       }
 
-      const m = await page.evaluate(measure)
+      const m = await page.evaluate(measure, screen.reach ?? null)
 
       if (m.horizontalOverflow) note(screen.name, viewport.name, 'page scrolls sideways')
       if (m.behindNav.length > 0) {
         note(screen.name, viewport.name, `hidden behind the navigation bar: ${m.behindNav.join(', ')}`)
       }
-      // Both of these are phone rules by design: a cursor does not need a
-      // 44px target, and the 12px floor is set below 600px where the reading
-      // distance is short. Asserting them on a desktop would fail the chips
-      // that are deliberately 34px there.
-      if (viewport.name === 'phone') {
+      // These are phone rules by design: a cursor does not need a 44px target,
+      // and the 12px floor is set below 600px where the reading distance is
+      // short. Asserting them on a desktop would fail the chips that are
+      // deliberately 34px there. Gated on the width rather than on the
+      // viewport's name, so adding a phone does not quietly opt it out.
+      if (viewport.width <= 620) {
         if (m.smallTargets.length > 0) {
           note(screen.name, viewport.name, `tap targets under 44px: ${m.smallTargets.join(', ')}`)
         }
         if (m.smallText.length > 0) {
           note(screen.name, viewport.name, `text under 12px: ${m.smallText.join(', ')}`)
+        }
+        if (m.reachBottom !== null && m.reachBottom > m.fold) {
+          note(
+            screen.name,
+            viewport.name,
+            `${screen.reach} ends ${m.reachBottom}px down a ${m.fold}px screen — below the fold`,
+          )
         }
       }
       if (m.clippedNavLabels.length > 0) {

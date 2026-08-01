@@ -126,6 +126,14 @@ it to force remounts, animating its dimensions, or reaching into
 react-chessboard's internal DOM would reopen the mount-timing failure recorded
 in [LESSONS-LEARNED.md](LESSONS-LEARNED.md#react-chessboard-4--5-the-migration-and-a-two-day-dead-end).
 
+**Since the redesign, `index.html` has changed once**, and the list above should
+be read as the redesign's record rather than a standing rule for that one file.
+It gained `<meta name="color-scheme" content="dark">`: the app is dark and only
+dark, and said so solely in a stylesheet, which is too late for the two
+decisions a browser makes before any CSS arrives — what to paint, and whether to
+force its own dark treatment on what it takes to be a light page. Everything
+else on the list still holds, `ChessBoardView.tsx` included.
+
 ## What was verified, and what was not
 
 **Each phase's validation report was explicit that the repository's own gate

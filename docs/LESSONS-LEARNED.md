@@ -93,6 +93,37 @@ actually scrolls past. **When a layout is reported as wrong and the
 measurements come back clean, enumerate what should be on the page before
 measuring what is.**
 
+## Present, and a screen and a half below the point
+
+The check written after that fault asked "is everything here?" and got yes on
+every screen, correctly. Every screen was also unusable on a phone.
+
+Measured at 393×727, where the navigation bar leaves about 650 points: setup
+opened on a full-height board with every choice under it and Start game 1,100
+points past the fold; the puzzle put Show hint at 1,400; the replay put the
+transport at 1,100, driving a board that had scrolled off the top. Nothing was
+missing. Nothing overflowed, nothing was under 44px, nothing hid behind the bar.
+The screens had been laid out for a desktop and left to stack, and stacking
+spends a phone screen in DOM order rather than in order of use.
+
+Three of the causes were not layout decisions at all, which is why reading the
+phone rules would not have found them. The replay screen borrows the play
+screen's grid, whose first row is `minmax(120px, 1fr)` — a floor written for a
+board column, handed to a one-line heading, which took 96 points and left them
+empty. The setup screen reserved a viewport of content height for a settings
+panel that on a phone sits below it rather than beside it, so the same scroll
+was paid for twice. And `useMediaQuery` called `window.matchMedia` with no
+guard, so the first component to ask whether it was on a phone took 29
+`renderToStaticMarkup` tests down with it.
+
+**Presence is the floor, not the bar. A check that asks whether everything is
+on the page should also ask whether the thing you came for is on the first
+screen of it.** `layout-check.mjs` now asserts that, and against two phones
+rather than one: the boards are capped against the viewport height, so 393×727
+is bounded by the height and 360×800 by the width. Sized against only the
+second, the puzzle's hint button finished five points under the navigation bar
+and every check still passed.
+
 ## One screen served two libraries and queried one
 
 Splitting the archive into Championships and My games gave one component two

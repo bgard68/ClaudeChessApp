@@ -63,10 +63,22 @@ move. Unit tests cannot catch a broken bundle, a missing `.wasm`, or a worker
 path typo.
 
 **`layout-check.mjs`** — *is everything on the screen, at every width?* Four
-screens × three viewports, presence first, then containment, tap targets, text
-size and board dimensions. It exists because the settings panel was absent from
-every phone while four separate checks called the screen clean — each asked "is
-anything here wrong?" and none asked "is everything here?"
+screens × four viewports, presence first, then containment, tap targets, text
+size, board dimensions, and — on a phone — whether the thing you came to the
+screen to do is above the fold. It exists because the settings panel was absent
+from every phone while four separate checks called the screen clean — each asked
+"is anything here wrong?" and none asked "is everything here?"
+
+Presence turned out not to be the whole question either. Every phone screen was
+laid out for a desktop and left to stack, so Show hint, Start game and the
+replay transport all *existed* — 1,100 to 1,400 points down a page, below the
+board they act on, which is present and unusable. Hence the fold assertion.
+
+Two of the four viewports are phones, because they disagree. The phone rules
+size the boards against the viewport height, so at 393×727 a board is bounded by
+the height and at 360×800 by the width. Checked against only the latter, the
+puzzle's hint button finished five points under the navigation bar and nothing
+said so.
 
 **`behaviour-check.mjs`** — *does using it work?* Paging appends, searching
 replaces, chips clear the box, sort reverses, reset clears the sort too, arrow

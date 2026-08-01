@@ -12,6 +12,7 @@ import { ChessBoardView } from '../components/ChessBoardView'
 import { ClockPanel } from '../components/ClockPanel'
 import { MoveList } from '../components/MoveList'
 import { OutcomeBanner } from '../components/OutcomeBanner'
+import { PanelDrawer } from '../components/PanelDrawer'
 import { useObservableStore } from '../hooks/useObservableStore'
 import { describeDurability, useLibraryDurability } from '../hooks/useLibraryDurability'
 import { useServices } from '../ServicesContext'
@@ -255,15 +256,15 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
           <p className="clock-note">{durabilityWarning}</p>
         ) : null}
 
-        <section className="phase2-panel-card phase2-moves-card phase46-moves-card">
-          <div className="phase2-section-title">
-            <span>Move history</span>
-            <small>{state.history.length} ply</small>
-          </div>
+        <PanelDrawer
+          className="phase2-panel-card phase2-moves-card phase46-moves-card"
+          title="Move history"
+          note={`${state.history.length} ply`}
+        >
           <div className="play__moves">
             <MoveList sanMoves={state.history.map((move) => move.san)} />
           </div>
-        </section>
+        </PanelDrawer>
 
         <section className="phase2-panel-card phase46-actions-card">
           <div className="phase2-section-title">
