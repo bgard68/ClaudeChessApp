@@ -116,7 +116,7 @@ try {
 
   // The preview is the only feedback that choosing a seat did anything, and
   // it is drawn by the board rather than by the setting.
-  await page.locator('button:has-text("Black")').first().click()
+  await page.locator('button:visible').filter({ hasText: /^Black$/ }).click()
   await page.waitForTimeout(300)
   const blackFirst = await page.evaluate(() => {
     const markup = document.querySelector('#chessboard-board')?.innerHTML ?? ''
@@ -124,7 +124,7 @@ try {
   })
   check('choosing Black turns the preview board around', blackFirst)
 
-  await page.locator('button:has-text("White")').first().click()
+  await page.locator('button:visible').filter({ hasText: /^White$/ }).click()
   await page.waitForTimeout(300)
 
   /* -------------------------------------------------------------- archive */
@@ -265,8 +265,12 @@ try {
   await page.waitForTimeout(250)
   await page.locator('[data-square="e4"]').click()
   await page.waitForTimeout(1_200)
-  const moveList = await page.locator('.play__moves').innerText().catch(() => '')
-  check('a move played on the board reaches the move list', /e4/.test(moveList), moveList.slice(0, 60))
+  const moveList = await page.locator('.play__moves:visible').textContent().catch(() => '')
+  check(
+    'a move played on the board reaches the move list',
+    (moveList ?? '').includes('e4'),
+    (moveList ?? '').trim().slice(0, 60),
+  )
 
   /* --------------------------------------------------------------- console */
 

@@ -279,6 +279,48 @@ try {
           )
         }
       }
+
+      /* Setup and active play are different layouts. The original gate only
+         measured the Start game button, so it could pass while the clocks and
+         controls of the game itself were more than a screen below the board. */
+      if (screen.name === 'Play' && viewport.width <= 620) {
+        await page.locator('.setup__actions .button--primary').click()
+        await page.waitForSelector('.phase46-mobile-game-head .clock-panel', { timeout: 20_000 })
+        await page.waitForTimeout(250)
+
+        const active = await page.evaluate(() => {
+          window.scrollTo(0, 0)
+          const nav = document.querySelector('.app-rail:not(.app-rail--right)')
+          const fold = Math.round(nav.getBoundingClientRect().top)
+          const selectors = [
+            '.phase46-mobile-game-head .clock-panel',
+            '.phase46-mobile-game-head .phase46-status-strip',
+            '.phase46-board-frame .board',
+            '.phase46-board-toolbar',
+            '.phase46-mobile-game-menu > summary',
+          ]
+          return selectors.map((selector) => {
+            const element = document.querySelector(selector)
+            return {
+              selector,
+              present: element !== null,
+              bottom: element === null ? null : Math.round(element.getBoundingClientRect().bottom),
+              fold,
+            }
+          })
+        })
+
+        for (const item of active) {
+          if (!item.present) note('Active game', viewport.name, `missing ${item.selector}`)
+          else if (item.bottom > item.fold) {
+            note(
+              'Active game',
+              viewport.name,
+              `${item.selector} ends ${item.bottom}px down a ${item.fold}px screen — below the fold`,
+            )
+          }
+        }
+      }
     }
 
     await context.close()

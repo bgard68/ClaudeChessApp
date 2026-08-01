@@ -27,7 +27,12 @@ const square = (markup: string, name: string): string => {
 
 describe('ChessBoardView', () => {
   it('draws a full board', () => {
-    expect(board().match(/data-square=/g)).toHaveLength(64)
+    const markup = board()
+    expect(markup.match(/data-square=/g)).toHaveLength(64)
+    expect(markup.match(/data-contrast-piece=/g)).toHaveLength(32)
+    expect(markup).toContain('var(--contrast-black-piece-fill, #111318)')
+    expect(markup).toContain('var(--contrast-black-piece-outline, #f2f1ea)')
+    expect(markup).toContain('var(--contrast-white-piece-outline, #17191d)')
   })
 
   // The first square written is the top-left one, which is the corner the

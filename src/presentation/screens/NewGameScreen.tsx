@@ -93,6 +93,43 @@ export function NewGameScreen({ onStart }: NewGameScreenProps) {
 
       {rightRail === null ? null : createPortal(
         <section className="setup__settings" aria-label="Game settings">
+          <div className="setup__mobile-options" aria-label="Compact game settings">
+            <MobileSegment
+              label="Opponent"
+              value={opponent}
+              onChange={(value) => setOpponent(value as OpponentChoice)}
+              options={[
+                ['computer', 'Computer'],
+                ['human', 'Another player'],
+              ]}
+            />
+            {opponent !== 'human' ? (
+              <MobileSelect
+                label="Difficulty"
+                value={difficultyId}
+                onChange={setDifficultyId}
+                options={DIFFICULTY_LEVELS.map((level) => [
+                  level.id,
+                  level.rating === null ? level.label : `${level.label} (${level.rating})`,
+                ])}
+              />
+            ) : null}
+            <MobileSegment
+              label={opponent === 'computer' ? 'You play' : 'Board faces'}
+              value={colour}
+              onChange={(value) => setColour(value as ColourChoice)}
+              options={[
+                ['white', 'White'],
+                ['black', 'Black'],
+              ]}
+            />
+            <MobileSelect
+              label="Clock"
+              value={timeControlId}
+              onChange={setTimeControlId}
+              options={TIME_CONTROL_PRESETS.map((option) => [option.id, option.label])}
+            />
+          </div>
           <div className="setup__options">
             <ChipGroup label="Opponent">
               <Chip
@@ -226,6 +263,66 @@ export function NewGameScreen({ onStart }: NewGameScreenProps) {
         rightRail,
       )}
     </div>
+  )
+}
+
+function MobileSegment({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  readonly label: string
+  readonly value: string
+  readonly options: readonly (readonly [string, string])[]
+  readonly onChange: (value: string) => void
+}) {
+  return (
+    <fieldset className="setup-mobile-field">
+      <legend>{label}</legend>
+      <div className="setup-mobile-segments">
+        {options.map(([optionValue, optionLabel]) => (
+          <button
+            key={optionValue}
+            type="button"
+            aria-pressed={value === optionValue}
+            className={value === optionValue ? 'is-selected' : undefined}
+            onClick={() => onChange(optionValue)}
+          >
+            {optionLabel}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  )
+}
+
+function MobileSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  readonly label: string
+  readonly value: string
+  readonly options: readonly (readonly [string, string])[]
+  readonly onChange: (value: string) => void
+}) {
+  return (
+    <label className="setup-mobile-field">
+      <span className="setup-mobile-field__label">{label}</span>
+      <select
+        className="setup-mobile-select"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {options.map(([optionValue, optionLabel]) => (
+          <option key={optionValue} value={optionValue}>
+            {optionLabel}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 

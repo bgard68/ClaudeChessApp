@@ -6,6 +6,7 @@ import { toSquare, type Square } from '@domain/chess/Square'
 import { destinationsFrom, promotionChoices } from '@application/selectors'
 import { currentBoardTheme } from '../boardThemes'
 import { useElementSize } from '../hooks/useElementSize'
+import { OUTLINED_PIECES } from './outlinedPieces'
 
 interface ChessBoardViewProps {
   readonly fen: string
@@ -143,6 +144,7 @@ export function ChessBoardView({
   const boardOptions = useMemo(
     () => ({
       position: fen,
+      pieces: OUTLINED_PIECES,
       boardOrientation: orientation,
       allowDragging: interactive,
       onPieceDrop: (args: { piece: unknown; sourceSquare: string; targetSquare: string | null }) =>
