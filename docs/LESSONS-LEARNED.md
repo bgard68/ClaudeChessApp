@@ -124,6 +124,68 @@ is bounded by the height and 360×800 by the width. Sized against only the
 second, the puzzle's hint button finished five points under the navigation bar
 and every check still passed.
 
+## Three leak guards, and a file none of them could see
+
+`.claude/launch.json` sat in this repository's public history for its whole
+life. Three guards were running: gitleaks over the full history in the gate,
+GitHub secret scanning, and GitHub push protection. None said anything, and
+all three were working correctly — every one of them looks for credential
+*patterns*, and the file contained `npm run dev --port 5173`. There was nothing
+to find. Nothing anywhere asked the other question: which paths is this
+repository tracking at all?
+
+Every step of how it got there looked right at the time:
+
+1. **07-29** — the file is committed. `.gitignore` had no rule for it yet, so
+   it was tracked like any other file. Correct.
+2. **07-30 13:34** — the file is deleted, and `.claude/` added to `.gitignore`
+   in the same minute, as part of a commit titled *"tighten the ignore rules
+   for life with a remote"*. Deliberate, and five hours before the repository
+   existed on GitHub.
+3. **07-30 18:52** — first push. All four commits that carried the file go up
+   with it.
+
+The tip was clean when it was published, and the repository was exposed
+anyway. **`git push` sends history, not the tip; deleting a file in a later
+commit does not take it back out.** `CLAUDE.md` had said exactly that since
+11:50 that morning. Only the delete half of the rule was done.
+
+The second trap is quieter. **Adding a path to `.gitignore` never untracks a
+file that is already tracked** — git keeps committing it until someone runs
+`git rm --cached`. So the ignore rule at step 2 changed nothing about the file;
+it only made the repository *disagree with itself*, and that disagreement is
+something git will report on demand:
+
+```
+git ls-files --cached --ignored --exclude-standard
+```
+
+Tracked files the repository's own ignore rules now disown. It would have
+printed `.claude/launch.json` at 13:34 on 07-30 — while the fix was still one
+command and the repository was still private. `scripts/paths-check.mjs` asks
+it, in the gate and in the pre-commit hook, alongside a denylist for the case
+where nobody wrote the ignore rule at all.
+
+**A scanner that looks for secrets cannot tell you about a file that is not
+one.** The exposure here was a port number and was not worth rewriting history
+over. The next one might not be.
+
+## The hook was in the repository, and the hook that ran was somewhere else
+
+Found while testing the check above: a deliberately forbidden path was staged,
+`git commit` was run, and it committed. The hook had been updated to reject it
+and the hook did not reject it.
+
+`core.hooksPath` was set to an absolute path — `C:\ClaudeChessApp\.githooks`.
+Every worktree therefore runs the *main checkout's* hooks rather than its own.
+A hook edited on a branch does not take effect for the branch that edits it,
+which is precisely when you most want it to: the commit that adds a guard is
+the commit least protected by it.
+
+The hook's own instructions say `git config core.hooksPath .githooks` —
+relative, so each worktree resolves it against its own root. **Set it relative,
+or a worktree is testing somebody else's gate.**
+
 ## One screen served two libraries and queried one
 
 Splitting the archive into Championships and My games gave one component two

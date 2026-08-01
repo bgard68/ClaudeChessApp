@@ -28,7 +28,8 @@
     "verify": "npm run typecheck && npm test && npm audit --audit-level=moderate",
     "layout-check": "node scripts/layout-check.mjs",
     "behaviour-check": "node scripts/behaviour-check.mjs",
-    "a11y-check": "node scripts/a11y-check.mjs"
+    "a11y-check": "node scripts/a11y-check.mjs",
+    "paths-check": "node scripts/paths-check.mjs"
   },
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "^3.53.0-build1",

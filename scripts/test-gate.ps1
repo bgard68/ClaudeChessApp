@@ -3,11 +3,12 @@
 The publish gate: every check that must pass, plus proof the checks can fail.
 
 .DESCRIPTION
-Runs the project's real gates - typecheck, tests, dependency audit, and a
-gitleaks history scan - then the negative probes: a deliberately failing
-test, a deliberate type error, and a planted fake credential. Each probe
-must be CAUGHT by its tool; a gate that waves bad input through is broken,
-and a broken gate fails this script just as surely as a broken build.
+Runs the project's real gates - typecheck, tests, dependency audit, a
+gitleaks history scan and a forbidden-path check - then the negative probes:
+a deliberately failing test, a deliberate type error, a planted fake
+credential, and three planted forbidden paths. Each probe must be CAUGHT by
+its tool; a gate that waves bad input through is broken, and a broken gate
+fails this script just as surely as a broken build.
 
 Plain ASCII and no here-strings on purpose: Windows PowerShell 5.1 reads
 unmarked files as ANSI and refuses LF-only here-strings, and this script
@@ -59,6 +60,7 @@ Invoke-Gate 'smoke test against the built app' { & node scripts/smoke-test.mjs }
 Invoke-Gate 'layout invariants on every screen' { & node scripts/layout-check.mjs }
 Invoke-Gate 'behaviour in a real browser'       { & node scripts/behaviour-check.mjs }
 Invoke-Gate 'accessibility on every screen'     { & node scripts/a11y-check.mjs }
+Invoke-Gate 'forbidden paths'                   { & node scripts/paths-check.mjs }
 
 $gitleaks = Get-Command gitleaks -ErrorAction SilentlyContinue
 if ($null -ne $gitleaks) {
@@ -116,6 +118,17 @@ if ($null -ne $gitleaks) {
         Remove-Item $probeDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
+
+# Three planted forbidden paths must each be rejected: a file that .gitignore
+# later disowns, a forbidden path with no ignore rule at all, and one added
+# then deleted so the tip looks clean. That last is what actually happened
+# here, and every check that examined the tip passed while it was true.
+#
+# Run as a gate rather than a probe because the probing is inside it: the
+# self-test plants each violation in a throwaway repository and exits non-zero
+# unless all three are caught. Inverting that here would only assert the
+# script can fail, not that it fails for the right reasons.
+Invoke-Gate 'path guard catches what it must' { & node scripts/paths-check.mjs --self-test }
 
 # ---------- Verdict ----------
 
