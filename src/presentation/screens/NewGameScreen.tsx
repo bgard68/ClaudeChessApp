@@ -177,6 +177,13 @@ export function NewGameScreen({ onStart }: NewGameScreenProps) {
                     <i style={{ background: theme.dark }} />
                     <i style={{ background: theme.light }} />
                   </span>
+                  {/* Named, not just coloured. Five squares of green, walnut,
+                      ocean, violet and charcoal are four shades of the same
+                      thing at 34px on a dark page, and the name is the only
+                      part of a swatch that survives being small, being dark,
+                      or being looked at by someone who does not separate
+                      those hues. */}
+                  <span className="setup-chip__swatch-name">{theme.label}</span>
                 </button>
               ))}
             </ChipGroup>

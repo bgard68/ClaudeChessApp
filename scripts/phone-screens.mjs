@@ -71,6 +71,24 @@ async function main() {
       cells.map((c) => c.textContent.trim()).filter(Boolean),
     )
 
+  /* The move list is a drawer on a phone, so the moves it holds are not on
+     screen until it is opened. Opening it is also worth a shot of its own. */
+  const openMoves = async () => {
+    const summary = page.locator('.panel-drawer__summary').first()
+    if ((await summary.count()) > 0 && !(await page.locator('.panel-drawer[open]').count())) {
+      await summary.click()
+      await page.waitForTimeout(300)
+    }
+  }
+
+  /* Destinations are reached from the bottom bar by their accessible name.
+     Matching on visible text does not work here: the bar shows "Titles" and
+     the button is labelled "Championships". */
+  const goTo = async (label) => {
+    await page.locator(`button[aria-label="${label}"]`).first().click()
+    await page.waitForTimeout(700)
+  }
+
   console.log('Capturing…')
   await page.goto(APP_URL, { waitUntil: 'networkidle' })
   await page.waitForTimeout(600)
@@ -94,28 +112,43 @@ async function main() {
   const d4 = await centre('d4')
   await page.touchscreen.tap(d4.x, d4.y)
   await page.waitForTimeout(2500)
-  const afterTap = await sanMoves()
   await shot('3-play-vs-computer')
+  await openMoves()
+  const afterTap = await sanMoves()
+  await shot('4-play-moves-open')
+
+  // --- Puzzle ---------------------------------------------------------------
+  await goTo('Puzzle of the day')
+  // Stockfish composes it locally, which is the slowest thing on any screen.
+  await page.waitForSelector('.puzzle__actions', { timeout: 60_000 })
+  await page.waitForTimeout(600)
+  await shot('5-puzzle')
 
   // --- Archive and replay ---------------------------------------------------
-  await byText('New game').click()
-  await page.waitForTimeout(400)
-  await byText('Browse championship').click()
-  await page.waitForSelector('.game-row')
+  await goTo('Championships')
+  await page.waitForSelector('.game-table__row', { timeout: 30_000 })
   await page.waitForTimeout(600)
-  await shot('4-archive')
+  await shot('6-championships')
 
-  await page.locator('.game-row').first().click()
+  await page.locator('.game-table__row').first().click()
   await page.waitForSelector('.replay__transport')
   await page.waitForTimeout(600)
+  await shot('7-replay')
+
   await byText('Play').click()
   await page.waitForTimeout(4000)
-  await shot('5-replay')
+  await shot('8-replay-running')
+
+  await goTo('My games')
+  await page.waitForTimeout(800)
+  await shot('9-my-games')
 
   // --- Landscape ------------------------------------------------------------
+  // Above the 620px phone breakpoint, so this is the tablet layout on its side
+  // rather than the phone one rotated. That is the point of capturing it.
   await page.setViewportSize({ width: 727, height: 393 })
   await page.waitForTimeout(700)
-  await shot('6-replay-landscape')
+  await shot('10-landscape')
 
   await browser.close()
 
