@@ -22,6 +22,29 @@ Put the printed token in the GitHub repository under
 `AZURE_STATIC_WEB_APPS_API_TOKEN`. That token is the only secret involved,
 and it lives in GitHub's secret store — never in this repository.
 
+The workflow refers to it as `${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}`,
+which is a *name*, not a value: GitHub substitutes it at run time and masks it
+in the logs. Nothing secret is committed, and nothing needs to be. The one
+place the name appears outside the deploy step is
+`HAS_DEPLOY_TOKEN: ${{ secrets.… != '' }}`, which evaluates to a boolean —
+a step-level `if` may not read the `secrets` context, so the check rides
+through `env`.
+
+Only workflows triggered by `push` to `main` can see it. `ci.yml` and
+`codeql.yml` run on `pull_request` and reference no secrets at all, which is
+what stops a pull request from a fork reaching the token.
+
+### Scoping it to the environment
+
+The deploy job declares `environment: production`, so runs appear under the
+repository's **Environments** tab with the site URL attached. Repository
+secrets still resolve, so this changes nothing on its own — but it is what
+makes the tightening possible: move the token to
+**Settings → Environments → production → Environment secrets** and delete the
+repository-level copy, and it becomes unreadable to any workflow that does not
+name that environment. Required reviewers can be added there too, if a deploy
+should ever need approval.
+
 ## After that
 
 Every push to `main` runs `.github/workflows/azure-static-web-apps.yml`:

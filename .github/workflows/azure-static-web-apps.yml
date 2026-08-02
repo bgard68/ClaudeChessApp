@@ -12,9 +12,24 @@ on:
 permissions:
   contents: read
 
+# Two pushes to main in quick succession would otherwise race, and the older
+# build can finish last — leaving production on the earlier commit while the
+# newer run reports success. Superseded runs are cancelled rather than queued:
+# there is nothing to gain from publishing a commit that main has already
+# moved past.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    # Names where this publishes, so the deploy shows up as one and the token
+    # can later be scoped to the environment rather than the whole repository.
+    # Repository secrets still resolve, so this changes nothing on its own.
+    environment:
+      name: production
+      url: https://happy-coast-011b8f510.7.azurestaticapps.net
     env:
       # Step-level `if` may not read the secrets context directly — the run
       # that taught us died in zero seconds — so the check rides through env.
@@ -24,6 +39,11 @@ jobs:
         with:
           # The gate's gitleaks scan covers the whole history.
           fetch-depth: 0
+          # Checkout otherwise leaves GITHUB_TOKEN in .git/config, and the gate
+          # below runs the repository's own scripts against that workspace.
+          # Nothing here pushes, so the credential has no use after clone — and
+          # this is the one job that also holds the deploy token.
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
