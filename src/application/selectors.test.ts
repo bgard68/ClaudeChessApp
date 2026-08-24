@@ -110,4 +110,12 @@ describe('toMovePairs', () => {
     expect(pairs).toHaveLength(40)
     expect(pairs.at(-1)?.moveNumber).toBe(40)
   })
+
+  it('shows a blank row rather than crashing on a sparse list', () => {
+    // A list padded with holes still satisfies the type; each missing entry
+    // must come out as the same null an odd-length list already produces.
+    const pairs = toMovePairs(new Array<string>(2))
+
+    expect(pairs).toEqual([{ moveNumber: 1, white: null, black: null }])
+  })
 })

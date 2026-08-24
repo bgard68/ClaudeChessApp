@@ -260,4 +260,202 @@ describe('LiveGame', () => {
     expect(game.state.outcome.status).toBe('in_progress')
     expect(game.state.history.map((move) => move.san)).toEqual(['f3', 'e5'])
   })
+
+  it('builds its state on demand before the game starts', () => {
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: new HumanOpponent('A'), black: new HumanOpponent('B'), timeControl: UNLIMITED },
+    )
+
+    expect(game.state.history).toHaveLength(0)
+    expect(game.state.awaiting).toBeNull()
+    expect(game.state.canUndo).toBe(false)
+  })
+
+  it('notifies subscribers, and stops after unsubscribe', async () => {
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: new HumanOpponent('A'), black: new HumanOpponent('B'), timeControl: UNLIMITED },
+    )
+    const seen: string[] = []
+    const unsubscribe = game.subscribe((state) => seen.push(state.awaiting?.name ?? '-'))
+
+    game.start()
+    await flushAsync()
+    expect(seen.length).toBeGreaterThan(0)
+
+    const count = seen.length
+    unsubscribe()
+    game.submitMove({ from: 'e2', to: 'e4' })
+    await flushAsync()
+    expect(seen.length).toBe(count)
+  })
+
+  it('ignores a second start, and a start after dispose', async () => {
+    const white = new HumanOpponent('A')
+    const game = new LiveGame(
+      { rules, ticker },
+      { white, black: new HumanOpponent('B'), timeControl: UNLIMITED },
+    )
+
+    game.start()
+    await flushAsync()
+    // A second loop would issue a second move request and cancel the first.
+    game.start()
+    await flushAsync()
+    expect(game.submitMove({ from: 'e2', to: 'e4' })).toBe(true)
+    await flushAsync()
+    expect(game.state.history.map((move) => move.san)).toEqual(['e4'])
+
+    game.dispose()
+    game.start()
+    await flushAsync()
+    // Disposed stays disposed: no loop resumes, so the board is refused and
+    // the history cannot grow.
+    expect(game.submitMove({ from: 'e7', to: 'e5' })).toBe(false)
+    expect(game.state.history.map((move) => move.san)).toEqual(['e4'])
+  })
+
+  it("refuses a board move while it is the engine's turn", async () => {
+    // A scripted opponent with no script: an engine still thinking.
+    const engine = new ScriptedOpponent('Computer', [])
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: engine, black: new HumanOpponent('You'), timeControl: UNLIMITED },
+    )
+
+    game.start()
+    await flushAsync()
+
+    expect(game.submitMove({ from: 'e2', to: 'e4' })).toBe(false)
+    game.dispose()
+  })
+
+  it('lets the first result stand when resign or draw arrives late', async () => {
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: new HumanOpponent('A'), black: new HumanOpponent('B'), timeControl: UNLIMITED },
+    )
+
+    game.start()
+    await flushAsync()
+    game.resign('white')
+
+    game.resign('black')
+    game.agreeDraw('fifty_move_rule')
+
+    expect(game.state.outcome).toEqual({
+      status: 'decisive',
+      winner: 'black',
+      reason: 'resignation',
+    })
+  })
+
+  it('records an agreed draw', async () => {
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: new HumanOpponent('A'), black: new HumanOpponent('B'), timeControl: UNLIMITED },
+    )
+
+    game.start()
+    await flushAsync()
+    game.agreeDraw()
+
+    expect(game.state.outcome).toEqual({ status: 'draw', reason: 'agreement' })
+  })
+
+  it('keeps charging the clock after an undo restarts the ticker', async () => {
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: new HumanOpponent('A'), black: new HumanOpponent('B'), timeControl: suddenDeath(5) },
+    )
+
+    game.start()
+    await flushAsync()
+    game.submitMove({ from: 'e2', to: 'e4' })
+    await flushAsync()
+    game.undo()
+    await flushAsync()
+
+    ticker.advance(10_000)
+    await flushAsync()
+    expect(game.state.clock.whiteMs).toBe(290_000)
+  })
+
+  it('survives a second dispose', () => {
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: new HumanOpponent('A'), black: new HumanOpponent('B'), timeControl: UNLIMITED },
+    )
+
+    game.dispose()
+    game.dispose()
+    expect(game.state.canUndo).toBe(false)
+  })
+
+  it('ignores a tick that moved no clock', async () => {
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: new HumanOpponent('A'), black: new HumanOpponent('B'), timeControl: suddenDeath(5) },
+    )
+    game.start()
+    await flushAsync()
+
+    const seen: number[] = []
+    game.subscribe((state) => seen.push(state.clock.whiteMs ?? -1))
+
+    // Zero elapsed charges nothing, so nothing should be published either.
+    ticker.advance(0)
+    await flushAsync()
+    expect(seen).toHaveLength(0)
+    game.dispose()
+  })
+
+  it('discards a move that resolves after the game was settled', async () => {
+    // An opponent whose search cannot be cancelled: the promise survives the
+    // game ending, exactly like a worker that answers after the flag fell.
+    let deliver: ((intent: MoveIntent) => void) | null = null
+    const stubborn = {
+      kind: 'engine' as const,
+      name: 'Stubborn',
+      requestMove: () =>
+        new Promise<MoveIntent>((resolve) => {
+          deliver = resolve
+        }),
+      cancel: () => {},
+      dispose: () => {},
+    }
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: stubborn, black: new HumanOpponent('B'), timeControl: UNLIMITED },
+    )
+
+    game.start()
+    await flushAsync()
+    game.agreeDraw()
+
+    deliver!({ from: 'e2', to: 'e4' })
+    await flushAsync(8)
+
+    expect(game.state.history).toHaveLength(0)
+    expect(game.state.outcome).toEqual({ status: 'draw', reason: 'agreement' })
+  })
+
+  it('forfeits an engine that proposes an illegal move', async () => {
+    const engine = new ScriptedOpponent('Broken', [{ from: 'e2', to: 'e5' }])
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: engine, black: new HumanOpponent('B'), timeControl: UNLIMITED },
+    )
+
+    game.start()
+    await flushAsync(8)
+
+    expect(game.state.outcome).toEqual({
+      status: 'decisive',
+      winner: 'black',
+      reason: 'resignation',
+    })
+    expect(game.state.history).toHaveLength(0)
+  })
 })

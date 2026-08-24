@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import type { ArchivedGame } from '@domain/archive/ArchivedGame'
 import type { MoveIntent } from '@domain/chess/Move'
 import { UNLIMITED } from '@domain/clock/TimeControl'
 import { difficultyById } from '@application/Difficulty'
 import type { GameConfiguration } from '@application/GameConfiguration'
+import { HINT_CONFIGURATION } from '@application/HintAdviser'
 import type { ChessEngine, EngineConfiguration } from '@application/ports/ChessEngine'
+import { PuzzleGenerator } from '@application/puzzle/PuzzleGenerator'
 import { ChessJsRules } from '@infrastructure/chess/ChessJsRules'
 import { FakeTicker, flushAsync } from '../testing/fakes'
 import { GameFactory } from './GameFactory'
@@ -115,5 +118,80 @@ describe('GameFactory', () => {
     expect(game.state.history.map((move) => move.san)).toEqual(['e4'])
     expect(game.state.awaiting).toMatchObject({ kind: 'human' })
     game.dispose()
+  })
+
+  it('seats two people by the colours they play in pass-and-play', () => {
+    const factory = new GameFactory(servicesWithEngines([]))
+
+    const white = factory.createLiveGame(configuration({ opponent: 'human' }))
+    white.start()
+    expect(white.state.awaiting).toMatchObject({ kind: 'human', name: 'White' })
+    white.dispose()
+
+    // Sitting on black only turns the board round; the seats keep their names.
+    const black = factory.createLiveGame(
+      configuration({ opponent: 'human', playerColor: 'black' }),
+    )
+    black.start()
+    expect(black.state.awaiting).toMatchObject({ kind: 'human', name: 'White' })
+    black.dispose()
+  })
+
+  it('names the person "You" when the opponent is the computer', () => {
+    const factory = new GameFactory(servicesWithEngines([new ScriptedEngine()]))
+
+    const game = factory.createLiveGame(configuration({ playerColor: 'white' }))
+    game.start()
+
+    expect(game.state.awaiting).toMatchObject({ kind: 'human', name: 'You' })
+    game.dispose()
+  })
+
+  it('builds a replay session over an archived game', () => {
+    const factory = new GameFactory(servicesWithEngines([]))
+    const archived = {
+      white: 'Fischer',
+      black: 'Spassky',
+      moves: [],
+      declaredTimeControl: null,
+      hasRecordedClocks: false,
+    } as unknown as ArchivedGame
+
+    const session = factory.createReplaySession(archived)
+
+    expect(session.state.totalPlies).toBe(0)
+    expect(session.state.game).toBe(archived)
+  })
+
+  it('builds a hint adviser that takes an engine of its own', async () => {
+    // The hint must not inherit the opponent's weakness, so it gets its own
+    // engine rather than borrowing the one playing the game.
+    const hintEngine = new ScriptedEngine([{ from: 'e2', to: 'e4' }])
+    const factory = new GameFactory(servicesWithEngines([hintEngine]))
+
+    const adviser = factory.createHintAdviser()
+    const rules = new ChessJsRules()
+
+    await expect(adviser.advise(rules.initialPosition())).resolves.toEqual({
+      from: 'e2',
+      to: 'e4',
+    })
+    expect(hintEngine.configured).toEqual(HINT_CONFIGURATION)
+    adviser.dispose()
+  })
+
+  it('builds a puzzle generator that takes an engine of its own', async () => {
+    // An engine that abandons every search: the generator should give up
+    // cleanly and dispose the engine it asked for, rather than hanging.
+    const failing = new ScriptedEngine()
+    failing.chooseMove = () => Promise.reject(new Error('search abandoned'))
+    const disposed = vi.spyOn(failing, 'dispose')
+
+    const factory = new GameFactory(servicesWithEngines([failing]))
+    const generator = factory.createPuzzleGenerator()
+
+    expect(generator).toBeInstanceOf(PuzzleGenerator)
+    await expect(generator.generate(1)).rejects.toThrow('could not compose a puzzle')
+    expect(disposed).toHaveBeenCalled()
   })
 })

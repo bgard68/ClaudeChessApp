@@ -23,11 +23,15 @@ export function parseTimeControlTag(value: string | undefined): TimeControl | nu
     stages.push(stage)
   }
 
+  // Splitting a non-empty string always yields at least one section, and each
+  // one either parsed or returned above — so by here there is always a stage.
+  /* v8 ignore next -- unreachable: split of a non-empty string yields a section */
   if (stages.length === 0) return null
 
   // Whatever the tag says, the final stage runs to the end of the game.
   const lastIndex = stages.length - 1
   const lastStage = stages[lastIndex]
+  /* v8 ignore else -- index safety: lastIndex is in range whenever stages is non-empty */
   if (lastStage !== undefined) {
     stages[lastIndex] = { ...lastStage, movesToComplete: null }
   }
@@ -57,9 +61,13 @@ function parseStage(section: string): TimeStage | null {
     ? section.split('/', 2)
     : [undefined, section]
 
+  // Both `?? ''` are index safety, and so unreachable: the destructuring
+  // above always binds a budget, and splitting it always yields a first part.
+  /* v8 ignore start -- unreachable: both index reads are always in range */
   const [secondsText, incrementText] = (budgetText ?? '').split('+', 2)
-
   const seconds = Number.parseFloat(secondsText ?? '')
+  /* v8 ignore stop */
+
   if (!Number.isFinite(seconds) || seconds < 0) return null
 
   let movesToComplete: number | null = null

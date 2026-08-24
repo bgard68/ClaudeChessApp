@@ -106,4 +106,41 @@ describe('todaysPuzzle', () => {
       day: DAY,
     })
   })
+
+  it('serves any stored puzzle for the day when no usability check is given', async () => {
+    storage.seed({ day: DAY, ...GOOD })
+    const generate = vi.fn(() => Promise.resolve(GOOD))
+
+    // The caller that cannot judge a FEN gets the record as stored.
+    await expect(todaysPuzzle(DAY, generate)).resolves.toMatchObject({ day: DAY })
+    expect(generate).not.toHaveBeenCalled()
+  })
+
+  it('regenerates when the stored entry is not a record at all', async () => {
+    const generate = vi.fn(() => Promise.resolve(GOOD))
+
+    // Valid JSON, but nothing a puzzle could be read out of.
+    for (const value of [null, 42, '"text"']) {
+      storage.seed(value)
+      generate.mockClear()
+      await expect(todaysPuzzle(DAY, generate, loadable)).resolves.toMatchObject({ day: DAY })
+      expect(generate).toHaveBeenCalledTimes(1)
+    }
+  })
+
+  it('regenerates when the stored record is missing a field', async () => {
+    const generate = vi.fn(() => Promise.resolve(GOOD))
+
+    for (const partial of [
+      { day: DAY, mateIn: 1, mateOnMove: 4 },
+      { day: DAY, fen: GOOD.fen, mateOnMove: 4 },
+      { day: DAY, fen: GOOD.fen, mateIn: 1 },
+      { fen: GOOD.fen, mateIn: 1, mateOnMove: 4 },
+    ]) {
+      storage.seed(partial)
+      generate.mockClear()
+      await expect(todaysPuzzle(DAY, generate, loadable)).resolves.toMatchObject({ day: DAY })
+      expect(generate).toHaveBeenCalledTimes(1)
+    }
+  })
 })

@@ -106,4 +106,87 @@ describe('writePgn', () => {
     expect(pgn).toContain('[TimeControl "-"]')
     expect(parseArchivedGame(pgn, 'x')!.hasRecordedClocks).toBe(false)
   })
+
+  it('names the reason a drawn game ended', async () => {
+    const { game } = await playSampleGame(UNLIMITED)
+    game.agreeDraw('fifty_move_rule')
+
+    expect(writePgn(recordGame(game.state, DETAILS))).toContain(
+      '[Termination "fifty_move_rule"]',
+    )
+  })
+
+  it('writes no Termination for a result whose reason was never recorded', async () => {
+    const { game } = await playSampleGame(UNLIMITED)
+
+    // An archived game's decisive result often carries no reason at all;
+    // inventing one would put a fact in the file the source never had.
+    const recorded = {
+      ...recordGame(game.state, DETAILS),
+      outcome: { status: 'decisive', winner: 'white', reason: 'unknown' } as const,
+    }
+
+    expect(writePgn(recorded)).not.toContain('Termination')
+  })
+
+  it('leaves an unfinished game without a Termination line', async () => {
+    const { game } = await playSampleGame(UNLIMITED)
+
+    expect(writePgn(recordGame(game.state, DETAILS))).not.toContain('Termination')
+  })
+
+  it('escapes quotes and backslashes in a tag value', async () => {
+    const { game } = await playSampleGame(UNLIMITED)
+    const recorded = {
+      ...recordGame(game.state, DETAILS),
+      event: 'A "quoted" \\ event',
+    }
+
+    expect(writePgn(recorded)).toContain('[Event "A \\"quoted\\" \\\\ event"]')
+  })
+
+  it('wraps movetext at 80 columns', () => {
+    // Thirty plies with clock comments is well past one line; PGN readers
+    // expect the movetext to stay inside 80 columns.
+    const moves = Array.from({ length: 30 }, (_, index) => ({
+      ply: index + 1,
+      color: index % 2 === 0 ? ('white' as const) : ('black' as const),
+      san: 'Nf3',
+      clockAfterMs: 3_600_000 - index * 1_000,
+    }))
+    const recorded = {
+      white: 'A',
+      black: 'B',
+      event: 'E',
+      site: 'S',
+      playedOn: '2026.08.24',
+      outcome: { status: 'decisive', winner: 'white', reason: 'resignation' } as const,
+      timeControl: suddenDeath(60),
+      moves: moves as never,
+      recordedAt: '2026-08-24T00:00:00.000Z',
+    }
+
+    const lines = (writePgn(recorded).split('\n\n')[1] ?? '').trimEnd().split('\n')
+
+    expect(lines.length).toBeGreaterThan(1)
+    expect(Math.max(...lines.map((line) => line.length))).toBeLessThanOrEqual(80)
+  })
+
+  it('writes an empty movetext line for a game with no moves', () => {
+    const empty = {
+      white: 'A',
+      black: 'B',
+      event: 'E',
+      site: 'S',
+      playedOn: '2026.08.24',
+      outcome: { status: 'in_progress' } as const,
+      timeControl: UNLIMITED,
+      moves: [],
+      recordedAt: '2026-08-24T00:00:00.000Z',
+    }
+
+    // The result token alone is the whole movetext; nothing should crash on
+    // the way to producing it.
+    expect(writePgn(empty)).toMatch(/\n\n\*\n$/)
+  })
 })

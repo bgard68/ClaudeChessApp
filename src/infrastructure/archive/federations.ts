@@ -87,6 +87,10 @@ export function federationFor(playerName: string): PlayerFederation | null {
 
   const curated = curatedFederation(playerName)
   if (curated !== null) {
+    // Falls back to the two-letter code rather than emitting undefined, should
+    // the curated list ever gain a federation FIDE_CODE has no entry for. All
+    // forty-one have one today.
+    /* v8 ignore next -- unreachable: every curated code is mapped above */
     const code = FIDE_CODE[curated.code] ?? curated.code
     /*
      * The title is taken from FIDE only when both sources name the same

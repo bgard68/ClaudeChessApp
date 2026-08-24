@@ -72,6 +72,10 @@ function wrap(tokens: readonly string[], limit: number): string {
       line = token
     }
   }
+  // The empty case cannot arise from writePgn — the result tag is always the
+  // last token, so there is always a part-built line to flush — but wrap()
+  // reads as a general helper and losing the final line would be silent.
+  /* v8 ignore else -- unreachable: tokens always ends with the result tag */
   if (line !== '') lines.push(line)
 
   return lines.join('\n')

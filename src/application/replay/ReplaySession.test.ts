@@ -309,4 +309,54 @@ describe('ReplaySession', () => {
       expect(session.state.clock.source).toBe('simulated')
     })
   })
+
+  describe('guards against being asked twice', () => {
+    it('ignores a pause when nothing is playing', () => {
+      const seen: ReplayState[] = []
+      session.subscribe((state) => seen.push(state))
+
+      session.pause()
+
+      // Nothing was running, so nothing changed and nobody is told.
+      expect(seen).toHaveLength(0)
+      expect(ticker.stops).toHaveLength(0)
+    })
+
+    it('survives being disposed twice', () => {
+      session.dispose()
+      session.dispose()
+      expect(ticker.stops).toHaveLength(1)
+    })
+  })
+
+  describe('a game whose move list has holes in it', () => {
+    it('shows no last move rather than crashing', () => {
+      // A damaged record still satisfies the type; the board must degrade to
+      // "no move to highlight" instead of dereferencing a hole.
+      const sparse = new ReplaySession(
+        new FakeTicker(),
+        game(new Array<RecordedMove>(3)),
+      )
+
+      sparse.goTo(1)
+
+      expect(sparse.state.lastMove).toBeNull()
+      expect(sparse.state.position.fen).toBe(START.fen)
+    })
+  })
+
+  describe('a game with no moves at all', () => {
+    it('starts from the opening position and stays there', () => {
+      const empty = new ReplaySession(new FakeTicker(), game([]))
+
+      // No first move to read a position from, so the board falls back to
+      // the standard starting position rather than showing nothing.
+      expect(empty.state.position.fen).toBe(START.fen)
+      expect(empty.state.totalPlies).toBe(0)
+      expect(empty.state.lastMove).toBeNull()
+
+      empty.next()
+      expect(empty.state.ply).toBe(0)
+    })
+  })
 })

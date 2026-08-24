@@ -47,5 +47,11 @@ export function foldName(name: string): string {
     .normalize('NFD')
     // …which is then dropped, leaving the base letter behind.
     .replace(COMBINING_MARKS, '')
+    // The fallback keeps a letter rather than dropping it, should the regex
+    // above ever gain a character the table has no replacement for. The two
+    // lists agree today, which is what `foldName.test.ts` pins — so the
+    // fallback itself is unreachable and cannot be covered.
+    /* v8 ignore start -- unreachable: INDIVISIBLE_LETTERS matches only table keys */
     .replace(INDIVISIBLE_LETTERS, (character) => INDIVISIBLE[character] ?? character)
+  /* v8 ignore stop */
 }

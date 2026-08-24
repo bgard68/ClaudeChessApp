@@ -111,6 +111,7 @@ function countMoves(pgn: string): number {
   const moveText = pgn.replace(HEADER_PATTERN, '')
   let highest = 0
   for (const match of moveText.matchAll(MOVE_NUMBER_PATTERN)) {
+    /* v8 ignore next -- `?? ''` is index safety: the group matches whenever the pattern does */
     const value = Number.parseInt(match[1] ?? '', 10)
     if (Number.isFinite(value) && value > highest) highest = value
   }

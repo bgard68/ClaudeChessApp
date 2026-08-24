@@ -70,6 +70,9 @@ export class ReplayClockModel {
 }
 
 function readAt(timeline: readonly (number | null)[], ply: number): number | null {
+  // Both builders below return at least the starting reading, so an empty
+  // timeline cannot arrive here — but clamping against one would read -1.
+  /* v8 ignore next -- unreachable: every timeline carries at least ply 0 */
   if (timeline.length === 0) return null
   const index = Math.max(0, Math.min(ply, timeline.length - 1))
   return timeline[index] ?? null
@@ -123,6 +126,9 @@ function simulatedTimeline(
   if (firstStage === undefined) {
     return new Array<number | null>(totalPlies + 1).fill(null)
   }
+  // An unlimited control has no first stage, so it returned above; the empty
+  // arm exists only to narrow the type.
+  /* v8 ignore next -- unreachable: an unlimited control returns above */
   const stages = control.kind === 'unlimited' ? [] : control.stages
 
   const afterOwnMove: number[] = []
@@ -132,6 +138,7 @@ function simulatedTimeline(
   let pace = paceForStage(firstStage, ownMoveCount)
 
   for (let moveIndex = 0; moveIndex < ownMoveCount; moveIndex += 1) {
+    /* v8 ignore next -- index safety: stageIndex only advances to a stage that exists */
     const stage = stages[stageIndex] ?? firstStage
     remaining = Math.max(0, remaining - pace) + stage.incrementMs
     movesInStage += 1

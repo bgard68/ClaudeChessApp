@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { displayYear } from './ArchivedGame'
+import { displayYear, placeOrNull } from './ArchivedGame'
 
 /*
  * PGN dates are written "1972.07.23", and a great many archived games have
@@ -33,5 +33,27 @@ describe('displayYear', () => {
 
   it('does not mistake a longer number for a year', () => {
     expect(displayYear('19720723')).toBe('1972')
+  })
+})
+
+/*
+ * `Site` is filled in far more often than it is filled in usefully: "?" and
+ * "Unknown" are both common, and either printed under an event name is worse
+ * than no second line at all.
+ */
+describe('placeOrNull', () => {
+  it('keeps a real place, trimmed', () => {
+    expect(placeOrNull(' Reykjavik ISL ')).toBe('Reykjavik ISL')
+  })
+
+  it('drops the placeholders', () => {
+    expect(placeOrNull('?')).toBeNull()
+    expect(placeOrNull('Unknown')).toBeNull()
+    expect(placeOrNull('   ')).toBeNull()
+  })
+
+  it('drops an absent value', () => {
+    expect(placeOrNull(null)).toBeNull()
+    expect(placeOrNull(undefined)).toBeNull()
   })
 })

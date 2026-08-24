@@ -21,11 +21,17 @@ export function parseClockComment(comment: string): number | null {
 
   const [, hoursText, minutesText, secondsText] = match
   const hours = hoursText === undefined ? 0 : Number.parseInt(hoursText, 10)
+  // The `?? ''` fallbacks are index safety only — the minute and second
+  // groups are not optional, so both matched if the pattern did — and the
+  // finite check is a backstop the pattern already guarantees, admitting
+  // digits alone. Neither can be reached, and both are worth keeping.
+  /* v8 ignore start -- unreachable: the pattern captures both groups, and digits only */
   const minutes = Number.parseInt(minutesText ?? '', 10)
   const seconds = Number.parseFloat(secondsText ?? '')
 
   if (!Number.isFinite(hours) || !Number.isFinite(minutes) || !Number.isFinite(seconds)) {
     return null
   }
+  /* v8 ignore stop */
   return Math.round((hours * 3600 + minutes * 60 + seconds) * 1000)
 }

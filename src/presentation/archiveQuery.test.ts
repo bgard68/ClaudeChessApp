@@ -288,4 +288,18 @@ describe('activeChips', () => {
       expect(chip?.without.search).toBe('')
     })
   })
+
+  it('names a result filter by its label', () => {
+    const chips = activeChips(question({ filters: { ...NO_FILTERS, result: '1-0' } }), '')
+
+    expect(chips.find((chip) => chip.key === 'result')?.label).toBe('White won')
+  })
+
+  it('falls back to the raw value for a result it has no label for', () => {
+    // A filter restored from a link someone edited: better to show what it
+    // actually filters on than to show nothing.
+    const chips = activeChips(question({ filters: { ...NO_FILTERS, result: '0-1-0' } }), '')
+
+    expect(chips.find((chip) => chip.key === 'result')?.label).toBe('0-1-0')
+  })
 })

@@ -256,6 +256,11 @@ function keyFor(playerName: string): string {
 /** The player's federation, or null when it is not known. */
 export function federationOf(playerName: string): Federation | null {
   const key = keyFor(playerName)
+  // The `?? ''` and `?? null` fallbacks are index safety only, and so cannot
+  // be reached: splitting a key always yields a first element, and every code
+  // in the table above has an entry in ALL.
+  /* v8 ignore start -- unreachable: split is non-empty, and ALL covers every code */
   const code = COUNTRY_BY_PLAYER[key] ?? COUNTRY_BY_PLAYER[key.split(' ')[0] ?? '']
   return code === undefined ? null : (ALL[code] ?? null)
+  /* v8 ignore stop */
 }

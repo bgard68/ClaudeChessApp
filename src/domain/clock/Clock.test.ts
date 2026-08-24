@@ -64,4 +64,60 @@ describe('Clock', () => {
     expect(original.remainingMs('white')).toBe(5 * MINUTE)
     expect(advanced).not.toBe(original)
   })
+
+  it('flags whichever side runs out', () => {
+    const white = Clock.forControl(suddenDeath(1)).startTurn('white').advance(61_000)
+    expect(white.flagged).toBe('white')
+
+    const black = Clock.forControl(suddenDeath(1)).startTurn('black').advance(61_000)
+    expect(black.flagged).toBe('black')
+  })
+
+  it('stops charging a side that has already flagged', () => {
+    const flagged = Clock.forControl(suddenDeath(1)).startTurn('white').advance(61_000)
+
+    // There is nothing left to take; the same value must come back, so a
+    // late tick cannot manufacture a second state change after the flag.
+    expect(flagged.advance(1_000)).toBe(flagged)
+  })
+
+  it('grants no completion bonus to a side that has flagged', () => {
+    const flagged = Clock.forControl(suddenDeath(1, 3)).startTurn('white').advance(61_000)
+
+    expect(flagged.completeMove('white')).toBe(flagged)
+  })
+
+  it('starts at zero under a staged control that declares no stages', () => {
+    // Constructible through the type, even though no preset produces it: the
+    // clock has to answer something rather than crash.
+    const empty = Clock.forControl({ kind: 'staged', stages: [] })
+
+    expect(empty.snapshot().whiteMs).toBe(0)
+    expect(empty.completeMove('white')).toBe(empty)
+  })
+
+  it('stays in the final stage once the quota of a last staged control is met', () => {
+    const oneStage = Clock.forControl({
+      kind: 'staged',
+      stages: [{ movesToComplete: 1, addedMs: 60_000, incrementMs: 1_000 }],
+    })
+
+    const after = oneStage.startTurn('white').completeMove('white')
+
+    // The quota is met but no next stage exists; only the increment lands.
+    expect(after.remainingMs('white')).toBe(61_000)
+    const again = after.completeMove('white')
+    expect(again.remainingMs('white')).toBe(62_000)
+  })
+
+  it('answers no stage for an unlimited control, should it ever be asked', () => {
+    // Every public path returns before consulting stages on an untimed clock,
+    // so the narrowing inside stageAt is exercised here directly rather than
+    // left as the one line no test can reach.
+    const untimed = Clock.forControl(UNLIMITED) as unknown as {
+      stageAt(index: number): unknown
+    }
+
+    expect(untimed.stageAt(0)).toBeUndefined()
+  })
 })

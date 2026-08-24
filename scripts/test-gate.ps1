@@ -53,7 +53,9 @@ function Invoke-Probe {
 # ---------- The real gates ----------
 
 Invoke-Gate 'typecheck' { & npx tsc --noEmit }
-Invoke-Gate 'tests'     { & npx vitest run }
+# --coverage so the run also enforces the 100% thresholds in vite.config.ts:
+# a suite that passes while new logic goes untested is a gate with a gap.
+Invoke-Gate 'tests'     { & npx vitest run --coverage }
 Invoke-Gate 'audit'     { & npm audit --audit-level=moderate }
 Invoke-Gate 'build'     { & npm run build }
 Invoke-Gate 'smoke test against the built app' { & node scripts/smoke-test.mjs }

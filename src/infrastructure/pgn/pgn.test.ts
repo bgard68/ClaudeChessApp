@@ -157,3 +157,92 @@ describe('parseArchivedGame', () => {
     expect(parseArchivedGame(broken, 'bad')).toBeNull()
   })
 })
+
+/*
+ * A PGN records who won, never why. Games this app saved say so in a
+ * Termination tag; for every other game only what the final board shows can
+ * be established, and anything else would be invention.
+ */
+describe('recovering why a game ended', () => {
+  const game = (result: string, movetext: string, termination?: string) =>
+    parseArchivedGame(
+      `[Event "T"]\n[Result "${result}"]\n${
+        termination === undefined ? '' : `[Termination "${termination}"]\n`
+      }\n${movetext}\n`,
+      'x',
+    )
+
+  it('trusts a Termination tag it recognises', () => {
+    expect(game('1-0', '1. e4 e5 1-0', 'resignation')?.outcome).toEqual({
+      status: 'decisive',
+      winner: 'white',
+      reason: 'resignation',
+    })
+    expect(game('0-1', '1. e4 e5 0-1', 'timeout')?.outcome).toEqual({
+      status: 'decisive',
+      winner: 'black',
+      reason: 'timeout',
+    })
+  })
+
+  it('ignores a Termination tag naming a reason it does not know', () => {
+    // "unterminated" is not one of the reasons the domain models, and the
+    // board shows no mate, so the honest answer is that nobody knows.
+    expect(game('1-0', '1. e4 e5 1-0', 'unterminated')?.outcome).toEqual({
+      status: 'decisive',
+      winner: 'white',
+      reason: 'unknown',
+    })
+  })
+
+  it('reads checkmate off the final board when no tag says so', () => {
+    expect(game('0-1', '1. f3 e5 2. g4 Qh4# 0-1')?.outcome).toEqual({
+      status: 'decisive',
+      winner: 'black',
+      reason: 'checkmate',
+    })
+  })
+
+  it('trusts a draw reason the tag names', () => {
+    expect(game('1/2-1/2', '1. e4 e5 1/2-1/2', 'threefold_repetition')?.outcome).toEqual({
+      status: 'draw',
+      reason: 'threefold_repetition',
+    })
+  })
+
+  it('reads stalemate off the final board', () => {
+    // Qg6 leaves the black king on h8 with no legal move and no check.
+    const stalemate = parseArchivedGame(
+      `[Event "T"]\n[FEN "7k/8/8/6Q1/8/8/8/6K1 w - - 0 1"]\n[SetUp "1"]\n[Result "1/2-1/2"]\n\n1. Qg6 1/2-1/2\n`,
+      'x',
+    )
+    expect(stalemate?.outcome).toEqual({ status: 'draw', reason: 'stalemate' })
+  })
+
+  it('reads insufficient material off the final board', () => {
+    // Taking the last knight leaves king against king.
+    const bare = parseArchivedGame(
+      `[Event "T"]\n[FEN "7k/8/8/8/8/8/1n6/K7 w - - 0 1"]\n[SetUp "1"]\n[Result "1/2-1/2"]\n\n1. Kxb2 1/2-1/2\n`,
+      'x',
+    )
+    expect(bare?.outcome).toEqual({ status: 'draw', reason: 'insufficient_material' })
+  })
+
+  it('falls back to agreement for a draw the board cannot explain', () => {
+    expect(game('1/2-1/2', '1. e4 e5 1/2-1/2')?.outcome).toEqual({
+      status: 'draw',
+      reason: 'agreement',
+    })
+  })
+
+  it('leaves an unfinished game in progress', () => {
+    expect(game('*', '1. e4 e5 *')?.outcome).toEqual({ status: 'in_progress' })
+  })
+
+  it('leaves a comment carrying no clock reading alone', () => {
+    const annotated = game('1-0', '1. e4 {a fine move} e5 1-0')
+
+    expect(annotated?.hasRecordedClocks).toBe(false)
+    expect(annotated?.moves[0]?.recordedClockMs).toBeNull()
+  })
+})

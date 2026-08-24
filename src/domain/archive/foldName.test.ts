@@ -69,4 +69,13 @@ describe('foldName', () => {
     const once = foldName('Ljubojević, Ljubomir')
     expect(foldName(once)).toBe(once)
   })
+
+  it('has a replacement for every indivisible letter it recognises', () => {
+    // The matching regex and the replacement table are two lists that have to
+    // agree: a letter in the first but missing from the second would fall
+    // through unfolded, which is the bug this whole module exists to prevent.
+    for (const letter of 'đðøłħŧıæœßþ') {
+      expect(foldName(letter)).toMatch(/^[a-z]+$/)
+    }
+  })
 })

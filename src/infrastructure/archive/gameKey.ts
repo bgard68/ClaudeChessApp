@@ -21,6 +21,7 @@ export function gameKey(pgn: string): string {
 
   const name = (tag: string): string => {
     const match = new RegExp(`^\\[${tag} "([^"]*)"\\]`, 'm').exec(pgn)
+    /* v8 ignore next -- `?? ''` is index safety: the group matches whenever the pattern does */
     return (match === null ? '' : match[1] ?? '').toLowerCase().replace(/[^a-z]/g, '')
   }
 

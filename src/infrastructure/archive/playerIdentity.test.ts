@@ -115,4 +115,65 @@ describe('mergePlayers', () => {
     const players = mergePlayers([row('Minor,X', 3), row('Major,Y', 900)])
     expect(players.map((p) => p.canonical)).toEqual(['Major,Y', 'Minor,X'])
   })
+
+  it('skips a row whose name reduces to nothing', () => {
+    // Punctuation-only names appear in damaged PGN files; they belong to no
+    // player and must not become an empty-keyed one.
+    expect(mergePlayers([row('...', 5), row('Petrosian,T', 4)]).map((p) => p.sortKey)).toEqual([
+      'petrosian t',
+    ])
+  })
+
+  it('prefers the longer spelling when neither carries a forename', () => {
+    // No comma on either, so the forename comparison ties and length decides —
+    // whichever side of the fold the longer spelling happens to be on.
+    expect(
+      mergePlayers([row('Torre', 3, 1920, 1930), row('Torre ', 2, 1920, 1930)])[0]?.canonical,
+    ).toBe('Torre ')
+
+    expect(
+      mergePlayers([row('Torre ', 3, 1920, 1930), row('Torre', 2, 1920, 1930)])[0]?.canonical,
+    ).toBe('Torre ')
+  })
+
+  it('keeps spellings apart when the career they imply is impossible', () => {
+    // Two different Smiths, a century apart, share surname and initial.
+    const players = mergePlayers([
+      row('Smith,J', 10, 1880, 1890),
+      row('Smith, John', 12, 1980, 1990),
+    ])
+
+    expect(players).toHaveLength(2)
+    expect(players.every((p) => p.aliases.length === 1)).toBe(true)
+  })
+
+  it('merges rows that record no years at all', () => {
+    // With no span to judge, the conservative key still decides.
+    const players = mergePlayers([
+      row('Réti,R', 4, null, null),
+      row('Reti, Richard', 6, null, null),
+    ])
+
+    expect(players).toHaveLength(1)
+    expect(players[0]?.firstYear).toBeNull()
+    expect(players[0]?.lastYear).toBeNull()
+    expect(players[0]?.games).toBe(10)
+  })
+
+  it('takes the widest span and the highest rating across a merged player', () => {
+    const players = mergePlayers([
+      row('Anand,V', 100, 1990, 2005, 2790),
+      row('Anand, Viswanathan', 50, 1995, 2015, null),
+      row('Anand, V.', 25, null, null, 2817),
+    ])
+
+    expect(players).toHaveLength(1)
+    expect(players[0]).toMatchObject({
+      canonical: 'Anand, Viswanathan',
+      games: 175,
+      firstYear: 1990,
+      lastYear: 2015,
+      peakElo: 2817,
+    })
+  })
 })

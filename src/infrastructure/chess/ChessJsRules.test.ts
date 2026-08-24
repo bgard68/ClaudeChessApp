@@ -77,4 +77,17 @@ describe('ChessJsRules', () => {
       new Set(['queen', 'rook', 'bishop', 'knight']),
     )
   })
+
+  it('plays the promotion piece it was asked for', () => {
+    const rules = new ChessJsRules()
+    const position = rules.positionFromFen('k7/7P/8/8/8/8/8/K7 w - - 0 1')
+
+    const knight = rules.play(position, { from: 'h7', to: 'h8', promotion: 'knight' })
+    expect(knight?.move.san).toBe('h8=N')
+    expect(knight?.move.promotion).toBe('knight')
+
+    // The new queen gives check from h8, which the notation records.
+    const queen = rules.play(position, { from: 'h7', to: 'h8', promotion: 'queen' })
+    expect(queen?.move.san).toBe('h8=Q+')
+  })
 })

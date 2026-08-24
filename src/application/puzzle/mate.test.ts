@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import type { LegalMove } from '@domain/chess/Move'
+import { Position } from '@domain/chess/Position'
+import { drawn, IN_PROGRESS } from '@domain/chess/GameOutcome'
+import type { ChessRules } from '@domain/ports/ChessRules'
 import { ChessJsRules } from '@infrastructure/chess/ChessJsRules'
 import { mateStartingMove, matingMoves, solvesMateWithin, toughestDefence } from './mate'
 
@@ -62,5 +66,66 @@ describe('forced-mate reasoning', () => {
     expect(finisher).not.toBeNull()
     const end = rules.play(afterDefence, finisher!)!.position
     expect(rules.outcome(end, [end])).toMatchObject({ reason: 'checkmate' })
+  })
+
+  it('rejects an intent that is not even a legal move', () => {
+    const position = rules.positionFromFen(LADDER)
+
+    expect(solvesMateWithin(rules, position, { from: 'b1', to: 'h8' }, 2)).toBe(false)
+  })
+
+  it('finds no starting move where no mate exists', () => {
+    expect(mateStartingMove(rules, rules.initialPosition(), 1)).toBeNull()
+  })
+
+  it('keeps the first defence when a later one resists no better', () => {
+    // From the start every reply leaves zero immediate mates, so only the
+    // first can win the comparison.
+    const start = rules.initialPosition()
+    const defence = toughestDefence(rules, start)
+
+    expect(defence).toEqual(rules.legalMoves(start)[0])
+  })
+})
+
+/*
+ * The functions take the rules as a port, so another implementation may
+ * answer in ways chess.js never would — a listed reply it then refuses to
+ * play. Those answers must degrade to "not a forced mate", not throw.
+ */
+describe('forced-mate reasoning against a disagreeing rules implementation', () => {
+  const positionA = Position.fromFen('8/8/8/8/8/8/8/K6k w - - 0 1')
+  const positionB = Position.fromFen('8/8/8/8/8/8/8/K6k b - - 0 2')
+  const move = (from: string, to: string) =>
+    ({ from, to, san: `${from}${to}`, piece: 'queen', isCapture: false, isPromotion: false }) as LegalMove
+
+  it('treats a reply the rules refuse to play as an unforced line', () => {
+    const disagreeing: ChessRules = {
+      initialPosition: () => positionA,
+      positionFromFen: (fen) => Position.fromFen(fen),
+      legalMoves: (position) => (position.equals(positionA) ? [move('a1', 'a2')] : [move('h1', 'h2')]),
+      legalMovesFrom: () => [],
+      // The attacker's move plays fine; the listed defence then comes back null.
+      play: (position) =>
+        position.equals(positionA) ? { move: move('a1', 'a2'), position: positionB } : null,
+      isCheck: () => false,
+      outcome: () => IN_PROGRESS,
+    }
+
+    expect(solvesMateWithin(disagreeing, positionA, move('a1', 'a2'), 2)).toBe(false)
+  })
+
+  it('skips a defence the rules refuse to play when ranking resistance', () => {
+    const refusing: ChessRules = {
+      initialPosition: () => positionA,
+      positionFromFen: (fen) => Position.fromFen(fen),
+      legalMoves: () => [move('a1', 'a2')],
+      legalMovesFrom: () => [],
+      play: () => null,
+      isCheck: () => false,
+      outcome: () => drawn('agreement'),
+    }
+
+    expect(toughestDefence(refusing, positionA)).toBeNull()
   })
 })

@@ -9,6 +9,7 @@ export function readHeaders(pgn: string): PgnHeaders {
   const headers: Record<string, string> = {}
   for (const match of pgn.matchAll(HEADER_PATTERN)) {
     const [, key, value] = match
+    /* v8 ignore else -- index safety: both groups match whenever the pattern does */
     if (key !== undefined && value !== undefined) headers[key] = value
   }
   return headers
@@ -56,6 +57,7 @@ function countMoves(pgn: string): number {
   const moveText = pgn.replace(HEADER_PATTERN, '')
   let highest = 0
   for (const match of moveText.matchAll(MOVE_NUMBER_PATTERN)) {
+    /* v8 ignore next -- `?? ''` is index safety: the group matches whenever the pattern does */
     const value = Number.parseInt(match[1] ?? '', 10)
     if (Number.isFinite(value) && value > highest) highest = value
   }

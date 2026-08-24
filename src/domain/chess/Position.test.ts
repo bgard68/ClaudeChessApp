@@ -89,3 +89,20 @@ describe('comparing positions', () => {
     expect(withRights.isSameBoard(without)).toBe(false)
   })
 })
+
+describe('Position.fromFen with partial records', () => {
+  it('fills in the counters a four-field FEN omits', () => {
+    // EPD-style records stop after the en passant field.
+    const position = Position.fromFen('8/8/8/8/8/8/8/K6k w - -')
+
+    expect(position.fullMoveNumber).toBe(1)
+    expect(position.halfMoveClock).toBe(0)
+  })
+
+  it('shrugs off counters that are not numbers', () => {
+    const position = Position.fromFen('8/8/8/8/8/8/8/K6k w - - x y')
+
+    expect(position.fullMoveNumber).toBe(1)
+    expect(position.halfMoveClock).toBe(0)
+  })
+})

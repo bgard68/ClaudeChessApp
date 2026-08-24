@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseArchivedGame } from '@infrastructure/pgn/parseArchivedGame'
-import { classical } from '@domain/clock/TimeControl'
+import { classical, UNLIMITED } from '@domain/clock/TimeControl'
 import { ReplayClockModel } from './ReplayClockModel'
 
 const HISTORIC_GAME = `[Event "World Championship"]
@@ -20,6 +20,16 @@ const BROADCAST_GAME = `[Event "Broadcast"]
 [TimeControl "40/7200:1800"]
 
 1. e4 {[%clk 1:59:00]} e5 {[%clk 1:58:00]} 2. Nf3 {[%clk 1:57:00]} *
+`
+
+/** Clock readings, but no TimeControl tag to say what budget they came from. */
+const CLOCKED_UNDECLARED_GAME = `[Event "Broadcast"]
+[Date "2021.12.03"]
+[White "A"]
+[Black "B"]
+[Result "*"]
+
+1. e4 {[%clk 0:01:00]} e5 {[%clk 0:00:50]} *
 `
 
 function gameFrom(pgn: string) {
@@ -82,5 +92,120 @@ describe('ReplayClockModel', () => {
   it('clamps requests beyond the end of the game', () => {
     const model = ReplayClockModel.forGame(gameFrom(HISTORIC_GAME))
     expect(model.readingAt(999)).toEqual(model.readingAt(6))
+  })
+
+  it('clamps a negative ply back to the start', () => {
+    const model = ReplayClockModel.forGame(gameFrom(HISTORIC_GAME))
+    expect(model.readingAt(-5)).toEqual(model.readingAt(0))
+  })
+
+  it('reports no reading at all under an unlimited control', () => {
+    const model = ReplayClockModel.forGame(gameFrom(HISTORIC_GAME), UNLIMITED)
+
+    // An untimed game has no budget to spend, so there is nothing to show —
+    // and nothing invented in its place.
+    expect(model.readingAt(0)).toEqual({ whiteMs: null, blackMs: null, source: 'simulated' })
+    expect(model.readingAt(3).whiteMs).toBeNull()
+  })
+
+  it('reports no reading for a staged control that declares no stages', () => {
+    const model = ReplayClockModel.forGame(gameFrom(HISTORIC_GAME), {
+      kind: 'staged',
+      stages: [],
+    })
+
+    expect(model.readingAt(1).whiteMs).toBeNull()
+  })
+
+  it('starts recorded readings from the declared control', () => {
+    // The tag says two hours; the reading before either side has moved is
+    // that, not a blank.
+    const declared = ReplayClockModel.forGame(gameFrom(BROADCAST_GAME))
+
+    expect(declared.readingAt(0).whiteMs).toBe(7_200_000)
+    expect(declared.assumedControl).toBeNull()
+  })
+
+  it('leaves the opening reading blank when nothing says what the budget was', () => {
+    // Clocks were recorded but no control was declared, and the fallback is
+    // untimed — so there is no starting figure to show before the first move.
+    const model = ReplayClockModel.forGame(gameFrom(CLOCKED_UNDECLARED_GAME), UNLIMITED)
+
+    expect(model.source).toBe('recorded')
+    expect(model.readingAt(0).whiteMs).toBeNull()
+    // The readings themselves are still the ones the PGN recorded.
+    expect(model.readingAt(1).whiteMs).toBe(60_000)
+  })
+
+  it('moves into the next stage once the quota is met, and picks up its budget', () => {
+    // Two moves in stage one, then the rest: White's third move is paid for
+    // out of the second stage's fresh budget.
+    const model = ReplayClockModel.forGame(gameFrom(HISTORIC_GAME), {
+      kind: 'staged',
+      stages: [
+        { movesToComplete: 1, addedMs: 60_000, incrementMs: 0 },
+        { movesToComplete: null, addedMs: 600_000, incrementMs: 0 },
+      ],
+    })
+
+    // After White's first move the first stage is spent and the second opens.
+    expect(model.readingAt(1).whiteMs).toBe(600_000)
+    expect(model.readingAt(3).whiteMs).toBeLessThan(600_000)
+  })
+
+  it('stays in the last stage when its quota is met and none follows', () => {
+    // The tag declares a quota on the final stage; there is nowhere to move
+    // into, so the pace simply carries on.
+    const model = ReplayClockModel.forGame(gameFrom(HISTORIC_GAME), {
+      kind: 'staged',
+      stages: [{ movesToComplete: 2, addedMs: 60_000, incrementMs: 0 }],
+    })
+
+    // Two moves at half the budget each, then the quota is met with no stage
+    // to move into — so the third move simply finds nothing left.
+    expect(model.readingAt(1).whiteMs).toBe(30_000)
+    expect(model.readingAt(3).whiteMs).toBe(0)
+    expect(model.readingAt(5).whiteMs).toBe(0)
+  })
+
+  it('adds the increment each stage grants', () => {
+    const model = ReplayClockModel.forGame(gameFrom(HISTORIC_GAME), {
+      kind: 'staged',
+      stages: [{ movesToComplete: null, addedMs: 60_000, incrementMs: 5_000 }],
+    })
+
+    // Three of White's moves, so the pace is a third of the budget, and each
+    // move hands back five seconds.
+    expect(model.readingAt(1).whiteMs).toBe(60_000 - 20_000 + 5_000)
+  })
+
+  it('spends an even pace across a game with no move quota', () => {
+    const model = ReplayClockModel.forGame(gameFrom(HISTORIC_GAME), {
+      kind: 'staged',
+      stages: [{ movesToComplete: null, addedMs: 30_000, incrementMs: 0 }],
+    })
+
+    // Three White moves out of the six plies, so each costs a third.
+    expect(model.readingAt(1).whiteMs).toBe(20_000)
+    expect(model.readingAt(5).whiteMs).toBe(0)
+  })
+
+  it('has nothing to read for a game with no moves', () => {
+    const empty = { ...gameFrom(HISTORIC_GAME), moves: [] }
+    const model = ReplayClockModel.forGame(empty)
+
+    expect(model.readingAt(0).whiteMs).toBe(7_200_000)
+    expect(model.readingAt(4).whiteMs).toBe(7_200_000)
+  })
+
+  it('reads null from a staged control that declares no stages', () => {
+    // Recorded clocks, but a control with no first stage to take a starting
+    // figure from.
+    const model = ReplayClockModel.forGame(gameFrom(CLOCKED_UNDECLARED_GAME), {
+      kind: 'staged',
+      stages: [],
+    })
+
+    expect(model.readingAt(0).whiteMs).toBeNull()
   })
 })

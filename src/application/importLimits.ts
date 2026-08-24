@@ -39,6 +39,11 @@ export function describeOversizeImport(file: ImportCandidate): string | null {
 /** Sizes a person can compare at a glance, not exact byte counts. */
 function formatBytes(bytes: number): string {
   const mb = bytes / (1024 * 1024)
+  // The smaller units are kept for the day the ceiling is lowered: both
+  // callers pass a figure at or above MAX_IMPORT_BYTES today, so nothing here
+  // can currently be under 128 MB — but a "0.0 MB" would read as a bug.
+  /* v8 ignore start -- unreachable while MAX_IMPORT_BYTES is 128 MB */
   if (mb < 1) return `${Math.max(1, Math.round(bytes / 1024))} KB`
   return mb < 10 ? `${mb.toFixed(1)} MB` : `${Math.round(mb)} MB`
+  /* v8 ignore stop */
 }

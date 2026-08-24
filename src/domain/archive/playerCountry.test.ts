@@ -97,4 +97,9 @@ describe('federationOf', () => {
     expect(code('Nakamura, Hikaru')).toBe('US')
     expect(code('Caruana, Fabiano')).toBe('US')
   })
+
+  it('shows no flag for a player the list has never heard of', () => {
+    // Both lookups miss: the full "surname initial" key and the bare surname.
+    expect(federationOf('Zzyzx, Quintus')).toBeNull()
+  })
 })
