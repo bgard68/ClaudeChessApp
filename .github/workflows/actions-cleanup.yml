@@ -8,12 +8,19 @@ on:
     - cron: '17 6 * * 1'
   workflow_dispatch:
 
-permissions:
-  actions: write
+# The workflow token starts from nothing; the single write scope the API
+# calls need is granted on the job below, so any step added to this file
+# later starts unprivileged rather than inheriting deletion rights.
+permissions: {}
 
 jobs:
   cleanup:
     runs-on: ubuntu-latest
+    # Deleting runs one API call at a time over a weekly backlog is minutes of
+    # work; anything longer is a hung run burning the token's write scope.
+    timeout-minutes: 15
+    permissions:
+      actions: write
     steps:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:

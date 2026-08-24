@@ -14,12 +14,19 @@ on:
     - cron: '43 5 * * 1'
   workflow_dispatch:
 
-permissions:
-  actions: write
+# The workflow token starts from nothing; the one write scope the re-enable
+# API needs is granted on the job below, so a step added later starts
+# unprivileged rather than inheriting it.
+permissions: {}
 
 jobs:
   keepalive:
     runs-on: ubuntu-latest
+    # One HEAD request and three enable calls; a run that needs longer than
+    # this is stuck, not busy.
+    timeout-minutes: 5
+    permissions:
+      actions: write
     steps:
       # Through env, not interpolated into the script. `${{ }}` is substituted
       # before the shell ever sees the line, so a variable holding shell

@@ -9,11 +9,21 @@ on:
   schedule:
     - cron: '31 7 * * 1'
 
+# Read-only at the workflow level: only the analyze job below escalates, and
+# only to the one scope uploading its results requires.
+permissions:
+  contents: read
+
 jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
+    # A JavaScript/TypeScript analysis of this repository takes a few minutes;
+    # the cap stops a wedged run from holding the runner for hours.
+    timeout-minutes: 20
     permissions:
+      # security-events: write is what uploads the SARIF results — CodeQL
+      # cannot report findings without it, so this is the floor, not a widen.
       security-events: write
       contents: read
       actions: read

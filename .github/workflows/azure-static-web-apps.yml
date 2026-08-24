@@ -24,6 +24,10 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    # The same gate ci.yml runs, plus the upload. The cap turns a hung browser
+    # check or a stalled deploy into a failed run rather than a runner held —
+    # with the deploy token in its environment — until the platform limit.
+    timeout-minutes: 30
     # Names where this publishes, so the deploy shows up as one and the token
     # can later be scoped to the environment rather than the whole repository.
     # Repository secrets still resolve, so this changes nothing on its own.

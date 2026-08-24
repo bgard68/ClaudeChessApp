@@ -17,6 +17,11 @@ permissions:
 jobs:
   gate:
     runs-on: ubuntu-latest
+    # The full gate — install, typecheck, tests with coverage, build, browser
+    # checks, gitleaks over the whole history — runs well inside this; the cap
+    # exists so a hung browser or stalled download fails the run instead of
+    # holding a runner until the platform's six-hour limit.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
