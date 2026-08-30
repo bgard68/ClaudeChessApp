@@ -53,6 +53,30 @@ async function waitForServer(timeoutMs) {
 }
 
 /**
+ * Wait for the two things that still move a measurement after the DOM is ready:
+ * a webfont swapping in, and the paint that follows it.
+ *
+ * A fixed sleep guesses at both. When the guess is short the fallback font is
+ * still in place, its metrics differ from the real one, and a `font-size` read
+ * at that instant can sit under the 12px floor this script enforces — reported
+ * as a layout regression on one viewport, on one screen, intermittently. That
+ * is a hard failure to read, because nothing about it points at timing.
+ *
+ * `document.fonts.ready` is the actual condition, so wait on it rather than
+ * around it. The two frames after it let the swap paint before anything is
+ * measured. The original sleeps are kept as a floor for CSS transitions, which
+ * this does not cover.
+ */
+async function settle(page) {
+  await page.evaluate(async () => {
+    await document.fonts.ready
+  })
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  )
+}
+
+/**
  * The three widths the stylesheets actually branch on: a desktop with both
  * rails, the 861px boundary where the rail becomes a bottom bar, and a phone.
  * The short desktop is here because height is what the setup screen runs out
@@ -228,6 +252,7 @@ try {
         for (const selector of screen.requires) {
           await page.waitForSelector(selector, { timeout: 20_000 }).catch(() => {})
         }
+        await settle(page)
         await page.waitForTimeout(400)
       }
 
@@ -286,6 +311,7 @@ try {
       if (screen.name === 'Play' && viewport.width <= 620) {
         await page.locator('.setup__actions .button--primary').click()
         await page.waitForSelector('.phase46-mobile-game-head .clock-panel', { timeout: 20_000 })
+        await settle(page)
         await page.waitForTimeout(250)
 
         const active = await page.evaluate(() => {
