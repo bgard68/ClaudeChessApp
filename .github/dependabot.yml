@@ -27,6 +27,15 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
+      # The one exception to leaving majors ungrouped. codeql-action/init and
+      # /analyze share a config file and refuse to run at different versions
+      # ("Loaded a configuration file for version X, but running version Y"),
+      # so a split pair fails whichever half arrives and neither can merge on
+      # its own - at any semver level. Hence no update-types filter here, and
+      # it must precede minor-and-patch because groups match in order.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
       minor-and-patch:
         update-types:
           - minor
