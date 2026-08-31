@@ -40,10 +40,10 @@
     "stockfish": "^18.0.8"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.2.5",
-    "@vitejs/plugin-react": "^6.1.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "axe-core": "^4.13.0",
     "playwright-core": "^1.62.0",
     "typescript": "^7.0.2",
