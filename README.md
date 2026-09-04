@@ -1,7 +1,7 @@
 # Chess
 
 A browser chess app: play a friend on one device or Stockfish locally, with or
-without a clock, replay 2,987 World Championship games on the board, and keep
+without a clock, replay 2,969 World Championship games on the board, and keep
 your own games in a local library.
 
 No backend. Everything — rules, engine, clocks, and the SQLite game library —
@@ -79,10 +79,10 @@ are already present — a clone needs no network. `FORCE=1` refetches and rebuil
   and in the actions row while you play — deliberately not automatic, so the
   library stays free of three-move abandonments. They land under **My games**,
   which is the only place they can be deleted from.
-- **Two libraries, kept apart.** **Titles** is the 2,987 bundled championship
-  games — read-only, there to search and replay. **My games** is what you
-  played or imported. They are separate because the rules are: only your games
-  can be deleted, exported, or added to.
+- **Two libraries, kept apart.** **Titles** is the 2,987 bundled games — 2,969
+  championship plus the 18 famous — read-only, there to search and replay.
+  **My games** is what you played or imported. They are separate because the
+  rules are: only your games can be deleted, exported, or added to.
 - **Import and export PGN** from **My games**. Import reads anything a
   chess program writes, up to 128 MB, and rejects games it already holds. Export
   writes the games you played or imported to a file — the only thing that
@@ -148,8 +148,8 @@ games) and `optional-elite-tournaments.pgn` (20,225).
 Worth reading before trusting anything the app displays.
 
 - **Replay clocks are simulated — for historical games.** Per-move clock times
-  were never recorded for them: of the 2,987 championship games, **zero** carry
-  `[%clk]` annotations. The replay clock estimates those by spending each
+  were never recorded for them: of the 2,987 bundled historical games, **zero**
+  carry `[%clk]` annotations. The replay clock estimates those by spending each
   stage's budget at an even pace, and labels itself "Simulated" wherever it
   appears. Games *you* play are different — the app records the clock with each
   move and writes it as `[%clk]`, so your own games replay with genuine times
@@ -337,7 +337,7 @@ Current state, confirmed by `npm run audit-library`:
 
 | | |
 | --- | --- |
-| Games | 2,987 across 3 non-overlapping files |
+| Games | 2,987 across 3 non-overlapping files — 2,969 championship, 18 famous |
 | Coverage | 1886 to 2024 — every title match |
 | Unplayable | 0 — every one replayed, 256,826 half-moves |
 | Duplicates | 0 identical, 0 truncated |
