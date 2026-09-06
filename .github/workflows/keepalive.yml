@@ -20,6 +20,7 @@ permissions:
 jobs:
   keepalive:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       # Through env, not interpolated into the script. `${{ }}` is substituted
       # before the shell ever sees the line, so a variable holding shell

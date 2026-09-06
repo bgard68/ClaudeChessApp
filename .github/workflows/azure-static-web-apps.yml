@@ -24,6 +24,7 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # Names where this publishes, so the deploy shows up as one and the token
     # can later be scoped to the environment rather than the whole repository.
     # Repository secrets still resolve, so this changes nothing on its own.
