@@ -123,16 +123,37 @@ describe('parseTimeControlTag', () => {
   // The real forms these tags take, kept together so a stricter parser has to
   // stay compatible with the archive rather than merely with the spec.
   it.each([
-    ['a blitz control', '300+3'],
-    ['a rapid control', '600'],
-    ['a classical two-stage control', '40/7200:1800'],
-    ['the FIDE standard with increments in both stages', '40/9000+30:1800+30'],
-    ['a three-stage adjournment control', '40/7200:20/3600:900'],
-  ])('parseTimeControlTag_%s_IsStillAccepted', (_case, tag) => {
+    ['a blitz control', '300+3', [{ movesToComplete: null, addedMs: 300_000, incrementMs: 3_000 }]],
+    ['a rapid control', '600', [{ movesToComplete: null, addedMs: 600_000, incrementMs: 0 }]],
+    [
+      'a classical two-stage control',
+      '40/7200:1800',
+      [
+        { movesToComplete: 40, addedMs: 7_200_000, incrementMs: 0 },
+        { movesToComplete: null, addedMs: 1_800_000, incrementMs: 0 },
+      ],
+    ],
+    [
+      'the FIDE standard with increments in both stages',
+      '40/9000+30:1800+30',
+      [
+        { movesToComplete: 40, addedMs: 9_000_000, incrementMs: 30_000 },
+        { movesToComplete: null, addedMs: 1_800_000, incrementMs: 30_000 },
+      ],
+    ],
+    [
+      'a three-stage adjournment control',
+      '40/7200:20/3600:900',
+      [
+        { movesToComplete: 40, addedMs: 7_200_000, incrementMs: 0 },
+        { movesToComplete: 20, addedMs: 3_600_000, incrementMs: 0 },
+        { movesToComplete: null, addedMs: 900_000, incrementMs: 0 },
+      ],
+    ],
+  ])('parseTimeControlTag_%s_IsStillAcceptedInFull', (_case, tag, stages) => {
     const control = parseTimeControlTag(tag)
 
-    expect(control).not.toBeNull()
-    expect(control?.kind).toBe('staged')
+    expect(control).toEqual({ kind: 'staged', stages })
   })
 })
 
