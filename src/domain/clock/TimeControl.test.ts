@@ -9,24 +9,29 @@ import {
   totalBudgetMs,
 } from './TimeControl'
 
+/*
+ * Asserted whole rather than field by field. The narrowing `if (kind !==
+ * 'staged') throw` these needed to reach `.stages` is gone with it, and so is
+ * the gap it left: a control that grew a third stage, or an unexpected extra
+ * field, satisfied every individual check while being the wrong control.
+ */
 describe('suddenDeath', () => {
   it('grants the whole budget in one stage that never ends', () => {
     const control = suddenDeath(10)
-    expect(control).toMatchObject({ kind: 'staged' })
-    if (control.kind !== 'staged') throw new Error('unreachable')
 
-    expect(control.stages).toHaveLength(1)
-    expect(control.stages[0]).toEqual({
-      movesToComplete: null,
-      addedMs: 10 * MS_PER_MINUTE,
-      incrementMs: 0,
+    expect(control).toEqual({
+      kind: 'staged',
+      stages: [{ movesToComplete: null, addedMs: 10 * MS_PER_MINUTE, incrementMs: 0 }],
     })
   })
 
   it('takes an increment in seconds', () => {
     const control = suddenDeath(3, 2)
-    if (control.kind !== 'staged') throw new Error('unreachable')
-    expect(control.stages[0]?.incrementMs).toBe(2_000)
+
+    expect(control).toEqual({
+      kind: 'staged',
+      stages: [{ movesToComplete: null, addedMs: 3 * MS_PER_MINUTE, incrementMs: 2_000 }],
+    })
   })
 })
 
@@ -34,20 +39,27 @@ describe('classical', () => {
   // A move quota first, then a smaller budget for however long the game runs.
   it('grants a quota stage and then an open one', () => {
     const control = classical(40, 120, 60)
-    if (control.kind !== 'staged') throw new Error('unreachable')
 
-    expect(control.stages).toHaveLength(2)
-    expect(control.stages[0]?.movesToComplete).toBe(40)
-    expect(control.stages[0]?.addedMs).toBe(120 * MS_PER_MINUTE)
-    // The second stage has no quota: it runs to the end of the game.
-    expect(control.stages[1]?.movesToComplete).toBeNull()
-    expect(control.stages[1]?.addedMs).toBe(60 * MS_PER_MINUTE)
+    expect(control).toEqual({
+      kind: 'staged',
+      stages: [
+        { movesToComplete: 40, addedMs: 120 * MS_PER_MINUTE, incrementMs: 0 },
+        // The second stage has no quota: it runs to the end of the game.
+        { movesToComplete: null, addedMs: 60 * MS_PER_MINUTE, incrementMs: 0 },
+      ],
+    })
   })
 
   it('applies one increment to both stages', () => {
     const control = classical(40, 90, 30, 30)
-    if (control.kind !== 'staged') throw new Error('unreachable')
-    expect(control.stages.map((stage) => stage.incrementMs)).toEqual([30_000, 30_000])
+
+    expect(control).toEqual({
+      kind: 'staged',
+      stages: [
+        { movesToComplete: 40, addedMs: 90 * MS_PER_MINUTE, incrementMs: 30_000 },
+        { movesToComplete: null, addedMs: 30 * MS_PER_MINUTE, incrementMs: 30_000 },
+      ],
+    })
   })
 })
 
@@ -107,18 +119,56 @@ describe('describeTimeControl', () => {
 describe('TIME_CONTROL_PRESETS', () => {
   // The label is what a player picks by, and a label that disagrees with the
   // control it selects is the one bug this table can have.
-  it('labels every preset consistently with the control it holds', () => {
-    for (const preset of TIME_CONTROL_PRESETS) {
-      if (preset.control.kind === 'unlimited') {
-        expect(preset.label).toBe('No clock')
-        continue
-      }
-      const [stage] = preset.control.stages
-      const minutes = (stage?.addedMs ?? 0) / MS_PER_MINUTE
-      const increment = (stage?.incrementMs ?? 0) / 1_000
-      // Labels read "10 min" with no increment and "3 | 2" with one.
-      expect(preset.label).toBe(increment > 0 ? `${minutes} | ${increment}` : `${minutes} min`)
-    }
+  /*
+   * Spelled out as a table rather than recomputed from the control inside a
+   * loop. Deriving the expected label from the same data it is checked against
+   * only proves the derivation is self-consistent; these are the strings a
+   * player actually reads, so they are written down.
+   */
+  it.each([
+    ['unlimited', 'No clock'],
+    ['1+0', '1 min'],
+    ['2+1', '2 | 1'],
+    ['3+0', '3 min'],
+    ['3+2', '3 | 2'],
+    ['5+3', '5 | 3'],
+    ['10+0', '10 min'],
+    ['15+10', '15 | 10'],
+    ['30+0', '30 min'],
+    ['90+30', '90 | 30'],
+  ])('labels the %s preset "%s"', (id, label) => {
+    const preset = TIME_CONTROL_PRESETS.find((candidate) => candidate.id === id)
+
+    expect(preset?.label).toBe(label)
+  })
+
+  // The table above is only as good as its coverage of the list.
+  it('names every preset the list offers', () => {
+    expect(TIME_CONTROL_PRESETS.map((preset) => preset.id)).toEqual([
+      'unlimited',
+      '1+0',
+      '2+1',
+      '3+0',
+      '3+2',
+      '5+3',
+      '10+0',
+      '15+10',
+      '30+0',
+      '90+30',
+    ])
+  })
+
+  it.each([
+    ['1+0', 1 * MS_PER_MINUTE, 0],
+    ['3+2', 3 * MS_PER_MINUTE, 2_000],
+    ['90+30', 90 * MS_PER_MINUTE, 30_000],
+  ])('gives the %s preset the budget its label promises', (id, addedMs, incrementMs) => {
+    const preset = TIME_CONTROL_PRESETS.find((candidate) => candidate.id === id)
+
+    expect(preset?.control).toEqual({
+      kind: 'staged',
+      stages: [{ movesToComplete: null, addedMs, incrementMs }],
+    })
   })
 
   it('gives every preset a distinct id', () => {

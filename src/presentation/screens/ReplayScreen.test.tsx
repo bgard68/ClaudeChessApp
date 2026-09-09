@@ -103,17 +103,14 @@ describe('ReplayScreen', () => {
       expect(render({ isPlaying: true })).toContain('aria-label="Pause replay"')
     })
 
-    it('gives every step control a label a screen reader can announce', () => {
-      const markup = render()
-      for (const label of [
-        'First position',
-        'Previous move',
-        'Next move',
-        'Final position',
-      ]) {
+    it.each(['First position', 'Previous move', 'Next move', 'Final position'])(
+      'gives the %s control a label a screen reader can announce',
+      (label) => {
+        const markup = render()
+
         expect(markup).toContain(`aria-label="${label}"`)
-      }
-    })
+      },
+    )
 
     it('scrubs across the whole game and no further', () => {
       const markup = render({ ply: 2, totalPlies: 3 })

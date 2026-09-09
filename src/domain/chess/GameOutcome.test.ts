@@ -25,16 +25,14 @@ describe('toResultTag', () => {
     expect(toResultTag(decisive('black', 'checkmate'))).toBe('0-1')
   })
 
-  it('writes every draw the same way, whatever caused it', () => {
-    for (const reason of [
-      'stalemate',
-      'insufficient_material',
-      'threefold_repetition',
-      'fifty_move_rule',
-      'agreement',
-    ] as const) {
-      expect(toResultTag(drawn(reason))).toBe('1/2-1/2')
-    }
+  it.each([
+    'stalemate',
+    'insufficient_material',
+    'threefold_repetition',
+    'fifty_move_rule',
+    'agreement',
+  ] as const)('writes a draw by %s the same way as any other', (reason) => {
+    expect(toResultTag(drawn(reason))).toBe('1/2-1/2')
   })
 
   // "*" is PGN's own marker for a game without a result, which is exactly

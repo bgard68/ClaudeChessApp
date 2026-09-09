@@ -61,18 +61,13 @@ describe('PuzzleGenerator', () => {
     expect(puzzle.mateIn).toBe(1)
     expect(puzzle.mateOnMove).toBe(4)
 
-    // The offered position really is the one before Qxf7#.
-    let position = rules.initialPosition()
-    for (const san of ['e4', 'e5']) {
-      position = rules.play(
-        position,
-        rules.legalMoves(position).find((move) => move.san === san)!,
-      )!.position
-    }
-    for (const intent of SCHOLARS_FINISH.slice(0, 4)) {
-      position = rules.play(position, intent)!.position
-    }
-    expect(puzzle.fen).toBe(position.fen)
+    /*
+     * The offered position really is the one before Qxf7#, written out rather
+     * than replayed. Recomputing it here ran the same rules engine the
+     * generator uses, through the same move list, so the two agreed by
+     * construction — a transposition in either would have cancelled out.
+     */
+    expect(puzzle.fen).toBe('r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4')
 
     expect(progress).toEqual([3, 4, 5, 6, 7])
     expect(engine.disposed).toBe(true)

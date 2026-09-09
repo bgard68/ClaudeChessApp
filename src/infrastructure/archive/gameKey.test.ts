@@ -120,9 +120,12 @@ describe('gameKey, across both implementations', () => {
     expect(gameKey(GAMES[0]!.pgn)).not.toBe(gameKey(GAMES[5]!.pgn))
   })
 
-  it('produces a 16-character hex digest', () => {
-    for (const { pgn } of GAMES) expect(gameKey(pgn)).toMatch(/^[0-9a-f]{16}$/)
-  })
+  it.each(GAMES.map((game, index) => [index, game.pgn] as const))(
+    'produces a 16-character hex digest for game %i',
+    (_index, pgn) => {
+      expect(gameKey(pgn)).toMatch(/^[0-9a-f]{16}$/)
+    },
+  )
 })
 
 describe('the helpers the scripts share', () => {

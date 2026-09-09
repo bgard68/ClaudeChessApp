@@ -10,11 +10,22 @@ const MB = 1024 * 1024
 const file = (name: string, size: number): ImportCandidate => ({ name, size })
 
 describe('describeOversizeImport', () => {
-  it('rejects a file over the limit', () => {
+  /*
+   * The whole message, not just that one exists: this is the only thing the
+   * user sees when an import is refused, and "not null" would pass for an
+   * empty string as readily as for a sentence that explains itself.
+   *
+   * Both figures read "128 MB" one byte over the limit, because the size is
+   * rounded for people rather than reported exactly. Worth knowing about; it
+   * is the boundary case, not the one anybody actually hits.
+   */
+  it('rejects a file one byte over the limit, and explains why', () => {
     const message = describeOversizeImport(file('huge.pgn', MAX_IMPORT_BYTES + 1))
 
-    expect(message).not.toBeNull()
-    expect(message).toContain('huge.pgn')
+    expect(message).toBe(
+      'huge.pgn is 128 MB, and the most that can be imported at once is 128 MB. ' +
+        'Split it into smaller files and import them one at a time.',
+    )
   })
 
   it('accepts a file at exactly the limit', () => {
