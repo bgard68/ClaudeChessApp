@@ -354,6 +354,54 @@ nothing.
 
 **When a merge adds test files, watch the file count, not just the pass count.**
 
+### House rules for unit tests
+
+Five rules, each of which exists because the suite once broke it and stayed
+green. The bugs behind them are in
+[LESSONS-LEARNED.md](LESSONS-LEARNED.md#from-the-test-suite).
+
+**No conditional in a test body.** A `for` with an `if` inside passes when the
+filter matches nothing, and reports the same green as a test that asserted
+something. Partition the data at module scope, drive `it.each` from each half,
+and add one test asserting the halves are non-empty and account for everything.
+
+```ts
+// Not this — silently passes if no level is 'rated' any more.
+for (const level of LEVELS) {
+  if (level.strength.kind === 'rated') expect(level.strength.elo).toBeGreaterThan(0)
+}
+
+// This. An empty table is a failure, not a silence.
+const RATED = LEVELS.flatMap((l) => (l.strength.kind === 'rated' ? [[l.id, l.strength.elo]] : []))
+it('has levels of both kinds', () => expect(RATED.length).toBeGreaterThan(0))
+it.each(RATED)('rates %s at or above the floor', (_id, elo) => expect(elo).toBeGreaterThan(0))
+```
+
+A narrowing guard in a *helper* is fine — `if (game === null) throw` at the top
+of a fixture builder gives a better failure than a crash. The rule is about
+branches that decide which assertions run.
+
+**Assert the whole value.** `toEqual` on the object beats a field at a time: it
+catches a stage that appeared, a field that vanished, and a shape that changed.
+Asserting piecemeal also tends to need a type narrowing that the whole-object
+form does not.
+
+**`not.toBeNull()` is a type guard, not an assertion.** It is fine before a
+block of real assertions. Where it is the last thing said about a value, name
+what the value should be — "there is an assumed time control" is satisfied by
+a blitz clock assumed for a 1927 adjournment game.
+
+**Never compute the expectation with the code under test.** A test that replays
+moves through the same rules engine to derive the FEN it compares against is
+measuring self-consistency. Write the literal down.
+
+**Probe before asserting, then mutate to check.** For an untested module, run
+the real behaviour and read what it does before writing expectations — several
+"obvious" ones here were wrong, including a `classical()` control that applies
+its increment to both stages. Then break the source deliberately and confirm the
+test fails. Cheap, and it is the only thing that finds an assertion which cannot
+fail.
+
 ---
 
 ## See also

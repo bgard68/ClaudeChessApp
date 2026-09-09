@@ -393,10 +393,152 @@ promotion chooser, which needs a game to reach a seventh-rank pawn.
 
 ---
 
+# From the test suite
+
+These came out of a test-quality pass on 2026-09-09 — reading the existing 498
+tests against a standard rather than chasing a failure. Everything was green
+before it started and green after; what changed is what the suite is capable of
+noticing. The house rules they produced are in
+[TESTING.md](TESTING.md#house-rules-for-unit-tests).
+
+## A test that asserts nothing, and passes
+
+`Difficulty.test.ts` had four tests shaped like this:
+
+```ts
+it('never asks the engine for a rating below its floor', () => {
+  for (const level of DIFFICULTY_LEVELS) {
+    if (level.configuration.strength.kind === 'rated') {
+      expect(level.configuration.strength.elo).toBeGreaterThanOrEqual(MINIMUM_RATED_ELO)
+    }
+  }
+})
+```
+
+Read it and it looks thorough. It iterates the real list, it filters to the
+relevant case, it asserts the invariant. **It also passes when the filter matches
+nothing** — and a test that runs zero assertions reports exactly the same green
+as one that runs five.
+
+That is not hypothetical. Mutating every level in `Difficulty.ts` from
+`kind: 'rated'` to `kind: 'full'` — a change that breaks the rating floor, the
+displayed rating, and the depth caps together — left this test *passing*, on its
+own, with one test and zero assertions executed. The replacement table form
+fails six.
+
+The fix is not "add a length check" but to stop filtering inside the test body.
+The list is partitioned once at module scope, each half becomes an `it.each`
+table, and one guard asserts both halves are non-empty and together account for
+every level. An empty table is then a failure rather than a silence.
+
+The wrong explanation that looks right: "it loops over the real data, so it
+covers the real cases." A loop covers the cases the data *currently* contains.
+The `if` is where the coverage quietly went.
+
+**A conditional inside a test body is a coverage hole with a green light on it.**
+Partition the data outside the test and assert the partition is not empty.
+
+**The trap that hid it:** it is invisible in a passing run, invisible in review,
+and invisible in the pass count. Only mutating the source shows it — which is
+why it survived a suite that was otherwise carefully written.
+
+## Assertions that survive the bug they exist to catch
+
+Three of the same family, all found by asking "if I broke this deliberately,
+would the assertion fail?"
+
+`AppIcon.test.tsx` looped 26 icons asserting each rendered `<svg`,
+`aria-hidden` and `stroke="currentColor"`. Every one of those stays true if two
+names render *the same glyph* — a duplicated `case` in the switch, which is easy
+to introduce and invisible on review. Making `arrow-left` return the `check`
+path passed the old test cleanly. The suite now compares the 26 rendered glyphs
+against each other.
+
+`ReplayClockModel.test.ts` asserted `expect(model.assumedControl).not.toBeNull()`
+under the name "falls back to a simulation, and says so". A model that assumed a
+five-minute blitz clock for a 1972 World Championship game satisfies that
+perfectly. It now asserts the control it actually assumed.
+
+`ReplaySession.test.ts` asserted `expect(session.state.clock).not.toBeUndefined()`
+under "gives a reading for every position", checking one position. A clock frozen
+at the starting budget passes. It now reads the numbers at three positions and
+checks the right player was charged at each.
+
+**`not.toBeNull()` is a type guard, not an assertion.** Where it is the only
+thing standing between a test and the bug, assert the value.
+
+## The splitter decided on a bracket, and PGN has two kinds
+
+`splitPgnGames` ended a game wherever a line started with `[`, on the reasoning
+that a tag section is where the next game begins. But movetext lines also start
+with `[`: `[%clk 0:01:00]` is an annotation, and broadcast PGN wrapped at a fixed
+column puts one at the start of a line routinely.
+
+The result was a game torn in half on import, with the second fragment carrying
+no tags, no players and no result — and nothing anywhere saying so. The library
+simply gained a row that should not exist.
+
+Found by writing edge cases for a module that had no tests of its own, and
+probing what the code *actually did* with each one rather than what its comment
+said it should. Fixed by matching the format's grammar instead of one character:
+
+```ts
+const TAG_PAIR_LINE = /^\s*\[[A-Za-z0-9_]+\s+"/
+```
+
+**When a parser makes a structural decision, match the grammar, not a prefix
+character.** The bundled collections never triggered it, so the corpus test that
+sweeps 2,987 real games had nothing to say — the shipped data is clean, and the
+bug lives on the import path.
+
+## A clock read as a move number
+
+`summarise` counts moves by taking the highest move number in the movetext,
+deliberately — it indexes thousands of games without a rules engine, and its own
+comment calls it "close enough for a list column".
+
+The approximation was fine. What was not fine is that it scanned comments too. A
+sub-second clock reads as digits followed by a period:
+
+```
+1. e4 {[%clk 0:00:59.9]} e5 *   →   moveCount 59   (true: 1)
+```
+
+That is the shape Lichess and other broadcast sites export, so any imported
+broadcast game reached the archive list claiming a wildly inflated length.
+
+Two things are worth separating here. The first is the fix: strip `{...}` before
+counting. The second is why nobody saw it — **the bundled collections carry no
+clock comments at all**, so every fixture, every corpus sweep and every existing
+test used data that could not express the bug. Measuring it confirmed the shape
+of the blind spot: 0 of 272 sampled shipped games disagree with their true move
+count, and the corpus contains zero `TimeControl` tags.
+
+**Fixtures drawn from what ships cannot test what users import.** Where a code
+path exists to consume foreign data, at least one test has to use data shaped
+like the foreign data.
+
+## A test that recomputes the answer with the code under test
+
+`PuzzleGenerator.test.ts` checked the offered puzzle position by replaying the
+moves itself — through the same `ChessJsRules` instance the generator uses, over
+the same move list — and comparing FENs.
+
+Two computations that share an engine and an input agree by construction. A
+transposition in the rules would have moved both sides of the comparison
+together. The expected FEN is now written down as a literal.
+
+**A test that derives its expectation from production code is measuring
+self-consistency, not correctness.** Write the expected value down, even when
+that means pasting a 56-character FEN.
+
+---
+
 # From the build and the repository
 
-These came out of a security pass on 2026-07-30. The controls they produced are
-described in [SUPPLY-CHAIN.md](SUPPLY-CHAIN.md); what they *taught* is here.
+These came out of a security pass on 2026-07-30, and a dependency pass on
+2026-09-09. The controls they produced are described in
+[SUPPLY-CHAIN.md](SUPPLY-CHAIN.md); what they *taught* is here.
 
 ## npm prunes the lock file to one platform
 
@@ -536,3 +678,101 @@ it arrives, so by the time you could hash it the binary is already root-owned on
 
 Download, verify, then extract — in that order. The shape matters more than the
 specific tool; any `curl | sh` has the same property.
+
+## A clean working tree is not a current one
+
+`git status` reported clean, `git log` showed a coherent recent history, and
+work began from it. The branch was seventeen commits behind `origin/main`,
+which had moved on through a batch of Dependabot merges while this checkout sat
+untouched.
+
+Nothing about the local state said so. A stale checkout and a current one are
+identical to look at: both clean, both with a plausible log, both passing their
+own tests. The tell only appears on push, and by then the work is done.
+
+What it cost here was an entire dependency repair. `npm audit` reported three
+advisories, they were real *in that checkout*, and clearing them took the
+detour recorded below — the Arborist crash, the deleted lock, the recovery from
+backup. `origin/main` had fixed both packages days earlier, in
+`fix(deps): take the nanoid patch that is failing the audit gate (#44)` and a
+Dependabot bump. The commit that came out of it was not merely redundant: it
+would have *downgraded* vite 8.2.2 to 8.1.5, taking main backwards to make a
+solved problem look solved.
+
+The wrong explanation that looks right: "the tree is clean, so I am on a good
+base." Clean describes the diff against your own HEAD. It says nothing about
+where HEAD is.
+
+**Fetch before branching, not before pushing.** `git fetch && git status` costs
+a second and is the only thing that distinguishes the two states. Where a
+report drives the work — an audit, a coverage number, a failing test — confirm
+it against the base you are about to build on rather than the one you happen to
+have.
+
+## npm cannot rebuild this lock from scratch
+
+The advisories behind this were already fixed upstream — see above — but the
+npm behaviour found while chasing them is real and will be met again by anyone
+changing a dependency here.
+
+Clearing them should have been `npm audit fix`. It was not. Every route that
+makes npm resolve this tree cold dies the same way:
+
+```
+npm error Cannot read properties of null (reading 'edgesOut')
+    at #loadPeerSet (@npmcli/arborist/lib/arborist/build-ideal-tree.js:1314)
+```
+
+The unfinished timer names the culprit — `idealTree:node_modules/vitest` —
+and vitest declares a large optional peer set. `npm audit fix`, `npm update`
+and a from-scratch `npm install --package-lock-only` all crash. npm 10, 11 and
+12 all crash. What survives is the narrow case where an existing lock is present
+and only named packages move:
+
+```bash
+npm update <package> --package-lock-only    # node_modules moved aside first
+```
+
+The mistake worth not repeating: partway through, the lock was deleted to force
+a clean regenerate — and npm then could not rebuild it. It came back from a
+backup taken minutes earlier, byte-identical, but that was luck standing in for
+method. **Test a destructive recovery on a copy before running it on the
+original**, particularly when the thing being repaired is what the deploy
+installs from.
+
+Because this is exactly the situation [npm prunes the lock file to one
+platform](#npm-prunes-the-lock-file-to-one-platform) warns about, the signature
+was measured before and after rather than assumed. The total package count
+drifts as dependencies come and go, so the number to record is not the total but
+the spread: **every platform family present in all three of linux, win32 and
+darwin — currently 20 Linux, 6 win32, 7 darwin.** A repair that ends with those
+gone has produced a Windows-only lock, and the deploy fails on the runner:
+
+```bash
+node -e "const p=require('./package-lock.json').packages,o={};
+  for(const n of Object.keys(p)) for(const s of (p[n].os||[])) o[s]=(o[s]||0)+1;
+  console.log(o)"
+```
+
+### npm 12 blocks install scripts by default
+
+Upgrading to npm 12 surfaced a warning rather than a failure: `stockfish`'s
+postinstall was skipped. Harmless here — it only symlinks `stockfish.js` and
+`stockfish.wasm`, and `copy-engine.mjs` reads the versioned
+`stockfish-18-lite-single` files directly — but that was confirmed with a real
+`npm run build`, not assumed. A future dependency that genuinely needs its
+postinstall will fail quietly until someone reads the warning.
+
+### What was nearly concluded, and was wrong
+
+npm 12 reported "audited 73 packages, found 0 vulnerabilities" where npm 11 had
+reported the full tree and three advisories. The obvious reading — npm 12
+narrowed its audit scope and stopped checking dev dependencies — was wrong, and
+would have produced a pointless `--include=dev` in the verify gate. npm 12
+audits everything (`prod:13, dev:103, optional:52`). It reported zero because it
+had just *fixed* them, and the smaller figure was the tree it built for that one
+operation rather than an audit scope.
+
+**Two numbers changing at once is not evidence about either one.** The check
+that settled it was asking npm directly for its dependency breakdown, which took
+one command and replaced a plausible story with a fact.
