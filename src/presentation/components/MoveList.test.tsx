@@ -5,13 +5,13 @@ import { MoveList } from './MoveList'
 const SCHOLARS = ['e4', 'e5', 'Bc4', 'Nc6', 'Qh5', 'Nf6', 'Qxf7#']
 
 describe('MoveList', () => {
-  it('says so rather than showing an empty list before the first move', () => {
+  it('MoveList_BeforeTheFirstMove_SaysSoRatherThanShowingAnEmptyList', () => {
     const markup = renderToStaticMarkup(<MoveList sanMoves={[]} />)
     expect(markup).toContain('No moves yet.')
     expect(markup).not.toContain('<ol')
   })
 
-  it('pairs the moves under one number each', () => {
+  it('MoveList_PairedMoves_ShareOneNumberEach', () => {
     const markup = renderToStaticMarkup(<MoveList sanMoves={SCHOLARS} />)
     // Four rows for seven half-moves: the last one is White's alone.
     expect(markup.match(/move-list__row/g)).toHaveLength(4)
@@ -22,12 +22,12 @@ describe('MoveList', () => {
 
   // The row still needs its second cell, or the column collapses and the
   // board's last move sits under the wrong heading.
-  it('leaves a gap where Black has not replied', () => {
+  it('MoveList_BlackHasNotReplied_LeavesAGap', () => {
     const markup = renderToStaticMarkup(<MoveList sanMoves={SCHOLARS} />)
     expect(markup).toContain('<span class="move-list__cell"></span>')
   })
 
-  it('marks exactly one move as the one on the board', () => {
+  it('MoveList_CurrentPosition_MarksExactlyOneMove', () => {
     const markup = renderToStaticMarkup(<MoveList sanMoves={SCHOLARS} currentPly={3} />)
     expect(markup.match(/move-list__cell--current/g)).toHaveLength(1)
     // Ply 3 is White's second move — Bc4 in this line.
@@ -36,7 +36,7 @@ describe('MoveList', () => {
   })
 
   // Ply 0 is the starting position: a real value, and not a move to highlight.
-  it('highlights nothing at the starting position', () => {
+  it('MoveList_StartingPosition_HighlightsNothing', () => {
     const markup = renderToStaticMarkup(<MoveList sanMoves={SCHOLARS} currentPly={0} />)
     expect(markup).not.toContain('move-list__cell--current')
   })
@@ -44,12 +44,12 @@ describe('MoveList', () => {
   // Live play shows the moves; only replay lets you jump between them. Without
   // a handler every cell is disabled, so the list cannot imply an action it
   // will not perform.
-  it('disables every move when there is nowhere to jump to', () => {
+  it('MoveList_NoJumpHandler_DisablesEveryMove', () => {
     const markup = renderToStaticMarkup(<MoveList sanMoves={SCHOLARS} />)
     expect(markup.match(/disabled=""/g)).toHaveLength(SCHOLARS.length)
   })
 
-  it('enables them once a handler is given', () => {
+  it('MoveList_JumpHandlerGiven_EnablesTheMoves', () => {
     const markup = renderToStaticMarkup(
       <MoveList sanMoves={SCHOLARS} currentPly={1} onSelectPly={vi.fn()} />,
     )

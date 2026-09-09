@@ -35,7 +35,7 @@ afterEach(() => {
 })
 
 describe('todaysPuzzle', () => {
-  it('generates once and serves the stored copy afterwards', async () => {
+  it('dailyPuzzleFor_SameDayTwice_GeneratesOnceAndServesTheStoredCopy', async () => {
     const generate = vi.fn(() => Promise.resolve(GOOD))
 
     const first = await todaysPuzzle(DAY, generate, loadable)
@@ -46,7 +46,7 @@ describe('todaysPuzzle', () => {
     expect(generate).toHaveBeenCalledTimes(1)
   })
 
-  it('shares one generation between concurrent callers', async () => {
+  it('dailyPuzzleFor_ConcurrentCallers_ShareOneGeneration', async () => {
     let release: (puzzle: GeneratedPuzzle) => void = () => {}
     const generate = vi.fn(
       () => new Promise<GeneratedPuzzle>((resolve) => (release = resolve)),
@@ -62,7 +62,7 @@ describe('todaysPuzzle', () => {
     expect(generate).toHaveBeenCalledTimes(1)
   })
 
-  it('regenerates when a new day arrives', async () => {
+  it('dailyPuzzleFor_NewDay_Regenerates', async () => {
     const generate = vi.fn(() => Promise.resolve(GOOD))
 
     await todaysPuzzle(DAY, generate, loadable)
@@ -71,7 +71,7 @@ describe('todaysPuzzle', () => {
     expect(generate).toHaveBeenCalledTimes(2)
   })
 
-  it('discards a stored puzzle whose position cannot be loaded', async () => {
+  it('dailyPuzzleFor_StoredPositionUnloadable_DiscardsIt', async () => {
     // A record that passes every structural check and still cannot be played:
     // the shape is right, the FEN is not. Reached by a tampered or
     // half-written entry, or by any future change to what a puzzle records.
@@ -87,7 +87,7 @@ describe('todaysPuzzle', () => {
     expect(storage.raw()).toContain(GOOD.fen)
   })
 
-  it('survives storage that refuses to be read or written', async () => {
+  it('dailyPuzzleFor_StorageRefusesReadsAndWrites_Survives', async () => {
     vi.stubGlobal('localStorage', {
       getItem: () => {
         throw new Error('denied')

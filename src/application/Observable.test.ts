@@ -7,7 +7,7 @@ import { Observable } from './Observable'
  * and the dispatch-time mutation cases below are the ones that bite.
  */
 describe('Observable', () => {
-  it('gives every listener the value that was emitted', () => {
+  it('emit_TwoListeners_GivesBothTheEmittedValue', () => {
     const observable = new Observable<number>()
     const first = vi.fn()
     const second = vi.fn()
@@ -20,11 +20,11 @@ describe('Observable', () => {
     expect(second).toHaveBeenCalledWith(7)
   })
 
-  it('says nothing to nobody', () => {
+  it('emit_NoListeners_SaysNothingToNobody', () => {
     expect(() => new Observable<number>().emit(1)).not.toThrow()
   })
 
-  it('stops telling a listener once it unsubscribes', () => {
+  it('unsubscribe_ThenEmit_StopsTellingThatListener', () => {
     const observable = new Observable<number>()
     const listener = vi.fn()
     const unsubscribe = observable.subscribe(listener)
@@ -37,7 +37,7 @@ describe('Observable', () => {
     expect(listener).toHaveBeenCalledWith(1)
   })
 
-  it('is unbothered by unsubscribing twice', () => {
+  it('unsubscribe_CalledTwice_DoesNotThrow', () => {
     const observable = new Observable<number>()
     const unsubscribe = observable.subscribe(vi.fn())
     unsubscribe()
@@ -45,7 +45,7 @@ describe('Observable', () => {
   })
 
   // Listeners are held in a Set, so the same function twice is one listener.
-  it('holds one entry per listener, not one per subscribe call', () => {
+  it('subscribe_SameListenerTwice_HoldsOneEntryPerListener', () => {
     const observable = new Observable<number>()
     const listener = vi.fn()
     observable.subscribe(listener)
@@ -61,7 +61,7 @@ describe('Observable', () => {
    * state, the component unmounts, and the cleanup runs while the loop is
    * still going. Iterating the live Set there would skip the next listener.
    */
-  it('finishes the round even if a listener unsubscribes mid-dispatch', () => {
+  it('emit_ListenerUnsubscribesMidDispatch_StillFinishesTheRound', () => {
     const observable = new Observable<number>()
     const second = vi.fn()
 
@@ -73,7 +73,7 @@ describe('Observable', () => {
     expect(second).toHaveBeenCalledWith(1)
   })
 
-  it('does not deliver to a listener subscribed during the same dispatch', () => {
+  it('emit_ListenerSubscribedDuringDispatch_IsNotDeliveredThisRound', () => {
     const observable = new Observable<number>()
     const late = vi.fn()
     observable.subscribe(() => observable.subscribe(late))
@@ -86,7 +86,7 @@ describe('Observable', () => {
     expect(late).toHaveBeenCalledWith(2)
   })
 
-  it('drops everyone when cleared', () => {
+  it('clear_WithListeners_DropsEveryone', () => {
     const observable = new Observable<number>()
     const listener = vi.fn()
     observable.subscribe(listener)

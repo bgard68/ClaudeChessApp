@@ -8,7 +8,7 @@ import { foldName } from './foldName'
  * "Ljubojević" find the row filed under "ljubojevic".
  */
 describe('foldName', () => {
-  it('lower-cases, so spelling in capitals changes nothing', () => {
+  it('foldName_Capitals_LowerCasesSoSpellingChangesNothing', () => {
     expect(foldName('CARLSEN')).toBe('carlsen')
   })
 
@@ -21,7 +21,7 @@ describe('foldName', () => {
     ['cedilla', 'Françoise', 'francoise'],
     ['ring', 'Ångström', 'angstrom'],
     ['double acute', 'Erdős', 'erdos'],
-  ])('folds %s to the base letter', (_accent, name, expected) => {
+  ])('foldName_%s_FoldsToTheBaseLetter', (_accent, name, expected) => {
     expect(foldName(name)).toBe(expected)
   })
 
@@ -35,7 +35,7 @@ describe('foldName', () => {
     ['a stroked O', 'Bjørn', 'bjorn'],
     ['a stroked L', 'Łukasz', 'lukasz'],
     ['a dotless i', 'Işık', 'isik'],
-  ])('folds %s, which NFD cannot split', (_kind, name, expected) => {
+  ])('foldName_%s_FoldsWhatNFDCannotSplit', (_kind, name, expected) => {
     expect(foldName(name)).toBe(expected)
   })
 
@@ -44,7 +44,7 @@ describe('foldName', () => {
     ['Æther', 'aether'],
     ['Œuvre', 'oeuvre'],
     ['Straße', 'strasse'],
-  ])('expands the ligature in %s', (name, expected) => {
+  ])('foldName_%s_ExpandsTheLigature', (name, expected) => {
     expect(foldName(name)).toBe(expected)
   })
 
@@ -53,19 +53,19 @@ describe('foldName', () => {
    * letters; deciding what counts as punctuation is each caller's own job,
    * and they disagree — one keeps hyphens, the other does not.
    */
-  it('leaves the structure of the name alone', () => {
+  it('foldName_StructuredName_LeavesTheStructureAlone', () => {
     expect(foldName('Vachier-Lagrave, Maxime')).toBe('vachier-lagrave, maxime')
     expect(foldName('Fischer, Robert James')).toBe('fischer, robert james')
     expect(foldName("O'Kelly de Galway, Alberic")).toBe("o'kelly de galway, alberic")
   })
 
-  it('has nothing to do to a name already in ASCII', () => {
+  it('foldName_AsciiName_HasNothingToDo', () => {
     expect(foldName('carlsen, magnus')).toBe('carlsen, magnus')
     expect(foldName('')).toBe('')
   })
 
   // Folding twice must not change anything the first pass settled.
-  it('is stable when applied again', () => {
+  it('foldName_AppliedTwice_IsStable', () => {
     const once = foldName('Ljubojević, Ljubomir')
     expect(foldName(once)).toBe(once)
   })

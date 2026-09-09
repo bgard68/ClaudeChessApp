@@ -62,7 +62,7 @@ const configuration = (overrides: Partial<GameConfiguration>): GameConfiguration
 })
 
 describe('GameFactory', () => {
-  it('seats an engine on both sides of a computer-vs-computer game', async () => {
+  it('createLiveGame_EnginesMode_SeatsAnEngineOnBothSides', async () => {
     // Fool's mate, dealt to the seats it belongs to: the game only finishes if
     // each colour's moves really came from its own engine.
     const white = new ScriptedEngine([
@@ -91,7 +91,7 @@ describe('GameFactory', () => {
     game.dispose()
   })
 
-  it('names the engine seats by the colour they play', () => {
+  it('createLiveGame_EnginesMode_NamesSeatsByTheColourTheyPlay', () => {
     const factory = new GameFactory(
       servicesWithEngines([new ScriptedEngine(), new ScriptedEngine()]),
     )
@@ -103,7 +103,7 @@ describe('GameFactory', () => {
     game.dispose()
   })
 
-  it('still seats the person opposite the engine in an ordinary computer game', async () => {
+  it('createLiveGame_ComputerMode_SeatsThePersonOppositeTheEngine', async () => {
     const engine = new ScriptedEngine([{ from: 'e2', to: 'e4' }])
     const factory = new GameFactory(servicesWithEngines([engine]))
 

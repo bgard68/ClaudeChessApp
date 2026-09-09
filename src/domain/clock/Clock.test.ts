@@ -5,14 +5,14 @@ import { classical, suddenDeath, UNLIMITED } from './TimeControl'
 const MINUTE = 60_000
 
 describe('Clock', () => {
-  it('charges only the side on the move', () => {
+  it('advance_WhiteOnTheMove_ChargesOnlyWhite', () => {
     const clock = Clock.forControl(suddenDeath(5)).startTurn('white').advance(10_000)
 
     expect(clock.remainingMs('white')).toBe(5 * MINUTE - 10_000)
     expect(clock.remainingMs('black')).toBe(5 * MINUTE)
   })
 
-  it('adds the increment when a move is completed', () => {
+  it('completeMove_WithIncrement_AddsTheIncrement', () => {
     const clock = Clock.forControl(suddenDeath(5, 3))
       .startTurn('white')
       .advance(10_000)
@@ -21,14 +21,14 @@ describe('Clock', () => {
     expect(clock.remainingMs('white')).toBe(5 * MINUTE - 10_000 + 3_000)
   })
 
-  it('flags a player whose time runs out, and never goes negative', () => {
+  it('advance_TimeRunsOut_FlagsThePlayerAndNeverGoesNegative', () => {
     const clock = Clock.forControl(suddenDeath(1)).startTurn('white').advance(90_000)
 
     expect(clock.remainingMs('white')).toBe(0)
     expect(clock.flagged).toBe('white')
   })
 
-  it('grants the next stage only once the move quota is met', () => {
+  it('completeMove_MoveQuotaMet_GrantsTheNextStageOnlyThen', () => {
     // 2 moves in 1 minute, then 2 more minutes for the rest.
     let clock = Clock.forControl(classical(2, 1, 2)).startTurn('white')
 
@@ -39,7 +39,7 @@ describe('Clock', () => {
     expect(clock.remainingMs('white')).toBe(MINUTE - 20_000 + 2 * MINUTE)
   })
 
-  it('does not revive a player who has already flagged', () => {
+  it('advance_AlreadyFlagged_DoesNotReviveThePlayer', () => {
     const clock = Clock.forControl(suddenDeath(1, 5))
       .startTurn('white')
       .advance(90_000)
@@ -49,7 +49,7 @@ describe('Clock', () => {
     expect(clock.flagged).toBe('white')
   })
 
-  it('leaves an untimed game with no readings to charge', () => {
+  it('forControl_UntimedGame_LeavesNoReadingsToCharge', () => {
     const clock = Clock.forControl(UNLIMITED).startTurn('white').advance(60_000)
 
     expect(clock.isUntimed).toBe(true)
@@ -57,7 +57,7 @@ describe('Clock', () => {
     expect(clock.flagged).toBeNull()
   })
 
-  it('is immutable — advancing returns a new clock', () => {
+  it('advance_AnyTick_ReturnsANewClockLeavingTheOldOne', () => {
     const original = Clock.forControl(suddenDeath(5)).startTurn('white')
     const advanced = original.advance(1_000)
 

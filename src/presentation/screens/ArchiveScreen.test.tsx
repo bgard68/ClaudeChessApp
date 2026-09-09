@@ -13,46 +13,46 @@ import { ResultPill, describeResults, movetext } from './ArchiveScreen'
 describe('describeResults', () => {
   // Said while a query is in flight, so a slow search does not look like an
   // empty library.
-  it('says it is still looking before the count means anything', () => {
+  it('countLabel_BeforeTheCountMeansAnything_SaysItIsStillLooking', () => {
     expect(describeResults(0, '', 'all', true, false)).toBe('Searching…')
     expect(describeResults(9_999, 'fischer', 'player', true, false)).toBe('Searching…')
   })
 
-  it('counts the whole library when nothing is asked of it', () => {
+  it('countLabel_NothingAskedOfIt_CountsTheWholeLibrary', () => {
     expect(describeResults(2_987, '', 'all', false, false)).toBe('All games · 2,987 games')
   })
 
   // Thousands separators: an archive of 2987 games reads as a typo without one.
-  it('groups thousands so the number is readable at a glance', () => {
+  it('countLabel_Thousands_AreGroupedForReadability', () => {
     expect(describeResults(1_164_000, '', 'all', false, false)).toContain('1,164,000')
   })
 
-  it('says a single game in the singular', () => {
+  it('countLabel_SingleGame_UsesTheSingular', () => {
     expect(describeResults(1, '', 'all', false, false)).toBe('All games · 1 game')
     expect(describeResults(0, '', 'all', false, false)).toContain('0 games')
   })
 
   // Filters narrow the library without a search term, and the count alone
   // would look like the library had shrunk.
-  it('marks a filtered count as filtered', () => {
+  it('countLabel_FilteredCount_IsMarkedAsFiltered', () => {
     expect(describeResults(105, '', 'all', false, true)).toBe('Filtered · 105 games')
   })
 
   describe('when something has been searched for', () => {
-    it('quotes the term back so it is clear what was searched', () => {
+    it('countLabel_SearchTerm_IsQuotedBack', () => {
       expect(describeResults(42, 'fischer', 'all', false, false)).toBe(
         '42 games matching “fischer”',
       )
     })
 
-    it('says which field was searched when it was not all of them', () => {
+    it('countLabel_SpecificFieldSearched_NamesTheField', () => {
       expect(describeResults(42, 'fischer', 'player', false, false)).toBe(
         '42 games matching “fischer” in players',
       )
     })
 
     // "0 games matching" is a count; "No games matching" is an answer.
-    it('says none rather than counting to zero', () => {
+    it('countLabel_ZeroMatches_SaysNoneRatherThanCountingToZero', () => {
       expect(describeResults(0, 'zzz', 'event', false, false)).toBe(
         'No games matching “zzz” in events',
       )
@@ -64,21 +64,21 @@ describe('movetext', () => {
   const moves = (sans: readonly string[]): readonly RecordedMove[] =>
     sans.map((san) => ({ san })) as unknown as readonly RecordedMove[]
 
-  it('numbers each pair of half-moves once', () => {
+  it('movesSummary_PairedHalfMoves_NumbersEachPairOnce', () => {
     expect(movetext(moves(['e4', 'e5', 'Nf3', 'Nc6']))).toBe('1. e4 e5 2. Nf3 Nc6')
   })
 
   // A game ending on White's move has no reply to print, and the trailing
   // space a naive join leaves behind is not valid movetext.
-  it('leaves no dangling space when Black never replied', () => {
+  it('movesSummary_BlackNeverReplied_LeavesNoDanglingSpace', () => {
     expect(movetext(moves(['e4', 'e5', 'Qh5']))).toBe('1. e4 e5 2. Qh5')
   })
 
-  it('numbers a single move as the first', () => {
+  it('movesSummary_SingleMove_IsNumberedAsTheFirst', () => {
     expect(movetext(moves(['d4']))).toBe('1. d4')
   })
 
-  it('produces nothing for a game with no moves', () => {
+  it('movesSummary_GameWithNoMoves_ProducesNothing', () => {
     expect(movetext(moves([]))).toBe('')
   })
 })
@@ -92,7 +92,7 @@ describe('ResultPill', () => {
     ['1-0', '1–0', 'White won'],
     ['0-1', '0–1', 'Black won'],
     ['1/2-1/2', '½–½', 'Drawn'],
-  ])('draws %s as %s and says what it means', (result, glyph, meaning) => {
+  ])('resultBadge_%s_DrawsAs%sAndSaysWhatItMeans', (result, glyph, meaning) => {
     const markup = pill(result)
     expect(markup).toContain(glyph)
     expect(markup).toContain(`title="${meaning}"`)
@@ -103,7 +103,7 @@ describe('ResultPill', () => {
    * "no result recorded" is honest; falling through to a draw pill would
    * invent a result the source never claimed.
    */
-  it.each(['*', '', '?'])('refuses to invent a result for %s', (result) => {
+  it.each(['*', '', '?'])('resultBadge_%s_RefusesToInventAResult', (result) => {
     const markup = pill(result)
     expect(markup).toContain('No result recorded')
     expect(markup).toContain('result-pill--unknown')

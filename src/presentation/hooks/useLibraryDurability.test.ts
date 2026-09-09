@@ -8,11 +8,11 @@ import { describeDurability } from './useLibraryDurability'
  * when storage is temporary — loses games with no notice at all.
  */
 describe('describeDurability', () => {
-  it('says nothing before the library has reported back', () => {
+  it('useLibraryDurability_BeforeTheLibraryReports_SaysNothing', () => {
     expect(describeDurability(null)).toBeNull()
   })
 
-  it('says nothing when storage is durable and promised', () => {
+  it('useLibraryDurability_DurableAndPromised_SaysNothing', () => {
     expect(
       describeDurability({ kind: 'durable', evictable: false } as LibraryDurability),
     ).toBeNull()
@@ -20,7 +20,7 @@ describe('describeDurability', () => {
 
   // Storage works, but the browser has not promised to keep it. Worth one
   // gentle sentence: the games at risk are the ones it cannot rebuild.
-  it('mentions eviction when the browser has made no promise', () => {
+  it('useLibraryDurability_NoBrowserPromise_MentionsEviction', () => {
     const warning = describeDurability({
       kind: 'durable',
       evictable: true,
@@ -29,13 +29,13 @@ describe('describeDurability', () => {
     expect(warning).toContain('Export them')
   })
 
-  it('names the other tab when that is what is in the way', () => {
+  it('useLibraryDurability_AnotherTabHoldsTheDatabase_NamesTheOtherTab', () => {
     expect(
       describeDurability({ kind: 'temporary', reason: 'another-tab' } as LibraryDurability),
     ).toContain('Another tab')
   })
 
-  it('warns plainly when nothing will be kept at all', () => {
+  it('useLibraryDurability_NothingWillBeKept_WarnsPlainly', () => {
     const warning = describeDurability({
       kind: 'temporary',
       reason: 'no-storage',

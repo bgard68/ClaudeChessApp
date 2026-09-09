@@ -32,7 +32,7 @@ const render = (over: Partial<Parameters<typeof ArchiveFilters>[0]> = {}) =>
   )
 
 describe('isFiltering', () => {
-  it('is false when nothing is set', () => {
+  it('hasActiveFilters_NothingSet_IsFalse', () => {
     expect(isFiltering(NO_FILTERS)).toBe(false)
   })
 
@@ -41,7 +41,7 @@ describe('isFiltering', () => {
     ['result', { result: '1-0' }],
     ['year from', { yearFrom: '1972' }],
     ['year to', { yearTo: '1972' }],
-  ])('is true for %s alone', (_label, partial) => {
+  ])('hasActiveFilters_%sAlone_IsTrue', (_label, partial) => {
     expect(isFiltering({ ...NO_FILTERS, ...partial } as FilterValues)).toBe(true)
   })
 })
@@ -49,7 +49,7 @@ describe('isFiltering', () => {
 describe('RESULT_OPTIONS', () => {
   // PGN writes results as 1-0 and 1/2-1/2; nobody says that out loud. The
   // values stay in the notation the database stores, the labels do not.
-  it('keeps PGN values behind spoken labels', () => {
+  it('ArchiveFilters_ResultOptions_KeepPgnValuesBehindSpokenLabels', () => {
     expect(RESULT_OPTIONS.map((o) => o.value)).toEqual(['', '1-0', '0-1', '1/2-1/2'])
     expect(RESULT_OPTIONS.map((o) => o.label)).toEqual([
       'Any result',
@@ -59,7 +59,7 @@ describe('RESULT_OPTIONS', () => {
     ])
   })
 
-  it('offers "any" first, so the default needs no thought', () => {
+  it('ArchiveFilters_OptionOrder_OffersAnyFirst', () => {
     expect(RESULT_OPTIONS[0]?.value).toBe('')
   })
 })
@@ -67,7 +67,7 @@ describe('RESULT_OPTIONS', () => {
 describe('ArchiveFilters', () => {
   // Reset stays in place and greys out rather than appearing and vanishing:
   // a control that moves as you type is harder to aim at than one that waits.
-  it('keeps reset in place, disabled until there is something to clear', () => {
+  it('ArchiveFilters_NothingToClear_KeepsResetInPlaceButDisabled', () => {
     const clean = render({ values: NO_FILTERS })
     const filtered = render({ values: { ...NO_FILTERS, result: '1-0' } })
 
@@ -78,7 +78,7 @@ describe('ArchiveFilters', () => {
     expect(filtered.slice(filtered.indexOf('filters__reset'), filtered.indexOf('Reset'))).not.toContain('disabled')
   })
 
-  it('lists each event with how many games it holds', () => {
+  it('ArchiveFilters_EventFacets_ListEachEventWithItsGameCount', () => {
     const markup = render()
     expect(markup).toContain('FIDE WCh KO')
     // The count is what tells you whether a filter is worth applying.
@@ -87,11 +87,11 @@ describe('ArchiveFilters', () => {
 
   // The library is empty on a first visit until the import finishes, and a
   // filter panel offering nothing is better than one that throws.
-  it('survives having no facets yet', () => {
+  it('ArchiveFilters_NoFacetsYet_Survives', () => {
     expect(() => render({ facets: null })).not.toThrow()
   })
 
-  it('survives a library with no years recorded', () => {
+  it('ArchiveFilters_NoYearsRecorded_Survives', () => {
     expect(() =>
       render({ facets: facets({ firstYear: null, lastYear: null }) }),
     ).not.toThrow()
@@ -99,7 +99,7 @@ describe('ArchiveFilters', () => {
 
   // Newest first: the year someone reaches for is far more often 2024 than
   // 1886, and a list of 138 years is a long scroll from the wrong end.
-  it('lists years from the most recent backwards', () => {
+  it('ArchiveFilters_YearOptions_ListMostRecentBackwards', () => {
     const markup = render()
     expect(markup.indexOf('2024')).toBeLessThan(markup.indexOf('1886'))
   })

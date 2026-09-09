@@ -23,7 +23,7 @@ describe('LiveGame', () => {
     ticker = new FakeTicker()
   })
 
-  it('plays a scripted game through to checkmate', async () => {
+  it('start_ScriptedFoolsMate_PlaysThroughToCheckmate', async () => {
     const white = new ScriptedOpponent('White', [FOOLS_MATE[0]!, FOOLS_MATE[2]!])
     const black = new ScriptedOpponent('Black', [FOOLS_MATE[1]!, FOOLS_MATE[3]!])
     const game = new LiveGame({ rules, ticker }, { white, black, timeControl: UNLIMITED })
@@ -39,7 +39,7 @@ describe('LiveGame', () => {
     expect(game.state.history.map((move) => move.san)).toEqual(['f3', 'e5', 'g4', 'Qh4#'])
   })
 
-  it('treats both opponent kinds identically — a human move drives the same loop', async () => {
+  it('offerMove_HumanSeat_DrivesTheSameLoopAsAnEngineSeat', async () => {
     const human = new HumanOpponent('You')
     const engine = new ScriptedOpponent('Computer', [{ from: 'e7', to: 'e5' }])
     const game = new LiveGame(
@@ -56,7 +56,7 @@ describe('LiveGame', () => {
     expect(game.state.history.map((move) => move.san)).toEqual(['e4', 'e5'])
   })
 
-  it('refuses an illegal move without ending the game', async () => {
+  it('offerMove_IllegalMove_IsRefusedWithoutEndingTheGame', async () => {
     const human = new HumanOpponent('You')
     const game = new LiveGame(
       { rules, ticker },
@@ -71,7 +71,7 @@ describe('LiveGame', () => {
     expect(game.state.history).toHaveLength(0)
   })
 
-  it('awards the game to the opponent when a clock runs out', async () => {
+  it('advance_ClockRunsOut_AwardsTheGameToTheOpponent', async () => {
     const white = new HumanOpponent('Slow')
     const black = new HumanOpponent('Waiting')
     const game = new LiveGame(
@@ -93,7 +93,7 @@ describe('LiveGame', () => {
     expect(ticker.isRunning).toBe(false)
   })
 
-  it('ignores a move that arrives after the game has already ended', async () => {
+  it('offerMove_AfterTheGameEnded_IsIgnored', async () => {
     const white = new HumanOpponent('Slow')
     const game = new LiveGame(
       { rules, ticker },
@@ -109,7 +109,7 @@ describe('LiveGame', () => {
     expect(game.state.history).toHaveLength(0)
   })
 
-  it('records a resignation against the side that resigned', async () => {
+  it('resign_BySide_RecordsTheLossAgainstThatSide', async () => {
     const game = new LiveGame(
       { rules, ticker },
       {
@@ -130,7 +130,7 @@ describe('LiveGame', () => {
     })
   })
 
-  it('stops the clock and the ticker once disposed', async () => {
+  it('dispose_MidGame_StopsTheClockAndTheTicker', async () => {
     const game = new LiveGame(
       { rules, ticker },
       {
@@ -148,7 +148,7 @@ describe('LiveGame', () => {
     expect(ticker.isRunning).toBe(false)
   })
 
-  it('has nothing to undo before a move is played', async () => {
+  it('undo_BeforeAnyMove_HasNothingToTakeBack', async () => {
     const game = new LiveGame(
       { rules, ticker },
       {
@@ -165,7 +165,7 @@ describe('LiveGame', () => {
     expect(game.undo()).toBe(false)
   })
 
-  it('takes back one ply in pass-and-play and hands the turn back', async () => {
+  it('undo_PassAndPlay_TakesBackOnePlyAndHandsTheTurnBack', async () => {
     const game = new LiveGame(
       { rules, ticker },
       {
@@ -219,7 +219,7 @@ describe('LiveGame', () => {
     expect(game.state.awaiting?.kind).toBe('human')
   })
 
-  it('gives back the time the taken-back move was charged', async () => {
+  it('undo_ChargedMove_GivesBackTheTimeItCost', async () => {
     const game = new LiveGame(
       { rules, ticker },
       {
@@ -245,7 +245,7 @@ describe('LiveGame', () => {
     expect(ticker.isRunning).toBe(true)
   })
 
-  it('resurrects a finished game, clearing the outcome', async () => {
+  it('undo_FinishedGame_ResurrectsItAndClearsTheOutcome', async () => {
     const white = new ScriptedOpponent('White', [FOOLS_MATE[0]!, FOOLS_MATE[2]!])
     const black = new ScriptedOpponent('Black', [FOOLS_MATE[1]!, FOOLS_MATE[3]!])
     const game = new LiveGame({ rules, ticker }, { white, black, timeControl: UNLIMITED })

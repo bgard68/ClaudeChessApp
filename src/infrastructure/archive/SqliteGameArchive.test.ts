@@ -90,7 +90,7 @@ class FlakySource {
 }
 
 describe('SqliteGameArchive first-load recovery', () => {
-  it('seeds once, on the first query', async () => {
+  it('list_FirstQueryOnEmptyDatabase_SeedsExactlyOnce', async () => {
     const client = new ScriptedClient()
     const source = new FlakySource('games', 0)
     const archive = new SqliteGameArchive(client.asClient(), [
@@ -105,7 +105,7 @@ describe('SqliteGameArchive first-load recovery', () => {
     expect(archive.failures).toEqual([])
   })
 
-  it('retries seeding on the next query after a source failed', async () => {
+  it('list_QueryAfterASourceFailed_RetriesTheSeed', async () => {
     const client = new ScriptedClient()
     const source = new FlakySource('games', 1)
     const archive = new SqliteGameArchive(client.asClient(), [
@@ -125,7 +125,7 @@ describe('SqliteGameArchive first-load recovery', () => {
     expect(archive.failures).toEqual([])
   })
 
-  it('shares one attempt between concurrent queries, even a failing one', async () => {
+  it('list_ConcurrentQueries_ShareOneSeedAttemptEvenAFailingOne', async () => {
     const client = new ScriptedClient()
     const source = new FlakySource('games', 1)
     const archive = new SqliteGameArchive(client.asClient(), [
@@ -138,7 +138,7 @@ describe('SqliteGameArchive first-load recovery', () => {
     expect(source.loads).toBe(1)
   })
 
-  it('retries a database that failed to open', async () => {
+  it('list_DatabaseFailedToOpen_RetriesTheOpenOnTheNextQuery', async () => {
     const client = new ScriptedClient(1)
     const source = new FlakySource('games', 0)
     const archive = new SqliteGameArchive(client.asClient(), [

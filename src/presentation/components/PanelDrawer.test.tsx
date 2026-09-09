@@ -21,7 +21,7 @@ afterEach(() => {
 })
 
 describe('PanelDrawer', () => {
-  it('is the section it always was above the phone breakpoint', () => {
+  it('PanelDrawer_AboveThePhoneBreakpoint_IsThePlainSectionItAlwaysWas', () => {
     pretendViewport(false)
 
     const markup = renderToStaticMarkup(
@@ -40,7 +40,7 @@ describe('PanelDrawer', () => {
     expect(markup).not.toContain('<details')
   })
 
-  it('is a closed drawer on a phone', () => {
+  it('PanelDrawer_OnAPhone_IsAClosedDrawer', () => {
     pretendViewport(true)
 
     const markup = renderToStaticMarkup(
@@ -56,7 +56,7 @@ describe('PanelDrawer', () => {
     expect(markup).not.toContain('open=""')
   })
 
-  it('renders where there is no browser to ask', () => {
+  it('PanelDrawer_NoBrowserToAsk_StillRenders', () => {
     // No stub: this is the static-markup path, and it must not throw.
     expect(() =>
       renderToStaticMarkup(

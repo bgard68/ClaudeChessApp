@@ -49,7 +49,7 @@ const SCHOLARS_FINISH: readonly MoveIntent[] = [
 const BOOK = [['e4', 'e5']] as const
 
 describe('PuzzleGenerator', () => {
-  it('turns a self-play mate into a puzzle, and cleans up its engine', async () => {
+  it('generate_SelfPlayReachesMate_ReturnsThePuzzleAndDisposesItsEngine', async () => {
     const engine = new ScriptedEngine(SCHOLARS_FINISH)
     const generator = new PuzzleGenerator(rules, () => engine, BOOK)
 
@@ -73,7 +73,7 @@ describe('PuzzleGenerator', () => {
     expect(engine.disposed).toBe(true)
   })
 
-  it('seats a full-strength attacker against a weakened defender', async () => {
+  it('generate_SeatConfigurations_PitFullStrengthAttackerAgainstWeakenedDefender', async () => {
     // The seats must differ. Matched strength does not get mated: at equal
     // depth the self-play games ran past 130 plies and drew on insufficient
     // material every time, so every generation attempt failed and the screen
@@ -96,7 +96,7 @@ describe('PuzzleGenerator', () => {
     )
   })
 
-  it('reseeds after a spoiled game instead of giving up', async () => {
+  it('generate_SpoiledGame_ReseedsInsteadOfGivingUp', async () => {
     // First move is not legal: the first game aborts, the retry succeeds.
     const engine = new ScriptedEngine([{ from: 'a1', to: 'a1' }, ...SCHOLARS_FINISH])
     const generator = new PuzzleGenerator(rules, () => engine, [...BOOK, ...BOOK])

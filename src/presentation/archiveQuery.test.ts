@@ -28,7 +28,7 @@ describe('toArchiveQuery', () => {
    * ask the archive for games whose event is literally blank — which finds
    * nothing, and looks exactly like a library that lost its games.
    */
-  it('drops empty filters rather than filtering on emptiness', () => {
+  it('buildQuery_EmptyFilters_AreDroppedNotSentAsEmptiness', () => {
     const query = toArchiveQuery(question(), 'all', '')
     expect(query.event).toBeUndefined()
     expect(query.result).toBeUndefined()
@@ -36,7 +36,7 @@ describe('toArchiveQuery', () => {
     expect(query.yearTo).toBeUndefined()
   })
 
-  it('passes the filters that are set', () => {
+  it('buildQuery_SetFilters_ArePassedThrough', () => {
     const query = toArchiveQuery(
       question({ filters: { ...NO_FILTERS, event: 'WCh', result: '1-0' } }),
       'all',
@@ -47,7 +47,7 @@ describe('toArchiveQuery', () => {
   })
 
   // The controls hold text; the archive wants numbers to compare.
-  it('turns year text into numbers', () => {
+  it('buildQuery_YearText_IsTurnedIntoNumbers', () => {
     const query = toArchiveQuery(
       question({ filters: { ...NO_FILTERS, yearFrom: '1960', yearTo: '1972' } }),
       'all',
@@ -57,7 +57,7 @@ describe('toArchiveQuery', () => {
     expect(query.yearTo).toBe(1972)
   })
 
-  it('sends one end of a year range without inventing the other', () => {
+  it('buildQuery_OneEndOfAYearRange_DoesNotInventTheOther', () => {
     const query = toArchiveQuery(
       question({ filters: { ...NO_FILTERS, yearFrom: '1960' } }),
       'all',
@@ -68,26 +68,26 @@ describe('toArchiveQuery', () => {
   })
 
   // The query runs on the debounced term, not on what is currently in the box.
-  it('searches for the settled term, not the one being typed', () => {
+  it('buildQuery_TermStillBeingTyped_SearchesTheSettledTermInstead', () => {
     const query = toArchiveQuery(question(), 'all', 'fischer')
     expect(query.search).toBe('fischer')
   })
 
-  it('carries the scope so each screen asks for its own half of the library', () => {
+  it('buildQuery_Scope_IsCarriedSoEachScreenAsksForItsHalf', () => {
     expect(toArchiveQuery(question(), 'mine', '').scope).toBe('mine')
     expect(toArchiveQuery(question(), 'reference', '').scope).toBe('reference')
   })
 
   // A chosen player finds their games under every spelling of the name, which
   // typing the name cannot do.
-  it('asks for a chosen player by id', () => {
+  it('buildQuery_ChosenPlayer_IsAskedForById', () => {
     expect(toArchiveQuery(question({ chosen: fischer }), 'all', '').playerId).toBe('p1')
     expect(toArchiveQuery(question(), 'all', '').playerId).toBeUndefined()
   })
 
   // No column clicked yet leaves the archive's own relevance ordering in
   // place rather than imposing an arbitrary one on arrival.
-  it('sends no sort until a column is chosen', () => {
+  it('buildQuery_NoColumnChosen_SendsNoSort', () => {
     expect(toArchiveQuery(question(), 'all', '').sort).toBeUndefined()
     expect(toArchiveQuery(question({ sort: 'year' }), 'all', '').sort).toBe('year')
   })
@@ -95,33 +95,33 @@ describe('toArchiveQuery', () => {
 
 describe('accumulatePages', () => {
   // Offset zero is a new question, not more of the old one.
-  it('replaces the list on a first page', () => {
+  it('accumulate_FirstPage_ReplacesTheList', () => {
     expect(accumulatePages(['a', 'b'], ['c'], 0)).toEqual(['c'])
   })
 
-  it('appends a later page behind what is already shown', () => {
+  it('accumulate_LaterPage_AppendsBehindWhatIsShown', () => {
     expect(accumulatePages(['a', 'b'], ['c'], 2)).toEqual(['a', 'b', 'c'])
   })
 
-  it('leaves the list alone when a later page comes back empty', () => {
+  it('accumulate_EmptyLaterPage_LeavesTheListAlone', () => {
     expect(accumulatePages(['a'], [], 1)).toEqual(['a'])
   })
 
   // A first page with no results has to clear what was there, or a search
   // that matches nothing shows the previous search's games.
-  it('empties the list when a first page finds nothing', () => {
+  it('accumulate_EmptyFirstPage_EmptiesTheList', () => {
     expect(accumulatePages(['a', 'b'], [], 0)).toEqual([])
   })
 })
 
 describe('restartedAt', () => {
-  it('goes back to the first page at the usual size', () => {
+  it('resetPaging_AfterPagingForward_GoesBackToTheFirstPage', () => {
     const restarted = restartedAt(question({ offset: 400, limit: 5_000 }))
     expect(restarted.offset).toBe(0)
     expect(restarted.limit).toBe(PAGE_SIZE)
   })
 
-  it('keeps the question itself intact', () => {
+  it('resetPaging_ExistingQuery_KeepsTheQuestionItselfIntact', () => {
     const asked = question({ search: 'tal', field: 'player', sort: 'year', offset: 80 })
     expect(restartedAt(asked)).toMatchObject({
       search: 'tal',
@@ -132,7 +132,7 @@ describe('restartedAt', () => {
 })
 
 describe('sortedBy', () => {
-  it('starts a new column the way that column reads best', () => {
+  it('toggleSort_NewColumn_StartsTheWayThatColumnReadsBest', () => {
     expect(sortedBy(question(), 'year', 'desc')).toMatchObject({
       sort: 'year',
       direction: 'desc',
@@ -140,7 +140,7 @@ describe('sortedBy', () => {
     expect(sortedBy(question(), 'players', 'asc').direction).toBe('asc')
   })
 
-  it('reverses the column already sorted', () => {
+  it('toggleSort_SameColumn_ReversesIt', () => {
     const byYear = question({ sort: 'year', direction: 'desc' })
     expect(sortedBy(byYear, 'year', 'desc').direction).toBe('asc')
     expect(sortedBy(sortedBy(byYear, 'year', 'desc'), 'year', 'desc').direction).toBe('desc')
@@ -148,13 +148,13 @@ describe('sortedBy', () => {
 
   // Switching columns takes the new column's own starting direction, not
   // whatever the last column happened to be left on.
-  it('does not carry the previous column direction over', () => {
+  it('toggleSort_SwitchingColumns_DoesNotCarryTheOldDirectionOver', () => {
     const byYearAscending = question({ sort: 'year', direction: 'asc' })
     expect(sortedBy(byYearAscending, 'event', 'desc').direction).toBe('desc')
   })
 
   // Page two of the old order is not page two of the new one.
-  it('restarts the list', () => {
+  it('toggleSort_AnyChange_RestartsTheList', () => {
     const deep = question({ sort: 'year', offset: 120, limit: 500 })
     expect(sortedBy(deep, 'event', 'asc')).toMatchObject({ offset: 0, limit: PAGE_SIZE })
   })
@@ -163,62 +163,62 @@ describe('sortedBy', () => {
 describe('nextSelection', () => {
   const games = ['a', 'b', 'c'].map((id) => ({ id })) as ArchivedGameSummary[]
 
-  it('has nowhere to go in an empty list', () => {
+  it('moveSelection_EmptyList_HasNowhereToGo', () => {
     expect(nextSelection([], null, 'ArrowDown')).toBeNull()
     expect(nextSelection([], 'a', 'ArrowUp')).toBeNull()
   })
 
   // The first press has to land somewhere, and which end depends on which
   // way it was pressed.
-  it('enters at the top going down and the bottom going up', () => {
+  it('moveSelection_EnteringTheList_EntersTopGoingDownBottomGoingUp', () => {
     expect(nextSelection(games, null, 'ArrowDown')).toBe('a')
     expect(nextSelection(games, null, 'ArrowUp')).toBe('c')
   })
 
-  it('steps one row at a time', () => {
+  it('moveSelection_WithinTheList_StepsOneRowAtATime', () => {
     expect(nextSelection(games, 'a', 'ArrowDown')).toBe('b')
     expect(nextSelection(games, 'b', 'ArrowUp')).toBe('a')
   })
 
   // Holding rather than wrapping: a list that jumps from the last row back to
   // the first reads as a glitch, not as navigation.
-  it('holds at both ends instead of wrapping', () => {
+  it('moveSelection_AtEitherEnd_HoldsInsteadOfWrapping', () => {
     expect(nextSelection(games, 'c', 'ArrowDown')).toBe('c')
     expect(nextSelection(games, 'a', 'ArrowUp')).toBe('a')
   })
 
   // A narrowed list can drop the selected game entirely; the keys must still
   // work rather than getting stuck on a row that is gone.
-  it('re-enters the list when the selection is no longer in it', () => {
+  it('moveSelection_SelectionNoLongerInTheList_ReEnters', () => {
     expect(nextSelection(games, 'vanished', 'ArrowDown')).toBe('a')
     expect(nextSelection(games, 'vanished', 'ArrowUp')).toBe('c')
   })
 })
 
 describe('activeChips', () => {
-  it('shows nothing when nothing is narrowed', () => {
+  it('activeFilters_NothingNarrowed_ShowsNothing', () => {
     expect(activeChips(question(), '')).toHaveLength(0)
   })
 
-  it('names the term that was searched for', () => {
+  it('activeFilters_SearchTerm_NamesTheTermSearchedFor', () => {
     const [chip] = activeChips(question(), 'fischer')
     expect(chip?.key).toBe('search')
     expect(chip?.label).toContain('fischer')
   })
 
-  it('ignores a search of nothing but spaces', () => {
+  it('activeFilters_WhitespaceSearch_IsIgnored', () => {
     expect(activeChips(question(), '   ')).toHaveLength(0)
   })
 
   // Choosing a player from the suggestions sets the box to their name, so
   // showing both chips would name the same narrowing twice.
-  it('shows the player instead of the text that found them', () => {
+  it('activeFilters_ChosenPlayer_ShowsThePlayerNotTheText', () => {
     const chips = activeChips(question({ chosen: fischer }), 'Fischer, Robert James')
     expect(chips).toHaveLength(1)
     expect(chips[0]?.key).toBe('player')
   })
 
-  it('names each filter that is set', () => {
+  it('activeFilters_EachSetFilter_IsNamed', () => {
     const chips = activeChips(
       question({ filters: { ...NO_FILTERS, event: 'WCh', result: '1-0' } }),
       '',
@@ -228,7 +228,7 @@ describe('activeChips', () => {
   })
 
   // "1-0" is how PGN writes it; "White won" is what it means.
-  it('reads a result filter back in words', () => {
+  it('activeFilters_ResultFilter_ReadsBackInWords', () => {
     const [chip] = activeChips(question({ filters: { ...NO_FILTERS, result: '1/2-1/2' } }), '')
     expect(chip?.label).toBe('Draw')
   })
@@ -236,7 +236,7 @@ describe('activeChips', () => {
   describe('a year range', () => {
     // One narrowing, so one chip: clearing half of it would leave a filter
     // nobody asked for.
-    it('is a single chip covering both ends', () => {
+    it('activeFilters_YearRange_IsASingleChipCoveringBothEnds', () => {
       const chips = activeChips(
         question({ filters: { ...NO_FILTERS, yearFrom: '1960', yearTo: '1972' } }),
         '',
@@ -245,14 +245,14 @@ describe('activeChips', () => {
       expect(chips[0]?.label).toBe('Years: 1960–1972')
     })
 
-    it('marks an open end rather than leaving it blank', () => {
+    it('activeFilters_OpenEndedRange_MarksTheOpenEnd', () => {
       const [from] = activeChips(question({ filters: { ...NO_FILTERS, yearFrom: '1960' } }), '')
       expect(from?.label).toBe('Years: 1960–…')
       const [to] = activeChips(question({ filters: { ...NO_FILTERS, yearTo: '1972' } }), '')
       expect(to?.label).toBe('Years: …–1972')
     })
 
-    it('clears both ends together', () => {
+    it('clearFilter_YearChip_ClearsBothEndsTogether', () => {
       const [chip] = activeChips(
         question({ filters: { ...NO_FILTERS, yearFrom: '1960', yearTo: '1972' } }),
         '',
@@ -268,13 +268,13 @@ describe('activeChips', () => {
       offset: 120,
     })
 
-    it('lifts only the narrowing it names', () => {
+    it('clearFilter_OneChip_LiftsOnlyTheNarrowingItNames', () => {
       const event = activeChips(asked, '').find((chip) => chip.key === 'event')
       expect(event?.without.filters.event).toBe('')
       expect(event?.without.filters.result).toBe('1-0')
     })
 
-    it('restarts the list, because the answer is now a different one', () => {
+    it('clearFilter_AnyChip_RestartsTheList', () => {
       const event = activeChips(asked, '')[0]
       expect(event?.without.offset).toBe(0)
       expect(event?.without.limit).toBe(PAGE_SIZE)
@@ -282,7 +282,7 @@ describe('activeChips', () => {
 
     // Clearing the player chip clears the name it put in the box too, or the
     // text stays behind and silently becomes a search.
-    it('clears the box along with the chosen player', () => {
+    it('clearFilter_PlayerChip_ClearsTheBoxAlongWithThePlayer', () => {
       const [chip] = activeChips(question({ chosen: fischer }), 'Fischer, Robert James')
       expect(chip?.without.chosen).toBeNull()
       expect(chip?.without.search).toBe('')

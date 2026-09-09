@@ -42,7 +42,7 @@ async function playSampleGame(timeControl = suddenDeath(5)) {
 }
 
 describe('writePgn', () => {
-  it('records the clock the player actually had left after each move', async () => {
+  it('writePgn_TimedGame_RecordsTheClockThePlayerActuallyHadLeft', async () => {
     const { game } = await playSampleGame()
     const [first, second] = game.state.history
 
@@ -51,7 +51,7 @@ describe('writePgn', () => {
     expect(second?.clockAfterMs).toBe(300_000 - 5_000)
   })
 
-  it('round-trips a saved game back into the archive, clocks intact', async () => {
+  it('writePgn_SavedGame_RoundTripsIntoTheArchiveClocksIntact', async () => {
     const { game } = await playSampleGame()
     game.resign('black')
 
@@ -71,7 +71,7 @@ describe('writePgn', () => {
     expect(parsed!.moves[1]!.recordedClockMs).toBe(295_000)
   })
 
-  it('preserves the result and why the game ended', async () => {
+  it('writePgn_FinishedGame_PreservesTheResultAndWhy', async () => {
     const { game } = await playSampleGame()
     game.resign('black')
 
@@ -85,7 +85,7 @@ describe('writePgn', () => {
     })
   })
 
-  it('preserves the time control it was played under', async () => {
+  it('writePgn_TimedGame_PreservesTheTimeControl', async () => {
     const { game } = await playSampleGame(suddenDeath(3, 2))
     game.resign('black')
 
@@ -97,7 +97,7 @@ describe('writePgn', () => {
     })
   })
 
-  it('writes no clock annotations for an untimed game', async () => {
+  it('writePgn_UntimedGame_WritesNoClockAnnotations', async () => {
     const { game } = await playSampleGame(UNLIMITED)
     game.resign('black')
 

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { ScreenHeader } from './ScreenHeader'
 
 describe('ScreenHeader', () => {
-  it('renders the shared page semantics without owning navigation', () => {
+  it('ScreenHeader_AllPartsGiven_RendersThePageSemanticsWithoutOwningNavigation', () => {
     const markup = renderToStaticMarkup(
       <ScreenHeader
         kicker="Training"

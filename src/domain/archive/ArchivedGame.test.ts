@@ -8,15 +8,15 @@ import { displayYear, placeOrNull } from './ArchivedGame'
  * against whatever the source file contained.
  */
 describe('displayYear', () => {
-  it('takes the year off a full PGN date', () => {
+  it('displayYear_FullPgnDate_TakesTheYearOff', () => {
     expect(displayYear('1972.07.23')).toBe('1972')
   })
 
-  it('reads a date whose month and day were never recorded', () => {
+  it('displayYear_MonthAndDayUnknown_StillReadsTheYear', () => {
     expect(displayYear('1972.??.??')).toBe('1972')
   })
 
-  it('reads a bare year', () => {
+  it('displayYear_BareYear_ReadsIt', () => {
     expect(displayYear('1972')).toBe('1972')
   })
 
@@ -27,11 +27,11 @@ describe('displayYear', () => {
     ['nothing at all', ''],
     ['something that is not a date', 'unknown'],
     ['too few digits', '197'],
-  ])('marks %s as unknown', (_why, date) => {
+  ])('displayYear_%s_MarksItUnknown', (_why, date) => {
     expect(displayYear(date)).toBe('????')
   })
 
-  it('does not mistake a longer number for a year', () => {
+  it('displayYear_LongerNumber_IsNotMistakenForAYear', () => {
     expect(displayYear('19720723')).toBe('1972')
   })
 })

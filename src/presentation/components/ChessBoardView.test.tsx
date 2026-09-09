@@ -26,7 +26,7 @@ const square = (markup: string, name: string): string => {
 }
 
 describe('ChessBoardView', () => {
-  it('draws a full board', () => {
+  it('ChessBoardView_AnyPosition_DrawsAFullBoard', () => {
     const markup = board()
     expect(markup.match(/data-square=/g)).toHaveLength(64)
     expect(markup.match(/data-contrast-piece=/g)).toHaveLength(32)
@@ -37,7 +37,7 @@ describe('ChessBoardView', () => {
 
   // The first square written is the top-left one, which is the corner the
   // player is looking down the board from.
-  it('puts a8 at the top for White and h1 for Black', () => {
+  it('ChessBoardView_Orientation_PutsA8TopForWhiteAndH1ForBlack', () => {
     expect(board({ orientation: 'white' })).toContain('data-square="a8"><')
     expect(board({ orientation: 'white' }).indexOf('data-square="a8"')).toBeLessThan(
       board({ orientation: 'white' }).indexOf('data-square="h1"'),
@@ -56,7 +56,7 @@ describe('ChessBoardView', () => {
    * which is why the size must not gate the mount. Under a server render
    * nothing is ever measured, so this is exactly that first commit.
    */
-  it('fills its area before it has been measured', () => {
+  it('ChessBoardView_BeforeBeingMeasured_FillsItsArea', () => {
     expect(board()).toContain('class="board" style="width:100%;height:100%"')
     expect(board().match(/data-square=/g)).toHaveLength(64)
   })
@@ -64,7 +64,7 @@ describe('ChessBoardView', () => {
   describe('the last move played', () => {
     const lastMove = { from: toSquare('e2'), to: toSquare('e4') }
 
-    it('marks both squares it touched', () => {
+    it('ChessBoardView_LastMove_MarksBothSquaresItTouched', () => {
       const markup = board({ lastMove })
       expect(square(markup, 'e2')).toContain('rgba(255, 213, 79')
       expect(square(markup, 'e4')).toContain('rgba(255, 213, 79')
@@ -72,26 +72,26 @@ describe('ChessBoardView', () => {
 
     // Where the piece landed matters more than where it left, and the two
     // shades are the only thing that says which is which.
-    it('marks the destination more strongly than the origin', () => {
+    it('ChessBoardView_LastMove_MarksTheDestinationMoreStronglyThanTheOrigin', () => {
       const markup = board({ lastMove })
       expect(square(markup, 'e2')).toContain('0.45)')
       expect(square(markup, 'e4')).toContain('0.55)')
     })
 
-    it('marks nothing at the start of a game', () => {
+    it('ChessBoardView_StartOfGame_MarksNothing', () => {
       expect(board({ lastMove: null })).not.toContain('rgba(255, 213, 79')
     })
   })
 
   describe('a hint', () => {
     // Drawn as an arrow rather than played: advice the player can ignore.
-    it('is drawn in the advice colour, not a theme colour', () => {
+    it('ChessBoardView_HintHighlight_UsesTheAdviceColourNotATheme', () => {
       const markup = board({ hint: { from: toSquare('g1'), to: toSquare('f3') } })
       expect(markup).toContain('<svg')
       expect(markup).toContain('#5896ff')
     })
 
-    it('leaves the board clean when there is none', () => {
+    it('ChessBoardView_NoHint_LeavesTheBoardClean', () => {
       expect(board({ hint: null })).not.toContain('#5896ff')
     })
   })
@@ -99,7 +99,7 @@ describe('ChessBoardView', () => {
   // The library's own coordinate labels take its walnut palette whatever the
   // squares are, which several themes wash out entirely. These two neutrals
   // are legible on every theme the app offers.
-  it('labels coordinates in neutral ink on both square shades', () => {
+  it('ChessBoardView_Coordinates_UseNeutralInkOnBothSquareShades', () => {
     const markup = board()
     expect(markup).toContain('color:#f7f6f2') // on dark squares
     expect(markup).toContain('color:#3a3833') // on light squares
@@ -107,7 +107,7 @@ describe('ChessBoardView', () => {
 
   // Nothing is selected until it is clicked, so a board at rest offers no
   // destination dots and no dialog.
-  it('shows no move hints and no promotion dialog at rest', () => {
+  it('ChessBoardView_AtRest_ShowsNoMoveHintsAndNoPromotionDialog', () => {
     const legalMoves: readonly LegalMove[] = [
       { from: toSquare('e2'), to: toSquare('e4') } as LegalMove,
     ]

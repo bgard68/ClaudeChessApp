@@ -10,21 +10,21 @@ const rules = new ChessJsRules()
 const LADDER = '7k/8/R7/1R6/8/8/8/1K6 w - - 0 1'
 
 describe('forced-mate reasoning', () => {
-  it('finds no immediate mate in the ladder start', () => {
+  it('matingMoves_LadderStart_FindsNoImmediateMate', () => {
     expect(matingMoves(rules, rules.positionFromFen(LADDER))).toHaveLength(0)
   })
 
-  it('accepts the move that forces mate in two', () => {
+  it('solvesMateWithin_ForcingMoveWithTwoAllowed_Accepts', () => {
     const position = rules.positionFromFen(LADDER)
     expect(solvesMateWithin(rules, position, { from: 'b5', to: 'b7' }, 2)).toBe(true)
   })
 
-  it('rejects a move that lets the king slip', () => {
+  it('solvesMateWithin_MoveLettingTheKingSlip_Rejects', () => {
     const position = rules.positionFromFen(LADDER)
     expect(solvesMateWithin(rules, position, { from: 'b5', to: 'b6' }, 2)).toBe(false)
   })
 
-  it('rejects the forcing move when only one move is allowed', () => {
+  it('solvesMateWithin_ForcingMoveWithOnlyOneAllowed_Rejects', () => {
     // Rb7 wins, but not this instant — a mate-in-1 claim would be false.
     const position = rules.positionFromFen(LADDER)
     expect(solvesMateWithin(rules, position, { from: 'b5', to: 'b7' }, 1)).toBe(false)
@@ -36,20 +36,20 @@ describe('forced-mate reasoning', () => {
   // as a solved mate and hand the player a drawn puzzle marked correct.
   const STALEMATE_TRAP = '7k/8/8/8/8/8/6Q1/K7 w - - 0 1'
 
-  it('refuses a stalemating move as a mate solution', () => {
+  it('solvesMateWithin_StalematingMove_RefusesItAsASolution', () => {
     const position = rules.positionFromFen(STALEMATE_TRAP)
     expect(solvesMateWithin(rules, position, { from: 'g2', to: 'g6' }, 2)).toBe(false)
     expect(solvesMateWithin(rules, position, { from: 'g2', to: 'g6' }, 1)).toBe(false)
   })
 
-  it('does not count a stalemating move as an immediate mate', () => {
+  it('matingMoves_StalematingMove_IsNotCountedAsImmediateMate', () => {
     const position = rules.positionFromFen(STALEMATE_TRAP)
     expect(
       matingMoves(rules, position).some((move) => move.from === 'g2' && move.to === 'g6'),
     ).toBe(false)
   })
 
-  it('walks the full ladder: force, defend, mate', () => {
+  it('mateStartingMove_FullLadder_ForcesDefendsAndMates', () => {
     const start = rules.positionFromFen(LADDER)
 
     const first = mateStartingMove(rules, start, 2)

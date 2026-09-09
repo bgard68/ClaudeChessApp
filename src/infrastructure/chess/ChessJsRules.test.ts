@@ -5,11 +5,11 @@ import { ChessJsRules } from './ChessJsRules'
 const rules = new ChessJsRules()
 
 describe('ChessJsRules', () => {
-  it('generates the twenty legal opening moves', () => {
+  it('legalMoves_StartingPosition_GeneratesAllTwenty', () => {
     expect(rules.legalMoves(rules.initialPosition())).toHaveLength(20)
   })
 
-  it('returns a new position and leaves the original untouched', () => {
+  it('play_LegalMove_ReturnsANewPositionLeavingTheOriginal', () => {
     const before = rules.initialPosition()
     const result = rules.play(before, { from: 'e2', to: 'e4' })
 
@@ -19,11 +19,11 @@ describe('ChessJsRules', () => {
     expect(before.fen).toBe(Position.initial().fen)
   })
 
-  it('reports an illegal move as null rather than throwing', () => {
+  it('play_IllegalMove_ReturnsNullRatherThanThrowing', () => {
     expect(rules.play(rules.initialPosition(), { from: 'e2', to: 'e5' })).toBeNull()
   })
 
-  it('recognises checkmate and names the winner', () => {
+  it('outcome_Checkmate_IsRecognisedWithTheWinnerNamed', () => {
     const mated = rules.positionFromFen(
       'rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3',
     )
@@ -34,7 +34,7 @@ describe('ChessJsRules', () => {
     })
   })
 
-  it('recognises stalemate', () => {
+  it('outcome_Stalemate_IsRecognised', () => {
     const stalemate = rules.positionFromFen('7k/5Q2/6K1/8/8/8/8/8 b - - 0 1')
     expect(rules.outcome(stalemate, [stalemate])).toEqual({
       status: 'draw',
@@ -42,7 +42,7 @@ describe('ChessJsRules', () => {
     })
   })
 
-  it('recognises insufficient material', () => {
+  it('outcome_InsufficientMaterial_IsRecognised', () => {
     const bareKings = rules.positionFromFen('7k/8/6K1/8/8/8/8/8 w - - 0 1')
     expect(rules.outcome(bareKings, [bareKings])).toEqual({
       status: 'draw',
@@ -50,7 +50,7 @@ describe('ChessJsRules', () => {
     })
   })
 
-  it('draws by the fifty-move rule from the halfmove clock', () => {
+  it('outcome_HalfmoveClockAtLimit_DrawsByTheFiftyMoveRule', () => {
     const stale = rules.positionFromFen('4k3/8/4q3/8/8/4Q3/8/4K3 w - - 100 80')
     expect(rules.outcome(stale, [stale])).toEqual({
       status: 'draw',
@@ -58,7 +58,7 @@ describe('ChessJsRules', () => {
     })
   })
 
-  it('draws by repetition once a position has appeared three times', () => {
+  it('outcome_PositionSeenThreeTimes_DrawsByRepetition', () => {
     const position = rules.initialPosition()
     const history = [position, position, position]
 
@@ -68,7 +68,7 @@ describe('ChessJsRules', () => {
     })
   })
 
-  it('marks promotions and translates the promoted piece', () => {
+  it('legalMoves_PromotingPawn_MarksPromotionsAndTranslatesThePiece', () => {
     const promoting = rules.positionFromFen('8/P6k/8/8/8/8/8/7K w - - 0 1')
     const moves = rules.legalMovesFrom(promoting, 'a7')
 

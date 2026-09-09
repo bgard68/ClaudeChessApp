@@ -10,22 +10,22 @@ const row = (
 ): NameCount => ({ name, games, firstYear, lastYear, peakElo })
 
 describe('identityKey', () => {
-  it('reduces a name to surname and first initial', () => {
+  it('identityKey_FullName_ReducesToSurnameAndFirstInitial', () => {
     expect(identityKey('Anand,V')).toBe('anand v')
     expect(identityKey('Anand, Viswanathan')).toBe('anand v')
     expect(identityKey('Carlsen,M')).toBe('carlsen m')
   })
 
-  it('keeps different forenames apart', () => {
+  it('identityKey_DifferentForenames_AreKeptApart', () => {
     expect(identityKey('Fischer, Robert James')).not.toBe(identityKey('Fischer,Gert'))
   })
 
-  it('survives the punctuation these files use', () => {
+  it('identityKey_ArchivePunctuation_Survives', () => {
     expect(identityKey('Fischer, Robert J.')).toBe('fischer r')
     expect(identityKey('Nakamura,Hi')).toBe('nakamura h')
   })
 
-  it('copes with a surname alone', () => {
+  it('identityKey_SurnameAlone_Copes', () => {
     expect(identityKey('Zukertort')).toBe('zukertort')
   })
 
@@ -43,11 +43,11 @@ describe('identityKey', () => {
     ['Réti, Richard', 'Reti, Richard'],
     ['Đurić, Stefan', 'Duric, Stefan'],
     ['Polgár, Judit', 'Polgar, Judit'],
-  ])('gives %s the same key as its plain spelling', (accented, plain) => {
+  ])('identityKey_%s_MatchesThePlainSpelling', (accented, plain) => {
     expect(identityKey(accented)).toBe(identityKey(plain))
   })
 
-  it('folds to the ASCII spelling, not merely to something consistent', () => {
+  it('identityKey_AccentedName_FoldsToTheAsciiSpelling', () => {
     // The directory is keyed in ASCII, so the folded form has to be the one
     // that is actually in it.
     expect(identityKey('Ljubojević, Ljubomir')).toBe('ljubojevic l')
@@ -55,7 +55,7 @@ describe('identityKey', () => {
 })
 
 describe('mergePlayers', () => {
-  it('folds abbreviated and full spellings into one player', () => {
+  it('mergePlayers_AbbreviatedAndFullSpellings_FoldIntoOnePlayer', () => {
     const players = mergePlayers([
       row('Anand,V', 2_932),
       row('Anand, Viswanathan', 1_325),
@@ -66,12 +66,12 @@ describe('mergePlayers', () => {
     expect(players[0]!.aliases).toHaveLength(2)
   })
 
-  it('displays the fullest spelling', () => {
+  it('mergePlayers_SeveralSpellings_DisplaysTheFullest', () => {
     const players = mergePlayers([row('Anand,V', 2_932), row('Anand, Viswanathan', 1_325)])
     expect(players[0]!.canonical).toBe('Anand, Viswanathan')
   })
 
-  it('keeps different people with the same surname apart', () => {
+  it('mergePlayers_SameSurnameDifferentPeople_AreKeptApart', () => {
     const players = mergePlayers([
       row('Fischer, Robert James', 827),
       row('Fischer,Gert', 2),
@@ -81,7 +81,7 @@ describe('mergePlayers', () => {
     expect(players).toHaveLength(3)
   })
 
-  it('refuses to merge a career too long for one person', () => {
+  it('mergePlayers_CareerTooLongForOnePerson_RefusesToMerge', () => {
     // Two different "Smith,J" a century apart must not become one player.
     const players = mergePlayers([
       row('Smith,J', 10, 1890, 1900),
@@ -91,7 +91,7 @@ describe('mergePlayers', () => {
     expect(players).toHaveLength(2)
   })
 
-  it('merges when the years plausibly belong to one career', () => {
+  it('mergePlayers_PlausiblyOneCareer_Merges', () => {
     const players = mergePlayers([
       row('Karpov,A', 100, 1970, 1990),
       row('Karpov, Anatoly', 50, 1985, 2005),
@@ -102,7 +102,7 @@ describe('mergePlayers', () => {
     expect(players[0]!.lastYear).toBe(2005)
   })
 
-  it('takes the highest rating seen across spellings', () => {
+  it('mergePlayers_SeveralSpellings_TakesTheHighestRatingSeen', () => {
     const players = mergePlayers([
       row('Carlsen,M', 100, 2001, 2010, 2810),
       row('Carlsen, Magnus', 9, 2011, 2020, 2882),
@@ -111,7 +111,7 @@ describe('mergePlayers', () => {
     expect(players[0]!.peakElo).toBe(2882)
   })
 
-  it('orders players by how often they appear', () => {
+  it('mergePlayers_Output_OrdersPlayersByAppearanceCount', () => {
     const players = mergePlayers([row('Minor,X', 3), row('Major,Y', 900)])
     expect(players.map((p) => p.canonical)).toEqual(['Major,Y', 'Minor,X'])
   })

@@ -33,7 +33,7 @@ class RecordingEngine implements ChessEngine {
 const position = { fen: 'start-fen' } as Position
 
 describe('HintAdviser', () => {
-  it('creates no engine until the first hint is asked for', () => {
+  it('advise_BeforeFirstHint_CreatesNoEngine', () => {
     let created = 0
     void new HintAdviser(() => {
       created += 1
@@ -43,7 +43,7 @@ describe('HintAdviser', () => {
     expect(created).toBe(0)
   })
 
-  it('configures full strength once and reuses the engine across hints', async () => {
+  it('advise_TwoHints_ConfiguresOnceAndReusesTheEngine', async () => {
     const engine = new RecordingEngine()
     const adviser = new HintAdviser(() => engine)
 
@@ -54,7 +54,7 @@ describe('HintAdviser', () => {
     expect(engine.askedFens).toEqual(['start-fen', 'start-fen'])
   })
 
-  it('disposes the engine it made, and starts fresh if asked again', async () => {
+  it('dispose_ThenAdviseAgain_DisposesTheOldEngineAndConfiguresAFreshOne', async () => {
     const engines: RecordingEngine[] = []
     const adviser = new HintAdviser(() => {
       const engine = new RecordingEngine()

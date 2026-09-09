@@ -16,7 +16,7 @@ import {
  * field, satisfied every individual check while being the wrong control.
  */
 describe('suddenDeath', () => {
-  it('grants the whole budget in one stage that never ends', () => {
+  it('suddenDeath_MinutesOnly_GrantsOneStageThatNeverEnds', () => {
     const control = suddenDeath(10)
 
     expect(control).toEqual({
@@ -25,7 +25,7 @@ describe('suddenDeath', () => {
     })
   })
 
-  it('takes an increment in seconds', () => {
+  it('suddenDeath_WithIncrement_TakesTheIncrementInSeconds', () => {
     const control = suddenDeath(3, 2)
 
     expect(control).toEqual({
@@ -37,7 +37,7 @@ describe('suddenDeath', () => {
 
 describe('classical', () => {
   // A move quota first, then a smaller budget for however long the game runs.
-  it('grants a quota stage and then an open one', () => {
+  it('classical_QuotaAndRemainder_GrantsAQuotaStageThenAnOpenOne', () => {
     const control = classical(40, 120, 60)
 
     expect(control).toEqual({
@@ -50,7 +50,7 @@ describe('classical', () => {
     })
   })
 
-  it('applies one increment to both stages', () => {
+  it('classical_OneIncrement_AppliesItToBothStages', () => {
     const control = classical(40, 90, 30, 30)
 
     expect(control).toEqual({
@@ -64,7 +64,7 @@ describe('classical', () => {
 })
 
 describe('totalBudgetMs', () => {
-  it('adds every stage together', () => {
+  it('totalBudgetMs_StagedControl_AddsEveryStageTogether', () => {
     expect(totalBudgetMs(suddenDeath(10))).toBe(600_000)
     expect(totalBudgetMs(classical(40, 120, 60))).toBe(180 * MS_PER_MINUTE)
   })
@@ -73,13 +73,13 @@ describe('totalBudgetMs', () => {
    * Null rather than zero or Infinity: an untimed game has no budget to size
    * a simulated replay clock against, and zero would read as flag fall.
    */
-  it('has no total for an untimed game', () => {
+  it('totalBudgetMs_UntimedGame_HasNoTotal', () => {
     expect(totalBudgetMs(UNLIMITED)).toBeNull()
   })
 
   // The increment is not counted: it is earned per move, so the total is what
   // a player starts with, not what they might accumulate.
-  it('counts only the time granted up front', () => {
+  it('totalBudgetMs_WithIncrements_CountsOnlyTheUpFrontTime', () => {
     expect(totalBudgetMs(suddenDeath(5, 3))).toBe(300_000)
   })
 })
@@ -89,27 +89,27 @@ describe('totalBudgetMs', () => {
  * This string appears on the play screen, the replay panel, and every clock.
  */
 describe('describeTimeControl', () => {
-  it('names an untimed game', () => {
+  it('describeTimeControl_Untimed_NamesIt', () => {
     expect(describeTimeControl(UNLIMITED)).toBe('No clock')
   })
 
-  it('describes a plain control by its minutes', () => {
+  it('describeTimeControl_PlainControl_DescribesByMinutes', () => {
     expect(describeTimeControl(suddenDeath(10))).toBe('10 min')
   })
 
   // An increment of zero is not worth saying; anything else is.
-  it('mentions an increment only when there is one', () => {
+  it('describeTimeControl_Increment_IsMentionedOnlyWhenPresent', () => {
     expect(describeTimeControl(suddenDeath(3, 2))).toBe('3 min + 2s')
     expect(describeTimeControl(suddenDeath(3, 0))).toBe('3 min')
   })
 
-  it('spells out a staged control in the order it is played', () => {
+  it('describeTimeControl_StagedControl_SpellsItOutInPlayOrder', () => {
     expect(describeTimeControl(classical(40, 120, 60))).toBe(
       '40 moves / 120 min, then 60 min',
     )
   })
 
-  it('carries the increment into every stage it describes', () => {
+  it('describeTimeControl_IncrementInEveryStage_CarriesItIntoEach', () => {
     expect(describeTimeControl(classical(40, 90, 30, 30))).toBe(
       '40 moves / 90 min + 30s, then 30 min + 30s',
     )
@@ -136,14 +136,14 @@ describe('TIME_CONTROL_PRESETS', () => {
     ['15+10', '15 | 10'],
     ['30+0', '30 min'],
     ['90+30', '90 | 30'],
-  ])('labels the %s preset "%s"', (id, label) => {
+  ])('TIME_CONTROL_PRESETS_%s_IsLabelled%s', (id, label) => {
     const preset = TIME_CONTROL_PRESETS.find((candidate) => candidate.id === id)
 
     expect(preset?.label).toBe(label)
   })
 
   // The table above is only as good as its coverage of the list.
-  it('names every preset the list offers', () => {
+  it('TIME_CONTROL_PRESETS_FullList_NamesEveryPresetOffered', () => {
     expect(TIME_CONTROL_PRESETS.map((preset) => preset.id)).toEqual([
       'unlimited',
       '1+0',
@@ -162,7 +162,7 @@ describe('TIME_CONTROL_PRESETS', () => {
     ['1+0', 1 * MS_PER_MINUTE, 0],
     ['3+2', 3 * MS_PER_MINUTE, 2_000],
     ['90+30', 90 * MS_PER_MINUTE, 30_000],
-  ])('gives the %s preset the budget its label promises', (id, addedMs, incrementMs) => {
+  ])('TIME_CONTROL_PRESETS_%s_GrantsTheBudgetItsLabelPromises', (id, addedMs, incrementMs) => {
     const preset = TIME_CONTROL_PRESETS.find((candidate) => candidate.id === id)
 
     expect(preset?.control).toEqual({
@@ -171,13 +171,13 @@ describe('TIME_CONTROL_PRESETS', () => {
     })
   })
 
-  it('gives every preset a distinct id', () => {
+  it('TIME_CONTROL_PRESETS_AllPresets_HaveDistinctIds', () => {
     const ids = TIME_CONTROL_PRESETS.map((preset) => preset.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
 
   // The setup screen defaults to this one, and looks it up by id.
-  it('offers the rapid default the setup screen asks for', () => {
+  it('TIME_CONTROL_PRESETS_RapidDefault_ExistsForTheSetupScreen', () => {
     expect(TIME_CONTROL_PRESETS.some((preset) => preset.id === '10+0')).toBe(true)
   })
 })

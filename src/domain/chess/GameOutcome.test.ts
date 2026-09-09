@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { IN_PROGRESS, decisive, drawn, isOver, toResultTag } from './GameOutcome'
 
 describe('isOver', () => {
-  it('is false only while the game is still being played', () => {
+  it('isOver_EachStatus_IsFalseOnlyWhileStillBeingPlayed', () => {
     expect(isOver(IN_PROGRESS)).toBe(false)
     expect(isOver(decisive('white', 'checkmate'))).toBe(true)
     expect(isOver(drawn('stalemate'))).toBe(true)
@@ -10,7 +10,7 @@ describe('isOver', () => {
 
   // A game abandoned without a recorded reason is still over. The reason is
   // missing information, not an unfinished game.
-  it('counts a win with no recorded reason as over', () => {
+  it('isOver_WinWithNoRecordedReason_CountsAsOver', () => {
     expect(isOver(decisive('black', 'unknown'))).toBe(true)
   })
 })
@@ -20,7 +20,7 @@ describe('isOver', () => {
  * read back on import, so a wrong tag is a game that comes home changed.
  */
 describe('toResultTag', () => {
-  it('writes a win from the winner, not from who moved last', () => {
+  it('toResultTag_DecisiveOutcome_WritesTheWinnerNotWhoMovedLast', () => {
     expect(toResultTag(decisive('white', 'checkmate'))).toBe('1-0')
     expect(toResultTag(decisive('black', 'checkmate'))).toBe('0-1')
   })
@@ -31,19 +31,19 @@ describe('toResultTag', () => {
     'threefold_repetition',
     'fifty_move_rule',
     'agreement',
-  ] as const)('writes a draw by %s the same way as any other', (reason) => {
+  ] as const)('toResultTag_DrawBy%s_WritesTheSameTagAsAnyOtherDraw', (reason) => {
     expect(toResultTag(drawn(reason))).toBe('1/2-1/2')
   })
 
   // "*" is PGN's own marker for a game without a result, which is exactly
   // what an unfinished game is. Writing "1/2-1/2" instead would record a
   // draw that was never agreed.
-  it('marks an unfinished game as having no result', () => {
+  it('toResultTag_UnfinishedGame_MarksItAsHavingNoResult', () => {
     expect(toResultTag(IN_PROGRESS)).toBe('*')
   })
 
   // The reason never reaches the tag: PGN has nowhere to put it.
-  it('writes the same tag however the win was reached', () => {
+  it('toResultTag_EveryDecisiveReason_WritesTheSameTag', () => {
     const tags = (['checkmate', 'timeout', 'resignation', 'unknown'] as const).map((reason) =>
       toResultTag(decisive('white', reason)),
     )
@@ -52,7 +52,7 @@ describe('toResultTag', () => {
 })
 
 describe('the constructors', () => {
-  it('build outcomes that carry their reason', () => {
+  it('constructors_DecisiveAndDrawn_BuildOutcomesCarryingTheirReason', () => {
     expect(decisive('white', 'resignation')).toEqual({
       status: 'decisive',
       winner: 'white',
@@ -61,7 +61,7 @@ describe('the constructors', () => {
     expect(drawn('agreement')).toEqual({ status: 'draw', reason: 'agreement' })
   })
 
-  it('has no winner on a draw and no reason before the end', () => {
+  it('constructors_DrawAndInProgress_OmitWinnerAndReasonRespectively', () => {
     expect(drawn('stalemate')).not.toHaveProperty('winner')
     expect(IN_PROGRESS).not.toHaveProperty('reason')
   })

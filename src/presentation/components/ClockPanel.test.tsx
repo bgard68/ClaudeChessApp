@@ -23,44 +23,44 @@ describe('ClockPanel', () => {
   // The opponent sits across the board from you, so their clock has to sit
   // across the panel from yours. Getting this backwards puts your own clock
   // where you look for theirs.
-  it('puts the opponent on top when you play White', () => {
+  it('ClockPanel_PlayingWhite_PutsTheOpponentOnTop', () => {
     expect(topName(panel({ orientation: 'white' }))).toBe('Nepomniachtchi')
   })
 
-  it('flips both when you play Black', () => {
+  it('ClockPanel_PlayingBlack_FlipsBothSeats', () => {
     expect(topName(panel({ orientation: 'black' }))).toBe('Carlsen')
   })
 
-  it('marks only the side to move as active', () => {
+  it('ClockPanel_SideOnTheMove_IsTheOnlyOneMarkedActive', () => {
     const markup = panel({ activeColor: 'black' })
     expect(markup.match(/clock-face--active/g)).toHaveLength(1)
     const active = markup.slice(0, markup.indexOf('clock-face--active'))
     expect(active).toContain('clock-face--black')
   })
 
-  it('marks neither side while the game is not running', () => {
+  it('ClockPanel_GameNotRunning_MarksNeitherSideActive', () => {
     expect(panel({ activeColor: null })).not.toContain('clock-face--active')
   })
 
   // Thirty seconds is where the reading stops being informational and starts
   // being urgent, and the styling is the only thing that says so.
-  it('flags a clock at or under thirty seconds as low', () => {
+  it('ClockPanel_ThirtySecondsOrLess_FlagsTheClockAsLow', () => {
     expect(panel({ whiteMs: 30_000 })).toContain('clock-face--low')
     expect(panel({ whiteMs: 30_001 })).not.toContain('clock-face--low')
   })
 
-  it('flags each side independently', () => {
+  it('ClockPanel_OneSideLow_FlagsEachSideIndependently', () => {
     const markup = panel({ whiteMs: 5_000, blackMs: 600_000 })
     expect(markup.match(/clock-face--low/g)).toHaveLength(1)
   })
 
   // An untimed game has no reading to give. Zero would be a lie — it means
   // flag fall — so the display must not treat absent as empty.
-  it('does not call an untimed clock low', () => {
+  it('ClockPanel_UntimedGame_IsNeverCalledLow', () => {
     expect(panel({ whiteMs: null, blackMs: null })).not.toContain('clock-face--low')
   })
 
-  it('shows the provenance note only when there is one', () => {
+  it('ClockPanel_ProvenanceNote_ShowsOnlyWhenThereIsOne', () => {
     expect(panel({ note: 'Simulated' })).toContain('Simulated')
     expect(panel({ note: null })).not.toContain('clock-note')
   })

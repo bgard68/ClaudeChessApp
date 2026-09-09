@@ -39,7 +39,7 @@ const ICONS: readonly AppIconName[] = [
  * compared against each other.
  */
 describe('AppIcon', () => {
-  it.each(ICONS)('renders %s as a decorative SVG the button labels for it', (name) => {
+  it.each(ICONS)('AppIcon_%s_RendersAsDecorativeSvgTheButtonLabels', (name) => {
     const markup = renderToStaticMarkup(<AppIcon name={name} />)
 
     expect(markup).toContain('<svg')
@@ -51,26 +51,26 @@ describe('AppIcon', () => {
     expect(markup).toContain('fill="none"')
   })
 
-  it.each(ICONS)('draws something inside the %s frame', (name) => {
+  it.each(ICONS)('AppIcon_%s_DrawsSomethingInsideTheFrame', (name) => {
     const markup = renderToStaticMarkup(<AppIcon name={name} />)
 
     expect(markup).toMatch(/<(path|circle|rect|line|polyline)/)
   })
 
   // The check the old loop could not make: 26 names, 26 different pictures.
-  it('gives every icon its own glyph', () => {
+  it('AppIcon_AllTwentySixNames_EachGetTheirOwnGlyph', () => {
     const glyphs = ICONS.map((name) => renderToStaticMarkup(<AppIcon name={name} />))
 
     expect(new Set(glyphs).size).toBe(ICONS.length)
   })
 
-  it('covers every name the component publishes', () => {
+  it('AppIcon_PublishedNameList_IsCoveredWithoutDuplicates', () => {
     const published: readonly AppIconName[] = ICONS
 
     expect(new Set(published).size).toBe(ICONS.length)
   })
 
-  it('sizes to 18 square by default', () => {
+  it('AppIcon_NoSizeGiven_SizesToEighteenSquare', () => {
     const markup = renderToStaticMarkup(<AppIcon name="check" />)
 
     expect(markup).toContain('width="18"')
@@ -78,7 +78,7 @@ describe('AppIcon', () => {
     expect(markup).toContain('viewBox="0 0 24 24"')
   })
 
-  it('takes a caller-supplied size for both dimensions', () => {
+  it('AppIcon_CallerSuppliedSize_UsesItForBothDimensions', () => {
     const markup = renderToStaticMarkup(<AppIcon name="check" size={32} />)
 
     expect(markup).toContain('width="32"')
@@ -87,13 +87,13 @@ describe('AppIcon', () => {
     expect(markup).toContain('viewBox="0 0 24 24"')
   })
 
-  it('passes a className through to the SVG', () => {
+  it('AppIcon_ClassNameProp_PassesThroughToTheSvg', () => {
     const markup = renderToStaticMarkup(<AppIcon name="menu" className="icon--large" />)
 
     expect(markup).toContain('class="icon--large"')
   })
 
-  it('lets a caller override a presentation attribute it sets itself', () => {
+  it('AppIcon_CallerOverridesAPresentationAttribute_LetsTheOverrideWin', () => {
     const markup = renderToStaticMarkup(<AppIcon name="menu" strokeWidth={3} />)
 
     expect(markup).toContain('stroke-width="3"')

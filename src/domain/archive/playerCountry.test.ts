@@ -10,7 +10,7 @@ const code = (name: string) => federationOf(name)?.code ?? null
  * name nobody will check.
  */
 describe('federationOf', () => {
-  it('finds a player written out in full', () => {
+  it('playerCountry_FullNameEntry_FindsThePlayer', () => {
     expect(federationOf('Carlsen, Magnus')).toEqual({ code: 'NO', name: 'Norway' })
   })
 
@@ -21,22 +21,22 @@ describe('federationOf', () => {
     ['Anand,V', 'IN'],
     ['Anand, V.', 'IN'],
     ['Nakamura,Hi', 'US'],
-  ])('matches %s however the forename is abbreviated', (name, expected) => {
+  ])('playerCountry_%s_MatchesHoweverTheForenameIsAbbreviated', (name, expected) => {
     expect(code(name)).toBe(expected)
   })
 
   // Only the first initial is used, so middle names change nothing.
-  it('ignores everything after the first initial', () => {
+  it('playerCountry_ExtraForenames_IgnoresEverythingAfterTheFirstInitial', () => {
     expect(code('Fischer, Robert James')).toBe('US')
     expect(code('Fischer, R')).toBe('US')
   })
 
-  it('does not care about case or stray spacing', () => {
+  it('playerCountry_CaseAndSpacing_DoNotMatter', () => {
     expect(code('CARLSEN, MAGNUS')).toBe('NO')
     expect(code('  carlsen ,   magnus  ')).toBe('NO')
   })
 
-  it('knows nobody it was not told about', () => {
+  it('playerCountry_UnknownPlayer_KnowsNobodyItWasNotToldAbout', () => {
     expect(federationOf('Nobody, A')).toBeNull()
     expect(federationOf('')).toBeNull()
   })
@@ -49,7 +49,7 @@ describe('federationOf', () => {
    * comma gets no flag. Harmless with the bundled collections, which are all
    * "Surname, Forename"; worth knowing for imported files, which need not be.
    */
-  it('needs the forename initial, not just a surname', () => {
+  it('playerCountry_SurnameAlone_NeedsTheForenameInitial', () => {
     expect(federationOf('Carlsen')).toBeNull()
     expect(federationOf('Fischer')).toBeNull()
   })
@@ -67,23 +67,23 @@ describe('federationOf', () => {
     ['an acute accent', 'Réti, Richard', 'Reti, Richard'],
     ['a caron', 'Ljubojević, Ljubomir', 'Ljubojevic, Ljubomir'],
     ['an umlaut', 'Hübner, Robert', 'Huebner, Robert'],
-  ])('finds the same player through %s', (_kind, accented, plain) => {
+  ])('playerCountry_%s_FindsTheSamePlayer', (_kind, accented, plain) => {
     // Whatever the plain spelling resolves to, the accented one must match it.
     expect(code(accented)).toBe(code(plain))
   })
 
-  it('folds an accented name to the entry it belongs to', () => {
+  it('playerCountry_AccentedName_FoldsToTheEntryItBelongsTo', () => {
     expect(code('Réti, Richard')).toBe('CZ')
     expect(code('Reti, Richard')).toBe('CZ')
   })
 
   // Hyphens are kept, because double-barrelled surnames are one surname.
-  it('keeps hyphenated surnames intact', () => {
+  it('playerCountry_HyphenatedSurname_KeepsItIntact', () => {
     expect(code('Polgar, Judit')).toBe('HU')
     expect(federationOf('Vachier-Lagrave, Maxime')?.code).toBe('FR')
   })
 
-  it('answers with a country name fit to show, not just a code', () => {
+  it('playerCountry_Match_AnswersWithACountryNameNotACode', () => {
     expect(federationOf('Tal, Mikhail')).toEqual({ code: 'LV', name: 'Latvia' })
     expect(federationOf('Petrosian, Tigran')).toEqual({ code: 'AM', name: 'Armenia' })
   })
@@ -93,7 +93,7 @@ describe('federationOf', () => {
    * the federation they are best known for. This is the documented trade-off,
    * not an oversight: a 2016 Nakamura game is labelled US, not Japan.
    */
-  it('labels a player by one federation for their whole career', () => {
+  it('playerCountry_WholeCareer_LabelsThePlayerByOneFederation', () => {
     expect(code('Nakamura, Hikaru')).toBe('US')
     expect(code('Caruana, Fabiano')).toBe('US')
   })

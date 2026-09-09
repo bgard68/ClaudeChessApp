@@ -81,25 +81,25 @@ const render = (
   )
 
 describe('PlayScreen', () => {
-  it('draws the board of the game in progress', () => {
+  it('PlayScreen_GameInProgress_DrawsItsBoard', () => {
     expect(render().match(/data-square=/g)).toHaveLength(64)
   })
 
   describe('who is playing', () => {
-    it('seats you against the computer at your chosen colour', () => {
+    it('PlayScreen_ComputerGame_SeatsYouAtYourChosenColour', () => {
       expect(render({}, { playerColor: 'white' })).toContain('You vs Computer · Club')
       expect(render({}, { playerColor: 'black' })).toContain('Computer · Club vs You')
     })
 
     // Two people sharing a device are both "you", so neither seat is named
     // for a person — the colours are the only distinction that means anything.
-    it('names the colours when two people share the device', () => {
+    it('PlayScreen_PassAndPlay_NamesTheColours', () => {
       const markup = render({}, { opponent: 'human' })
       expect(markup).toContain('White vs Black')
       expect(markup).toContain('Two-player game')
     })
 
-    it('names both engines when the computer plays itself', () => {
+    it('PlayScreen_EngineVsEngine_NamesBothEngines', () => {
       const markup = render({}, { opponent: 'engines' })
       expect(markup).toContain('Stockfish (White) vs Stockfish (Black)')
       expect(markup).toContain('Stockfish match')
@@ -107,22 +107,22 @@ describe('PlayScreen', () => {
   })
 
   describe('whose turn it is', () => {
-    it('names the side to move', () => {
+    it('PlayScreen_TurnIndicator_NamesTheSideToMove', () => {
       expect(render({ awaiting: { kind: 'human', name: 'You' } })).toContain('You to move')
     })
 
-    it('says the game is starting before either side has been asked', () => {
+    it('PlayScreen_BeforeEitherSideIsAsked_SaysTheGameIsStarting', () => {
       expect(render({ awaiting: null })).toContain('Starting…')
     })
 
     // Check is the one state that changes what a player must do next, so it
     // gets a tone of its own rather than reading as ordinary play.
-    it('flags check distinctly from ordinary play', () => {
+    it('PlayScreen_Check_IsFlaggedDistinctlyFromOrdinaryPlay', () => {
       expect(render({ isCheck: true })).toContain('data-tone="warning"')
       expect(render({ isCheck: false })).toContain('data-tone="live"')
     })
 
-    it('stops announcing turns once the game is over', () => {
+    it('PlayScreen_GameOver_StopsAnnouncingTurns', () => {
       const markup = render({
         outcome: { status: 'decisive', winner: 'white', reason: 'checkmate' },
       })
@@ -133,18 +133,18 @@ describe('PlayScreen', () => {
   })
 
   describe('the move number', () => {
-    it('starts at one before anything has been played', () => {
+    it('PlayScreen_MoveCounter_StartsAtOneBeforeAnythingIsPlayed', () => {
       expect(render({ history: [] })).toContain('Move 1')
     })
 
     // Two plies to a move: White's third move begins at ply four.
-    it('counts pairs of plies, not plies', () => {
+    it('PlayScreen_MoveCounter_CountsPairsOfPliesNotPlies', () => {
       const history = ['e4', 'e5', 'Nf3', 'Nc6'].map((san) => ({ san }))
       expect(render({ history })).toContain('Move 3')
     })
   })
 
-  it('lists the moves played so far', () => {
+  it('PlayScreen_MoveList_ListsTheMovesPlayedSoFar', () => {
     const history = ['e4', 'c5'].map((san) => ({ san }))
     const markup = render({ history })
     expect(markup).toContain('e4')
@@ -153,7 +153,7 @@ describe('PlayScreen', () => {
   })
 
   describe('what you can do', () => {
-    it('keeps primary play controls outside the compact game menu', () => {
+    it('PlayScreen_PrimaryPlayControls_StayOutsideTheCompactMenu', () => {
       const markup = render()
       expect(markup).toContain('phase46-mobile-game-head')
       expect(markup).toContain('Flip board')
@@ -162,13 +162,13 @@ describe('PlayScreen', () => {
       expect(markup).toContain('Game &amp; moves')
     })
 
-    it('offers no undo until there is something to take back', () => {
+    it('PlayScreen_NothingToTakeBack_OffersNoUndo', () => {
       expect(buttonFor(render({ canUndo: false }), 'Undo')).toContain('disabled')
       expect(buttonFor(render({ canUndo: true }), 'Undo')).not.toContain('disabled')
     })
 
     // Saving an empty game would write a record of nothing.
-    it('offers no save until a move has been played', () => {
+    it('PlayScreen_NoMovePlayedYet_OffersNoSave', () => {
       expect(buttonFor(render({ history: [] }), 'Save game')).toContain('disabled')
       const played = render({ history: [{ san: 'e4' }] })
       expect(buttonFor(played, 'Save game')).not.toContain('disabled')
