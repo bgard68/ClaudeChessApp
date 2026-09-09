@@ -87,6 +87,13 @@ describe('parseTimeControlTag', () => {
     ['a zero move quota', '0/300'],
     ['an empty leading section', ':300'],
     ['an empty trailing section', '300:'],
+    // Both of these used to parse. The tag says one thing and the clock said
+    // another, which is precisely the outcome the module promises to avoid.
+    ['a third plus-segment', '300+3+5'],
+    ['trailing garbage in the move quota', '40abc/7200'],
+    ['trailing garbage in the budget', '7200xyz'],
+    ['a stray trailing plus', '300+'],
+    ['a stray trailing slash', '40/'],
   ])('parseTimeControlTag_%s_ReturnsNullRatherThanAWrongClock', (_case, tag) => {
     const parsed = parseTimeControlTag(tag)
 
@@ -100,31 +107,32 @@ describe('parseTimeControlTag', () => {
   })
 
   /*
-   * Two known deviations from the "null for anything malformed" promise in the
-   * module's own doc comment. Pinned rather than fixed: both currently let real
-   * archive files through, and changing them is a behaviour decision, not a
-   * test one. See the analysis accompanying these tests.
+   * One bad stage rejects the whole tag rather than yielding a control built
+   * from the stages that happened to parse. A half-read control is a clock the
+   * game was not played under, and it would be shown without any indication
+   * that part of the tag was discarded.
    */
-  it('parseTimeControlTag_ThirdPlusSegment_SilentlyIgnoresTheTrailingSegment', () => {
-    const tag = '300+3+5'
+  it('parseTimeControlTag_OneMalformedStageAmongValidOnes_RejectsTheWholeTag', () => {
+    const tag = '40/7200:oops:1800'
 
     const control = parseTimeControlTag(tag)
 
-    expect(control).toEqual({
-      kind: 'staged',
-      stages: [{ movesToComplete: null, addedMs: 300_000, incrementMs: 3_000 }],
-    })
+    expect(control).toBeNull()
   })
 
-  it('parseTimeControlTag_TrailingGarbageInQuota_ParsesTheLeadingDigits', () => {
-    const tag = '40abc/7200'
-
+  // The real forms these tags take, kept together so a stricter parser has to
+  // stay compatible with the archive rather than merely with the spec.
+  it.each([
+    ['a blitz control', '300+3'],
+    ['a rapid control', '600'],
+    ['a classical two-stage control', '40/7200:1800'],
+    ['the FIDE standard with increments in both stages', '40/9000+30:1800+30'],
+    ['a three-stage adjournment control', '40/7200:20/3600:900'],
+  ])('parseTimeControlTag_%s_IsStillAccepted', (_case, tag) => {
     const control = parseTimeControlTag(tag)
 
-    expect(control).toEqual({
-      kind: 'staged',
-      stages: [{ movesToComplete: null, addedMs: 7_200_000, incrementMs: 0 }],
-    })
+    expect(control).not.toBeNull()
+    expect(control?.kind).toBe('staged')
   })
 })
 

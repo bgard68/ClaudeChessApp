@@ -52,30 +52,33 @@ export function formatTimeControlTag(control: TimeControl): string {
     .join(':')
 }
 
+/**
+ * One stage: `moves/seconds`, `seconds`, or `seconds+increment`.
+ *
+ * Anchored, so the whole section has to be consumed. Splitting and then calling
+ * `Number.parseFloat` did not do that: both parsers stop at the first character
+ * they cannot use and report what they read up to it, and `split('+', 2)`
+ * discards anything past the second field rather than objecting to it. So
+ * `40abc/7200` was read as forty moves and `300+3+5` quietly became `300+3` —
+ * a clock the tag does not describe, which is the one outcome this module
+ * promises not to produce.
+ */
+const STAGE_PATTERN = /^(?:(\d+)\/)?(\d+(?:\.\d+)?)(?:\+(\d+(?:\.\d+)?))?$/
+
 function parseStage(section: string): TimeStage | null {
-  const [movesText, budgetText] = section.includes('/')
-    ? section.split('/', 2)
-    : [undefined, section]
+  const match = STAGE_PATTERN.exec(section.trim())
+  if (match === null) return null
 
-  const [secondsText, incrementText] = (budgetText ?? '').split('+', 2)
+  const [, movesText, secondsText, incrementText] = match
 
-  const seconds = Number.parseFloat(secondsText ?? '')
-  if (!Number.isFinite(seconds) || seconds < 0) return null
-
-  let movesToComplete: number | null = null
-  if (movesText !== undefined) {
-    const moves = Number.parseInt(movesText, 10)
-    if (!Number.isFinite(moves) || moves <= 0) return null
-    movesToComplete = moves
-  }
-
-  const increment =
-    incrementText === undefined ? 0 : Number.parseFloat(incrementText)
-  if (!Number.isFinite(increment) || increment < 0) return null
+  // A quota of zero moves is a stage nobody can complete: malformed, not empty.
+  const movesToComplete = movesText === undefined ? null : Number.parseInt(movesText, 10)
+  if (movesToComplete !== null && movesToComplete <= 0) return null
 
   return {
     movesToComplete,
-    addedMs: Math.round(seconds * 1000),
-    incrementMs: Math.round(increment * 1000),
+    addedMs: Math.round(Number.parseFloat(secondsText ?? '') * 1000),
+    incrementMs:
+      incrementText === undefined ? 0 : Math.round(Number.parseFloat(incrementText) * 1000),
   }
 }
