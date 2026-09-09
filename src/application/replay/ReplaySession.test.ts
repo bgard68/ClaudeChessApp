@@ -303,10 +303,43 @@ describe('ReplaySession', () => {
       expect(session.clockModelInfo.source).toBe('simulated')
     })
 
-    it('gives a reading for every position', () => {
+    /*
+     * Reading the numbers rather than checking a reading exists. A model that
+     * returned the starting budget at every ply — or charged the wrong player —
+     * satisfied "is not undefined" while showing a clock that never moved.
+     */
+    it('charges only the player who moved, at each position in turn', () => {
+      session.goTo(0)
+      expect(session.state.clock).toEqual({
+        whiteMs: 7_200_000,
+        blackMs: 7_200_000,
+        source: 'simulated',
+      })
+
+      // White has moved and paid; Black has not yet been charged.
+      session.goTo(1)
+      expect(session.state.clock).toEqual({
+        whiteMs: 7_020_000,
+        blackMs: 7_200_000,
+        source: 'simulated',
+      })
+
       session.goTo(2)
-      expect(session.state.clock).not.toBeUndefined()
-      expect(session.state.clock.source).toBe('simulated')
+      expect(session.state.clock).toEqual({
+        whiteMs: 7_020_000,
+        blackMs: 7_020_000,
+        source: 'simulated',
+      })
+    })
+
+    it('keeps the reading consistent when stepping back to a position', () => {
+      session.goTo(3)
+      const atEnd = session.state.clock
+
+      session.goTo(1)
+      session.goTo(3)
+
+      expect(session.state.clock).toEqual(atEnd)
     })
   })
 })

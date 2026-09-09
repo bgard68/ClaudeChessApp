@@ -3,6 +3,16 @@ import { placeOrNull, type ArchivedGameSummary } from '@domain/archive/ArchivedG
 const HEADER_PATTERN = /^\s*\[(\w+)\s+"([^"]*)"\]/gm
 const MOVE_NUMBER_PATTERN = /(\d+)\s*\./g
 
+/**
+ * Movetext comments, removed before move numbers are counted.
+ *
+ * A comment is full of digits followed by periods, and every one of them looks
+ * like a move number to the pattern above. `{[%clk 0:00:59.9]}` — the shape
+ * Lichess and other broadcast exports use — reads as move 59, so a two-ply
+ * game arrived in the archive list claiming fifty-nine moves.
+ */
+const COMMENT_PATTERN = /\{[^}]*\}/g
+
 export type PgnHeaders = Readonly<Record<string, string>>
 
 export function readHeaders(pgn: string): PgnHeaders {
@@ -53,7 +63,7 @@ function toElo(value: string | undefined): number | null {
 
 /** Highest move number in the movetext — close enough for a list column. */
 function countMoves(pgn: string): number {
-  const moveText = pgn.replace(HEADER_PATTERN, '')
+  const moveText = pgn.replace(HEADER_PATTERN, '').replace(COMMENT_PATTERN, ' ')
   let highest = 0
   for (const match of moveText.matchAll(MOVE_NUMBER_PATTERN)) {
     const value = Number.parseInt(match[1] ?? '', 10)

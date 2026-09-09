@@ -6,6 +6,38 @@ import {
   difficultyById,
 } from './Difficulty'
 
+/*
+ * The list is partitioned once here, rather than filtered inside each test.
+ *
+ * These used to be `for` loops with an `if` in them, which is a shape that
+ * passes when the filter matches nothing: had every level become full
+ * strength, "never asks below the floor" would have gone green while asserting
+ * nothing at all. Partitioning up front makes each case a named row, and the
+ * two guards below fail loudly if either half ever empties.
+ */
+const RATED_LEVELS = DIFFICULTY_LEVELS.flatMap((level) =>
+  level.configuration.strength.kind === 'rated'
+    ? [
+        [
+          level.id,
+          level.configuration.strength.elo,
+          level.rating,
+          level.configuration.searchLimits.maxDepth,
+        ] as const,
+      ]
+    : [],
+)
+
+const FULL_STRENGTH_LEVELS = DIFFICULTY_LEVELS.flatMap((level) =>
+  level.configuration.strength.kind === 'full'
+    ? [[level.id, level.rating, level.configuration.searchLimits.maxDepth] as const]
+    : [],
+)
+
+const EVERY_LEVEL = DIFFICULTY_LEVELS.map(
+  (level) => [level.id, level.label, level.description] as const,
+)
+
 describe('difficultyById', () => {
   it('finds each level by its id', () => {
     expect(difficultyById('club').label).toBe('Club player')
@@ -63,12 +95,16 @@ describe('the levels', () => {
    * not deliver, so the easiest level sits at the floor and uses a shallow
    * depth cap to be beatable.
    */
-  it('never asks the engine for a rating below its floor', () => {
-    for (const level of DIFFICULTY_LEVELS) {
-      if (level.configuration.strength.kind === 'rated') {
-        expect(level.configuration.strength.elo).toBeGreaterThanOrEqual(MINIMUM_RATED_ELO)
-      }
-    }
+  // Guards for the two tables below: an empty table asserts nothing, and does
+  // it silently. Both halves of the list have to stay populated.
+  it('has at least one level of each kind to check', () => {
+    expect(RATED_LEVELS.length).toBeGreaterThan(0)
+    expect(FULL_STRENGTH_LEVELS.length).toBeGreaterThan(0)
+    expect(RATED_LEVELS.length + FULL_STRENGTH_LEVELS.length).toBe(DIFFICULTY_LEVELS.length)
+  })
+
+  it.each(RATED_LEVELS)('never asks the engine to play %s below its rating floor', (_id, elo) => {
+    expect(elo).toBeGreaterThanOrEqual(MINIMUM_RATED_ELO)
   })
 
   it('makes the easiest level beatable with depth rather than a false rating', () => {
@@ -82,31 +118,22 @@ describe('the levels', () => {
    * machine and the time it is given — so it claims none rather than printing
    * a number it cannot stand behind.
    */
-  it('quotes a rating for every capped level, and none for full strength', () => {
-    for (const level of DIFFICULTY_LEVELS) {
-      if (level.configuration.strength.kind === 'full') {
-        expect(level.rating).toBeNull()
-        expect(level.configuration.searchLimits.maxDepth).toBeUndefined()
-      } else {
-        expect(level.rating).toMatch(/^~\d{4}$/)
-      }
-    }
-  })
+  it.each(FULL_STRENGTH_LEVELS)(
+    'quotes no rating for %s, and lets it search as deep as it likes',
+    (_id, rating, maxDepth) => {
+      expect(rating).toBeNull()
+      expect(maxDepth).toBeUndefined()
+    },
+  )
 
   // The rating beside the label is what a player chooses on, so it has to be
-  // the number actually sent to the engine.
-  it('prints the rating it actually asks for', () => {
-    for (const level of DIFFICULTY_LEVELS) {
-      if (level.configuration.strength.kind === 'rated') {
-        expect(level.rating).toBe(`~${level.configuration.strength.elo}`)
-      }
-    }
+  // the number actually sent to the engine — not merely some four-digit figure.
+  it.each(RATED_LEVELS)('prints the rating it actually asks for at %s', (_id, elo, rating) => {
+    expect(rating).toBe(`~${elo}`)
   })
 
-  it('describes each level in a sentence', () => {
-    for (const level of DIFFICULTY_LEVELS) {
-      expect(level.label.length).toBeGreaterThan(0)
-      expect(level.description).toMatch(/\.$/)
-    }
+  it.each(EVERY_LEVEL)('describes %s in a sentence', (_id, label, description) => {
+    expect(label.length).toBeGreaterThan(0)
+    expect(description).toMatch(/\.$/)
   })
 })

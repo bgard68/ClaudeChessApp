@@ -44,11 +44,23 @@ describe('ReplayClockModel', () => {
     expect(model.readingAt(2).whiteMs).toBe(model.readingAt(1).whiteMs)
   })
 
-  it('falls back to a simulation, and says so, for games with no clock record', () => {
+  /*
+   * Naming the assumed control rather than merely checking one exists: the
+   * whole point of saying "simulated" is that the reader can judge the
+   * assumption, and a model that assumed a five-minute blitz clock for a 1972
+   * championship game would pass a non-null check while showing nonsense.
+   */
+  it('falls back to a simulation, and says which control it assumed', () => {
     const model = ReplayClockModel.forGame(gameFrom(HISTORIC_GAME))
 
     expect(model.source).toBe('simulated')
-    expect(model.assumedControl).not.toBeNull()
+    expect(model.assumedControl).toEqual({
+      kind: 'staged',
+      stages: [
+        { movesToComplete: 40, addedMs: 7_200_000, incrementMs: 0 },
+        { movesToComplete: null, addedMs: 3_600_000, incrementMs: 0 },
+      ],
+    })
   })
 
   it('starts both simulated clocks at the full budget', () => {
