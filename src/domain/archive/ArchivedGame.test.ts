@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { displayYear } from './ArchivedGame'
+import { displayYear, placeOrNull } from './ArchivedGame'
 
 /*
  * PGN dates are written "1972.07.23", and a great many archived games have
@@ -33,5 +33,28 @@ describe('displayYear', () => {
 
   it('does not mistake a longer number for a year', () => {
     expect(displayYear('19720723')).toBe('1972')
+  })
+})
+
+/*
+ * Added by the mutation audit: nothing exercised placeOrNull directly, so
+ * inverting its null test or returning undefined passed the suite.
+ */
+describe('placeOrNull', () => {
+  it('placeOrNull_RealPlaceName_ReturnsItUnchanged', () => {
+    const place = placeOrNull('Reykjavik ISL')
+
+    expect(place).toBe('Reykjavik ISL')
+  })
+
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+    ['an empty string', ''],
+    ['the unknown marker', '?'],
+  ])('placeOrNull_%s_ReturnsNullExactly', (_case, value) => {
+    const place = placeOrNull(value)
+
+    expect(place).toBeNull()
   })
 })

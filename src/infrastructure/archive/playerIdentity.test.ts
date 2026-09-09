@@ -116,3 +116,20 @@ describe('mergePlayers', () => {
     expect(players.map((p) => p.canonical)).toEqual(['Major,Y', 'Minor,X'])
   })
 })
+
+/*
+ * Added by the mutation audit: the spelling tie-break had no witness. When two
+ * spellings tie on forename and total length, the first one seen wins — an
+ * arbitrary rule, but a *stable* one, and stability is what keeps the display
+ * name from flapping between rebuilds of the player index.
+ */
+describe('preferred spelling ties', () => {
+  it('mergePlayers_TwoSpellingsTiedOnEveryLength_KeepsTheFirstSeen', () => {
+    const rows = [row('Smith, Al', 3, 1980, 1990), row('Smith, Ab', 3, 1980, 1990)]
+
+    const players = mergePlayers(rows)
+
+    expect(players).toHaveLength(1)
+    expect(players[0]?.canonical).toBe('Smith, Al')
+  })
+})

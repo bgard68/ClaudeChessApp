@@ -181,3 +181,20 @@ describe('TIME_CONTROL_PRESETS', () => {
     expect(TIME_CONTROL_PRESETS.some((preset) => preset.id === '10+0')).toBe(true)
   })
 })
+
+/*
+ * Added by the mutation audit: every existing case used whole minutes, so
+ * demoting the label's rounding to truncation passed.
+ */
+describe('describeTimeControl rounding', () => {
+  it('describeTimeControl_NinetySecondStage_RoundsToTwoMinutesNotOne', () => {
+    const control = {
+      kind: 'staged',
+      stages: [{ movesToComplete: null, addedMs: 90_000, incrementMs: 0 }],
+    } as const
+
+    const label = describeTimeControl(control)
+
+    expect(label).toBe('2 min')
+  })
+})

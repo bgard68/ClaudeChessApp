@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import type { Position } from '@domain/chess/Position'
+import type { ChessRules } from '@domain/ports/ChessRules'
 import { ChessJsRules } from '@infrastructure/chess/ChessJsRules'
 import { mateStartingMove, matingMoves, solvesMateWithin, toughestDefence } from './mate'
 
@@ -62,5 +64,37 @@ describe('forced-mate reasoning', () => {
     expect(finisher).not.toBeNull()
     const end = rules.play(afterDefence, finisher!)!.position
     expect(rules.outcome(end, [end])).toMatchObject({ reason: 'checkmate' })
+  })
+})
+
+/*
+ * Added by the mutation audit. Two gaps: an illegal answer was never offered,
+ * and nothing separated "the game ended" from "the game ended in mate" — with
+ * the real rules engine a decisive board is always mate, so the distinction
+ * needs a stub that answers decisive-for-another-reason.
+ */
+describe('solvesMateWithin rejections', () => {
+  it('solvesMateWithin_IllegalIntent_ReturnsFalseRatherThanCrediting', () => {
+    const position = rules.positionFromFen(LADDER)
+
+    // a6 to a8 skips a rank the rook cannot skip: not a legal move here.
+    const solved = solvesMateWithin(rules, position, { from: 'b1', to: 'b8' }, 1)
+
+    expect(solved).toBe(false)
+  })
+
+  it('solvesMateWithin_DecisiveButNotCheckmate_DoesNotCountItAsMate', () => {
+    const position = { fen: 'start' } as Position
+    const next = { fen: 'after' } as Position
+    /** Ends decisively — but by resignation, which is not a mate. */
+    const endedRules = {
+      play: () => ({ position: next, move: {} }),
+      legalMoves: () => [],
+      outcome: () => ({ status: 'decisive', winner: 'white', reason: 'resignation' }),
+    } as unknown as ChessRules
+
+    const solved = solvesMateWithin(endedRules, position, { from: 'e2', to: 'e4' }, 1)
+
+    expect(solved).toBe(false)
   })
 })

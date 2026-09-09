@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { suddenDeath, UNLIMITED } from '@domain/clock/TimeControl'
+import type { RecordedGame } from '@application/ports/GameStore'
 import { HumanOpponent } from '@application/HumanOpponent'
 import { LiveGame } from '@application/LiveGame'
 import { recordGame } from '@application/recordGame'
@@ -105,5 +106,50 @@ describe('writePgn', () => {
     expect(pgn).not.toContain('%clk')
     expect(pgn).toContain('[TimeControl "-"]')
     expect(parseArchivedGame(pgn, 'x')!.hasRecordedClocks).toBe(false)
+  })
+})
+
+/*
+ * Added by the mutation audit. Two gaps: the 80-column wrap was never hit at
+ * exactly 80, and a decisive game with an unknown reason was never written.
+ */
+describe('the edges the audit found unwitnessed', () => {
+  const gameWith = (
+    outcome: RecordedGame['outcome'],
+    moves: RecordedGame['moves'],
+  ): RecordedGame => ({
+    white: 'A',
+    black: 'B',
+    event: 'E',
+    site: 'S',
+    playedOn: '2026.09.09',
+    outcome,
+    timeControl: UNLIMITED,
+    moves,
+    recordedAt: '2026-09-09T12:00:00.000Z',
+  })
+
+  it('writePgn_LineLandingExactlyOnTheLimit_KeepsItOnOneLine', () => {
+    // "1." + space + 77 characters = 80: exactly the limit, so no wrap.
+    const fitted = gameWith({ status: 'in_progress' }, [
+      { ply: 1, color: 'white', san: 'X'.repeat(77), clockAfterMs: null } as never,
+    ])
+
+    const pgn = writePgn(fitted)
+
+    expect(pgn.endsWith(`\n\n1. ${'X'.repeat(77)}\n*\n`)).toBe(true)
+  })
+
+  it('writePgn_DecisiveGameWithUnknownReason_WritesNoTerminationTag', () => {
+    // "unknown" is the absence of a reason; writing it would record one.
+    const unexplained = gameWith(
+      { status: 'decisive', winner: 'white', reason: 'unknown' },
+      [],
+    )
+
+    const pgn = writePgn(unexplained)
+
+    expect(pgn).not.toContain('[Termination')
+    expect(pgn).toContain('[Result "1-0"]')
   })
 })

@@ -65,3 +65,26 @@ describe('Clock', () => {
     expect(advanced).not.toBe(original)
   })
 })
+
+/*
+ * Added by the mutation audit: the zero-tick guard had no witness, so relaxing
+ * `<= 0` to `< 0` passed. The guard is identity — a tick that moved no time
+ * returns the same clock, so nothing downstream re-renders for nothing.
+ */
+describe('Clock zero and negative ticks', () => {
+  it('advance_ZeroElapsed_ReturnsTheSameClockInstance', () => {
+    const clock = Clock.forControl(suddenDeath(5)).startTurn('white')
+
+    const after = clock.advance(0)
+
+    expect(after).toBe(clock)
+  })
+
+  it('advance_NegativeElapsed_ReturnsTheSameClockInstance', () => {
+    const clock = Clock.forControl(suddenDeath(5)).startTurn('white')
+
+    const after = clock.advance(-50)
+
+    expect(after).toBe(clock)
+  })
+})

@@ -96,3 +96,39 @@ describe('ReplayClockModel', () => {
     expect(model.readingAt(999)).toEqual(model.readingAt(6))
   })
 })
+
+/*
+ * Added by the mutation audit. Two gaps: nothing read a recorded model's
+ * starting reading, and nothing crossed a stage boundary in the simulation.
+ */
+describe('the readings the audit found unwitnessed', () => {
+  it('readingAt_PlyZeroOfARecordedGame_ShowsTheDeclaredStartingBudget', () => {
+    const model = ReplayClockModel.forGame(gameFrom(BROADCAST_GAME))
+
+    const start = model.readingAt(0)
+
+    expect(start).toEqual({ whiteMs: 7_200_000, blackMs: 7_200_000, source: 'recorded' })
+  })
+
+  it('readingAt_SimulatedStageBoundary_AddsTheNextBudgetOnTheQuotaMoveNotAfter', () => {
+    // One move completes the first stage, so the second stage's budget lands
+    // as White's first move finishes — not one move late.
+    const oneMoveStages = {
+      kind: 'staged',
+      stages: [
+        { movesToComplete: 1, addedMs: 60_000, incrementMs: 0 },
+        { movesToComplete: null, addedMs: 60_000, incrementMs: 0 },
+      ],
+    } as const
+    const fourPlies = `[Event "E"]\n[Result "*"]\n\n1. c4 e6 2. Nf3 d5 *\n`
+    const model = ReplayClockModel.forGame(gameFrom(fourPlies), oneMoveStages)
+
+    const afterWhiteFirst = model.readingAt(1)
+    const afterAllFour = model.readingAt(4)
+
+    // The whole first budget was spent on the move, and the second arrived.
+    expect(afterWhiteFirst.whiteMs).toBe(60_000)
+    // Both budgets fully paced out by the second (final) white move.
+    expect(afterAllFour.whiteMs).toBe(0)
+  })
+})

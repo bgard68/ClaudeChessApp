@@ -78,3 +78,31 @@ describe('ChessJsRules', () => {
     )
   })
 })
+
+/*
+ * Added by the mutation audit: no test played a promotion through the rules,
+ * so inverting the promotion-symbol mapping — which makes every promotion an
+ * illegal move — passed the suite.
+ */
+describe('playing a promotion', () => {
+  const PAWN_ON_SEVENTH = '8/1P6/8/k5K1/8/8/8/8 w - - 0 1'
+
+  it('play_PromotionToQueen_ProducesTheQueeningMove', () => {
+    const position = rules.positionFromFen(PAWN_ON_SEVENTH)
+
+    const played = rules.play(position, { from: 'b7', to: 'b8', promotion: 'queen' })
+
+    expect(played?.move.san).toBe('b8=Q')
+    expect(played?.move.promotion).toBe('queen')
+    expect(played?.position.fen).toContain('1Q6')
+  })
+
+  it('play_UnderpromotionToKnight_HonoursTheChoiceRatherThanQueening', () => {
+    const position = rules.positionFromFen(PAWN_ON_SEVENTH)
+
+    const played = rules.play(position, { from: 'b7', to: 'b8', promotion: 'knight' })
+
+    expect(played?.move.san).toBe('b8=N')
+    expect(played?.move.promotion).toBe('knight')
+  })
+})

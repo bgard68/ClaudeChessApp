@@ -153,3 +153,65 @@ describe('SqliteGameArchive first-load recovery', () => {
     expect(archive.failures).toEqual([])
   })
 })
+
+/*
+ * Added by the mutation audit. The scripted client above ignores SQL entirely,
+ * so nothing witnessed the query the archive actually builds — the year-range
+ * operators, the page size, and which filters a blank query omits. This client
+ * records every select, and the tests read the SQL back.
+ */
+class RecordingClient extends ScriptedClient {
+  readonly selects: Array<{ sql: string; params: readonly unknown[] }> = []
+
+  override select<T extends SqlRow = SqlRow>(sql: string, params?: readonly unknown[]): Promise<T[]> {
+    this.selects.push({ sql, params: params ?? [] })
+    return super.select(sql)
+  }
+
+  /** The paged game query — the one SELECT carrying LIMIT and OFFSET. */
+  pageQuery(): { sql: string; params: readonly unknown[] } {
+    const found = this.selects.find((entry) => entry.sql.includes('LIMIT ? OFFSET ?'))
+    if (found === undefined) throw new Error('no paged select was issued')
+    return found
+  }
+}
+
+describe('the SQL the archive actually issues', () => {
+  it('list_YearRange_FiltersInclusivelyOnBothEnds', async () => {
+    const client = new RecordingClient()
+    const archive = new SqliteGameArchive(client.asClient(), [])
+
+    await archive.list({ yearFrom: 1972, yearTo: 1999 })
+
+    const { sql, params } = client.pageQuery()
+    expect(sql).toContain('year >= ?')
+    expect(sql).toContain('year <= ?')
+    expect(params).toContain(1972)
+    expect(params).toContain(1999)
+  })
+
+  it('list_NoFilters_IssuesAnUnfilteredQueryWithTheDefaultPage', async () => {
+    const client = new RecordingClient()
+    const archive = new SqliteGameArchive(client.asClient(), [])
+
+    await archive.list()
+
+    const { sql, params } = client.pageQuery()
+    expect(sql).not.toContain('WHERE')
+    expect(sql).not.toContain('event = ?')
+    // Default page size and first page, as the two trailing bindings.
+    expect(params.slice(-2)).toEqual([50, 0])
+  })
+
+  it('list_EmptyStringFilters_AreTreatedAsAbsentNotAsValues', async () => {
+    const client = new RecordingClient()
+    const archive = new SqliteGameArchive(client.asClient(), [])
+
+    await archive.list({ event: '', result: '' })
+
+    const { sql, params } = client.pageQuery()
+    expect(sql).not.toContain('event = ?')
+    expect(sql).not.toContain('result = ?')
+    expect(params).not.toContain('')
+  })
+})
