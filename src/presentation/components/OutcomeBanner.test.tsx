@@ -15,7 +15,7 @@ describe('describeOutcome', () => {
     ['threefold_repetition', 'Draw — Threefold repetition'],
     ['fifty_move_rule', 'Draw — Fifty-move rule'],
     ['agreement', 'Draw — Agreement'],
-  ])('names the draw reason %s', (reason, expected) => {
+  ])('describeOutcome_DrawBy%s_NamesTheReason', (reason, expected) => {
     expect(describeOutcome(drawn(reason))).toBe(expected)
   })
 
@@ -23,44 +23,44 @@ describe('describeOutcome', () => {
     ['white', 'checkmate', 'White won by checkmate'],
     ['black', 'timeout', 'Black won on time'],
     ['white', 'resignation', 'White won by resignation'],
-  ] as const)('names a decisive result: %s %s', (winner, reason, expected) => {
+  ] as const)('describeOutcome_DecisiveBy%s_Names%s', (winner, reason, expected) => {
     expect(describeOutcome(won(winner, reason))).toBe(expected)
   })
 
   // A PGN records the result, not how it was reached, so most archived wins
   // arrive with no reason at all. Saying "White won" is the honest sentence;
   // "White won by unknown" would be an admission dressed as a fact.
-  it('says only who won when the reason was never recorded', () => {
+  it('describeOutcome_NoRecordedReason_SaysOnlyWhoWon', () => {
     expect(describeOutcome(won('black', 'unknown'))).toBe('Black won')
   })
 
   // A reason the app has not met yet is passed through rather than swallowed:
   // a blank banner would hide the outcome entirely.
-  it('falls back to the raw reason it does not recognise', () => {
+  it('describeOutcome_UnrecognisedReason_FallsBackToTheRawText', () => {
     expect(describeOutcome(drawn('mutual_boredom'))).toBe('Draw — mutual_boredom')
   })
 
-  it('describes a game still being played as nothing', () => {
+  it('describeOutcome_GameStillBeingPlayed_DescribesNothing', () => {
     expect(describeOutcome({ status: 'in_progress' } as GameOutcome)).toBe('')
   })
 })
 
 describe('OutcomeBanner', () => {
-  it('renders nothing while the game is still on', () => {
+  it('OutcomeBanner_GameStillOn_RendersNothing', () => {
     const markup = renderToStaticMarkup(
       <OutcomeBanner outcome={{ status: 'in_progress' } as GameOutcome} />,
     )
     expect(markup).toBe('')
   })
 
-  it('announces the result to a screen reader when it appears', () => {
+  it('OutcomeBanner_ResultAppears_AnnouncesToAScreenReader', () => {
     const markup = renderToStaticMarkup(<OutcomeBanner outcome={won('white', 'checkmate')} />)
     // role="status" is what makes the result spoken rather than merely drawn.
     expect(markup).toContain('role="status"')
     expect(markup).toContain('White won by checkmate')
   })
 
-  it('offers a new game only when there is somewhere to go', () => {
+  it('OutcomeBanner_NoNavigationTarget_OffersNoNewGameButton', () => {
     const withAction = renderToStaticMarkup(
       <OutcomeBanner outcome={drawn('stalemate')} onNewGame={vi.fn()} />,
     )
@@ -70,7 +70,7 @@ describe('OutcomeBanner', () => {
     expect(without).not.toContain('New game')
   })
 
-  it('places its own actions before the new-game button', () => {
+  it('OutcomeBanner_OwnActions_ComeBeforeTheNewGameButton', () => {
     const markup = renderToStaticMarkup(
       <OutcomeBanner outcome={won('white', 'checkmate')} onNewGame={vi.fn()}>
         <button type="button">Save game</button>

@@ -43,7 +43,7 @@ afterEach(() => {
 })
 
 describe('loadFederations', () => {
-  it('fetches the directory once, however many times it is asked', async () => {
+  it('loadFederations_AskedRepeatedly_FetchesTheDirectoryOnce', async () => {
     const module = await load()
     await module.loadFederations()
     await module.loadFederations()
@@ -53,12 +53,12 @@ describe('loadFederations', () => {
 
   // A missing file costs flags, not function: the archive still lists every
   // game, just without a country beside the names.
-  it('survives a directory that will not load', async () => {
+  it('loadFederations_DirectoryWillNotLoad_Survives', async () => {
     const module = await load({}, { ok: false })
     expect(module.federationFor('Wells, Peter')).toBeNull()
   })
 
-  it('survives the fetch rejecting outright', async () => {
+  it('loadFederations_FetchRejectsOutright_Survives', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('offline'))))
     const module = await import('./federations')
     await expect(module.loadFederations()).resolves.toBeUndefined()
@@ -67,7 +67,7 @@ describe('loadFederations', () => {
 })
 
 describe('federationFor', () => {
-  it('knows nobody before the directory has loaded', async () => {
+  it('federationFor_BeforeTheDirectoryLoaded_KnowsNobody', async () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
     const module = await import('./federations')
     // Rows render immediately and gain their flags a moment later, rather
@@ -75,7 +75,7 @@ describe('federationFor', () => {
     expect(module.federationFor('Wells, Peter')).toBeNull()
   })
 
-  it('falls back to FIDE for a player the curated list does not hold', async () => {
+  it('federationFor_PlayerNotInCuratedList_FallsBackToFide', async () => {
     const module = await load()
     expect(module.federationFor('Wells, Peter')).toEqual({
       code: 'ENG',
@@ -84,7 +84,7 @@ describe('federationFor', () => {
     })
   })
 
-  it('shows a federation code it has no country name for', async () => {
+  it('federationFor_CodeWithNoCountryName_ShowsTheCodeItself', async () => {
     const module = await load()
     expect(module.federationFor('Obscure, Player')).toEqual({
       code: 'ZZZ',
@@ -93,18 +93,18 @@ describe('federationFor', () => {
     })
   })
 
-  it('reports an untitled player as untitled rather than as empty', async () => {
+  it('federationFor_UntitledPlayer_ReportsUntitledNotEmpty', async () => {
     const module = await load()
     expect(module.federationFor('Larsen, Bent')?.title).toBeNull()
   })
 
-  it('knows nobody either source has heard of', async () => {
+  it('federationFor_PlayerNeitherSourceKnows_KnowsNobody', async () => {
     const module = await load()
     expect(module.federationFor('Nobody, A')).toBeNull()
   })
 
   describe('when the curated list has an entry', () => {
-    it('prefers it, and translates its code to FIDE’s three letters', async () => {
+    it('federationFor_CuratedEntry_WinsAndTranslatesToFideCode', async () => {
       const module = await load()
       // The curated list stores NO; FIDE and the UI both use NOR.
       expect(module.federationFor('Carlsen, Magnus')).toMatchObject({
@@ -113,7 +113,7 @@ describe('federationFor', () => {
       })
     })
 
-    it('takes the title from FIDE when both sources agree on the federation', async () => {
+    it('federationFor_BothSourcesAgree_TakesTheTitleFromFide', async () => {
       const module = await load()
       expect(module.federationFor('Carlsen, Magnus')?.title).toBe('GM')
     })
@@ -129,7 +129,7 @@ describe('federationFor', () => {
      * The champion's own games are too old to carry a rating that would
      * expose the mistake, so nothing else would catch it.
      */
-    it('refuses a title from a namesake in another federation', async () => {
+    it('federationFor_NamesakeInAnotherFederation_RefusesTheTitle', async () => {
       const module = await load()
       const botvinnik = module.federationFor('Botvinnik, Mikhail')
 
@@ -139,7 +139,7 @@ describe('federationFor', () => {
       expect(botvinnik?.code).not.toBe('ISR')
     })
 
-    it('still names the federation when FIDE has never heard of the player', async () => {
+    it('federationFor_FideNeverHeardOfThePlayer_StillNamesTheFederation', async () => {
       const module = await load({})
       expect(module.federationFor('Carlsen, Magnus')).toEqual({
         code: 'NOR',
@@ -151,7 +151,7 @@ describe('federationFor', () => {
 
   // Both lookups behind this fold accents to their base letter, so a PGN
   // spelled either way finds the same player.
-  it('finds a player whose name is written with accents', async () => {
+  it('federationFor_AccentedSpelling_FindsThePlayer', async () => {
     const module = await load({ 'ljubojevic l': { fed: 'SRB', title: 'GM', elo: 2571 } })
     expect(module.federationFor('Ljubojević, Ljubomir')).toEqual(
       module.federationFor('Ljubojevic, Ljubomir'),

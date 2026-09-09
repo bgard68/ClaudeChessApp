@@ -45,7 +45,7 @@ const normalisedMoves = (pgn: string): string =>
     .toLowerCase()
 
 describe.skipIf(files.length === 0)('bundled game library', () => {
-  it('ships more than one collection, all non-empty', () => {
+  it('library_ShippedCollections_AreSeveralAndAllNonEmpty', () => {
     expect(files.length).toBeGreaterThanOrEqual(2)
     expect(games.length).toBeGreaterThan(2_000)
   })
@@ -56,7 +56,7 @@ describe.skipIf(files.length === 0)('bundled game library', () => {
    * game is validated where it matters — `build-library` refuses to write one
    * that will not play, and `npm run audit-library` re-checks all of them.
    */
-  it('contains only games that actually play out', () => {
+  it('library_EveryGame_ActuallyPlaysOut', () => {
     const sample = games.filter((_, index) => index % 7 === 0)
     const unplayable: string[] = []
 
@@ -86,7 +86,7 @@ describe.skipIf(files.length === 0)('bundled game library', () => {
     // It was failing on timing, never on a bad game.
   }, 30_000)
 
-  it('holds no game twice, within a file or across them', () => {
+  it('library_AllFiles_HoldNoGameTwice', () => {
     const seen = new Map<string, string>()
     const repeated: string[] = []
 
@@ -100,7 +100,7 @@ describe.skipIf(files.length === 0)('bundled game library', () => {
     expect(repeated.slice(0, 5)).toEqual([])
   })
 
-  it('holds no game that is a truncated copy of another', () => {
+  it('library_AllFiles_HoldNoTruncatedCopyOfAnotherGame', () => {
     // Same players, same year, one move list a prefix of the other.
     const byPairing = new Map<string, string[]>()
 
@@ -128,7 +128,7 @@ describe.skipIf(files.length === 0)('bundled game library', () => {
     expect(truncated).toBe(0)
   })
 
-  it('names every famous game and no other', () => {
+  it('library_FamousCollection_NamesEveryFamousGameAndNoOther', () => {
     const named = games.filter(({ pgn }) => tagOf(pgn, 'Nickname') !== '')
 
     expect(named.length).toBeGreaterThanOrEqual(15)
@@ -136,7 +136,7 @@ describe.skipIf(files.length === 0)('bundled game library', () => {
     expect(named.map(({ pgn }) => tagOf(pgn, 'Nickname'))).toContain('The Immortal Game')
   })
 
-  it('spans the whole history of the title, 1886 to the present', () => {
+  it('library_Championships_SpanTheWholeHistoryOfTheTitle', () => {
     const years = games
       .map(({ pgn }) => Number.parseInt(tagOf(pgn, 'Date').slice(0, 4), 10))
       .filter((year) => Number.isFinite(year))
@@ -145,7 +145,7 @@ describe.skipIf(files.length === 0)('bundled game library', () => {
     expect(Math.max(...years)).toBeGreaterThanOrEqual(2024)
   })
 
-  it('includes every title match played since 2008', () => {
+  it('library_Championships_IncludeEveryTitleMatchSince2008', () => {
     const years = new Set(
       games.map(({ pgn }) => Number.parseInt(tagOf(pgn, 'Date').slice(0, 4), 10)),
     )
@@ -156,7 +156,7 @@ describe.skipIf(files.length === 0)('bundled game library', () => {
     }
   })
 
-  it('builds a database row for every game that satisfies the schema', () => {
+  it('library_EveryGame_BuildsADatabaseRowSatisfyingTheSchema', () => {
     for (const { pgn } of games) {
       const bind = insertStatement(pgn, 'championship').bind!
 
@@ -168,7 +168,7 @@ describe.skipIf(files.length === 0)('bundled game library', () => {
     }
   })
 
-  it('indexes every game with players and a date', () => {
+  it('library_EveryGame_IndexesWithPlayersAndADate', () => {
     const summaries = games.map(({ pgn }, index) => summarise(pgn, `game-${index}`))
 
     expect(summaries.every((summary) => summary.white !== 'Unknown')).toBe(true)

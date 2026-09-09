@@ -60,7 +60,7 @@ const render = (...args: Parameters<typeof session>) =>
   renderToStaticMarkup(<ReplayScreen session={session(...args)} />)
 
 describe('ReplayScreen', () => {
-  it('titles the game with both players and how it ended', () => {
+  it('ReplayScreen_Title_NamesBothPlayersAndHowItEnded', () => {
     const markup = render()
     expect(markup).toContain('Fischer vs Spassky')
     expect(markup).toContain('World Championship')
@@ -71,26 +71,26 @@ describe('ReplayScreen', () => {
 
   // PGN uses "-" and "?" where a round was not recorded. Printing "Round -"
   // under an event name reads as data when it is the absence of data.
-  it.each(['-', '?', ''])('omits an unrecorded round (%s)', (round) => {
+  it.each(['-', '?', ''])('ReplayScreen_UnrecordedRound_%s_IsOmitted', (round) => {
     expect(render()).toContain('Round')
     expect(render({ game: game({ round }) })).not.toContain('Round ')
   })
 
   describe('where in the game you are', () => {
-    it('says starting position before the first move', () => {
+    it('ReplayScreen_PlyZero_SaysStartingPosition', () => {
       expect(render({ ply: 0 })).toContain('Starting position')
     })
 
     // Ply counts half-moves; the move number people read is the pair.
-    it('counts in moves once play has begun', () => {
+    it('ReplayScreen_PlayBegun_CountsInMoves', () => {
       expect(render({ ply: 3 })).toContain('Move 2')
     })
 
-    it('reports progress as a percentage of the whole game', () => {
+    it('ReplayScreen_Progress_IsReportedAsAPercentageOfTheGame', () => {
       expect(render({ ply: 3, totalPlies: 4 })).toContain('75% complete')
     })
 
-    it('survives a game with no moves rather than dividing by zero', () => {
+    it('ReplayScreen_GameWithNoMoves_SurvivesWithoutDividingByZero', () => {
       const markup = render({ ply: 0, totalPlies: 0 })
       expect(markup).toContain('0% complete')
       expect(markup).not.toContain('NaN')
@@ -98,13 +98,13 @@ describe('ReplayScreen', () => {
   })
 
   describe('the transport', () => {
-    it('offers play while paused and pause while playing', () => {
+    it('ReplayScreen_Transport_OffersPlayWhilePausedAndPauseWhilePlaying', () => {
       expect(render({ isPlaying: false })).toContain('aria-label="Play replay"')
       expect(render({ isPlaying: true })).toContain('aria-label="Pause replay"')
     })
 
     it.each(['First position', 'Previous move', 'Next move', 'Final position'])(
-      'gives the %s control a label a screen reader can announce',
+      'ReplayScreen_%sControl_HasALabelAScreenReaderCanAnnounce',
       (label) => {
         const markup = render()
 
@@ -112,13 +112,13 @@ describe('ReplayScreen', () => {
       },
     )
 
-    it('scrubs across the whole game and no further', () => {
+    it('ReplayScreen_Scrubber_CoversTheWholeGameAndNoFurther', () => {
       const markup = render({ ply: 2, totalPlies: 3 })
       expect(markup).toContain('max="3"')
       expect(markup).toContain('value="2"')
     })
 
-    it('marks exactly one speed as chosen', () => {
+    it('ReplayScreen_SpeedButtons_MarkExactlyOneAsChosen', () => {
       const markup = render({ speed: 2 })
       expect(markup.match(/aria-pressed="true"/g)).toHaveLength(1)
       const chosen = markup.slice(0, markup.indexOf('aria-pressed="true"'))
@@ -135,14 +135,14 @@ describe('ReplayScreen', () => {
    * from a record that does not exist.
    */
   describe('saying where the clock came from', () => {
-    it('labels a recorded clock as recorded', () => {
+    it('ReplayScreen_RecordedClock_IsLabelledRecorded', () => {
       const markup = render({}, 'recorded')
       expect(markup).toContain('Recorded')
       expect(markup).toContain('as recorded in the source PGN')
       expect(markup).not.toContain('Simulated clock')
     })
 
-    it('admits a simulated clock is invented, and from what', () => {
+    it('ReplayScreen_SimulatedClock_AdmitsItIsInventedAndFromWhat', () => {
       const markup = render({}, 'simulated')
       expect(markup).toContain('Estimated')
       expect(markup).toContain('Simulated clock')
@@ -151,14 +151,14 @@ describe('ReplayScreen', () => {
     })
   })
 
-  it('lists the moves and marks where the board stands', () => {
+  it('ReplayScreen_MoveList_MarksWhereTheBoardStands', () => {
     const markup = render({ ply: 2 })
     expect(markup).toContain('Nf3')
     expect(markup).toContain('3 ply')
     expect(markup.match(/move-list__cell--current/g)).toHaveLength(1)
   })
 
-  it('draws the position the session is showing', () => {
+  it('ReplayScreen_Board_DrawsThePositionTheSessionShows', () => {
     // A board with no squares is the failure this screen used to have.
     expect(render().match(/data-square=/g)).toHaveLength(64)
   })

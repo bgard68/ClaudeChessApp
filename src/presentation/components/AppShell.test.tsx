@@ -6,7 +6,7 @@ const render = (markup: Parameters<typeof renderToStaticMarkup>[0]) =>
   renderToStaticMarkup(markup)
 
 describe('AppShell', () => {
-  it('anchors the skip link to a focusable main region', () => {
+  it('AppShell_SkipLink_AnchorsToAFocusableMainRegion', () => {
     const markup = render(
       <AppShell active="setup" onNavigate={vi.fn()}>
         <p>content</p>
@@ -20,7 +20,7 @@ describe('AppShell', () => {
     expect(markup).toContain('tabindex="-1"')
   })
 
-  it('marks exactly one navigation item as the current page', () => {
+  it('AppShell_Navigation_MarksExactlyOneItemAsCurrent', () => {
     const markup = render(
       <AppShell active="archive" onNavigate={vi.fn()}>
         <p>content</p>
@@ -38,7 +38,7 @@ describe('AppShell', () => {
     ['puzzle', 'Puzzle of the day'],
     ['archive', 'Championships'],
     ['mine', 'My games'],
-  ] as const)('titles the %s screen "%s" by default', (active, title) => {
+  ] as const)('AppShell_%sScreen_IsTitled%sByDefault', (active, title) => {
     const markup = render(
       <AppShell active={active} onNavigate={vi.fn()}>
         <p>content</p>
@@ -48,7 +48,7 @@ describe('AppShell', () => {
     expect(markup).toContain(`<p class="app-topbar__title">${title}</p>`)
   })
 
-  it('lets the caller override the title and context', () => {
+  it('AppShell_CallerTitleAndContext_OverrideTheDefaults', () => {
     const markup = render(
       <AppShell active="setup" onNavigate={vi.fn()} title="Live play" context="Round 3">
         <p>content</p>
@@ -63,7 +63,7 @@ describe('AppShell', () => {
     expect(markup).toContain('<small>Local chess studio</small>')
   })
 
-  it('renders the screen it is given', () => {
+  it('AppShell_ChildScreen_IsRendered', () => {
     const markup = render(
       <AppShell active="setup" onNavigate={vi.fn()}>
         <p>the screen</p>

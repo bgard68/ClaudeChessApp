@@ -39,7 +39,7 @@ const EVERY_LEVEL = DIFFICULTY_LEVELS.map(
 )
 
 describe('difficultyById', () => {
-  it('finds each level by its id', () => {
+  it('difficultyById_KnownId_ReturnsThatLevel', () => {
     expect(difficultyById('club').label).toBe('Club player')
     expect(difficultyById('maximum').label).toBe('Maximum')
   })
@@ -49,19 +49,19 @@ describe('difficultyById', () => {
    * setup screen's own list, so an unknown one means the two have drifted
    * apart, and quietly playing at some other strength would hide that.
    */
-  it('refuses an id it does not know, and says which', () => {
+  it('difficultyById_UnknownId_ThrowsNamingTheId', () => {
     expect(() => difficultyById('grandmaster')).toThrow('Unknown difficulty level: "grandmaster"')
   })
 })
 
 describe('DEFAULT_DIFFICULTY_ID', () => {
-  it('names a level that exists', () => {
+  it('DEFAULT_DIFFICULTY_ID_Lookup_NamesALevelThatExists', () => {
     expect(() => difficultyById(DEFAULT_DIFFICULTY_ID)).not.toThrow()
   })
 
   // The default a first-time player meets should not be the hardest or the
   // most artificial — it sits in the middle on purpose.
-  it('is neither the weakest nor the strongest', () => {
+  it('DEFAULT_DIFFICULTY_ID_PositionInList_IsNeitherWeakestNorStrongest', () => {
     const index = DIFFICULTY_LEVELS.findIndex((level) => level.id === DEFAULT_DIFFICULTY_ID)
     expect(index).toBeGreaterThan(0)
     expect(index).toBeLessThan(DIFFICULTY_LEVELS.length - 1)
@@ -69,13 +69,13 @@ describe('DEFAULT_DIFFICULTY_ID', () => {
 })
 
 describe('the levels', () => {
-  it('each have a distinct id', () => {
+  it('DIFFICULTY_LEVELS_AllLevels_HaveDistinctIds', () => {
     const ids = DIFFICULTY_LEVELS.map((level) => level.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
 
   // The list is presented in order, so it has to read as one.
-  it('get stronger from one to the next', () => {
+  it('DIFFICULTY_LEVELS_ListOrder_GetsStrongerFromOneToTheNext', () => {
     const elos = DIFFICULTY_LEVELS.map((level) =>
       level.configuration.strength.kind === 'rated'
         ? level.configuration.strength.elo
@@ -84,7 +84,7 @@ describe('the levels', () => {
     expect([...elos]).toEqual([...elos].sort((a, b) => a - b))
   })
 
-  it('give the engine longer to think as they get harder', () => {
+  it('DIFFICULTY_LEVELS_ListOrder_GrantsLongerThinkingTimeAsTheyHarden', () => {
     const times = DIFFICULTY_LEVELS.map((level) => level.configuration.searchLimits.moveTimeMs)
     expect([...times]).toEqual([...times].sort((a, b) => a - b))
   })
@@ -97,17 +97,17 @@ describe('the levels', () => {
    */
   // Guards for the two tables below: an empty table asserts nothing, and does
   // it silently. Both halves of the list have to stay populated.
-  it('has at least one level of each kind to check', () => {
+  it('DIFFICULTY_LEVELS_Partition_HasBothRatedAndFullStrengthLevels', () => {
     expect(RATED_LEVELS.length).toBeGreaterThan(0)
     expect(FULL_STRENGTH_LEVELS.length).toBeGreaterThan(0)
     expect(RATED_LEVELS.length + FULL_STRENGTH_LEVELS.length).toBe(DIFFICULTY_LEVELS.length)
   })
 
-  it.each(RATED_LEVELS)('never asks the engine to play %s below its rating floor', (_id, elo) => {
+  it.each(RATED_LEVELS)('DIFFICULTY_LEVELS_RatedLevel_%s_NeverAsksBelowTheEngineFloor', (_id, elo) => {
     expect(elo).toBeGreaterThanOrEqual(MINIMUM_RATED_ELO)
   })
 
-  it('makes the easiest level beatable with depth rather than a false rating', () => {
+  it('DIFFICULTY_LEVELS_BeginnerLevel_UsesDepthCapNotAFalseRating', () => {
     const beginner = difficultyById('beginner')
     expect(beginner.configuration.strength).toEqual({ kind: 'rated', elo: MINIMUM_RATED_ELO })
     expect(beginner.configuration.searchLimits.maxDepth).toBeLessThanOrEqual(2)
@@ -119,7 +119,7 @@ describe('the levels', () => {
    * a number it cannot stand behind.
    */
   it.each(FULL_STRENGTH_LEVELS)(
-    'quotes no rating for %s, and lets it search as deep as it likes',
+    'DIFFICULTY_LEVELS_FullStrengthLevel_%s_QuotesNoRatingAndNoDepthCap',
     (_id, rating, maxDepth) => {
       expect(rating).toBeNull()
       expect(maxDepth).toBeUndefined()
@@ -128,11 +128,11 @@ describe('the levels', () => {
 
   // The rating beside the label is what a player chooses on, so it has to be
   // the number actually sent to the engine — not merely some four-digit figure.
-  it.each(RATED_LEVELS)('prints the rating it actually asks for at %s', (_id, elo, rating) => {
+  it.each(RATED_LEVELS)('DIFFICULTY_LEVELS_RatedLevel_%s_PrintsTheRatingItActuallyAsksFor', (_id, elo, rating) => {
     expect(rating).toBe(`~${elo}`)
   })
 
-  it.each(EVERY_LEVEL)('describes %s in a sentence', (_id, label, description) => {
+  it.each(EVERY_LEVEL)('DIFFICULTY_LEVELS_EveryLevel_%s_CarriesALabelAndASentenceDescription', (_id, label, description) => {
     expect(label.length).toBeGreaterThan(0)
     expect(description).toMatch(/\.$/)
   })

@@ -6,7 +6,7 @@ import { Credits } from './Credits'
 const markup = renderToStaticMarkup(<Credits />)
 
 describe('Credits', () => {
-  it('starts collapsed, and says so', () => {
+  it('Credits_InitialRender_StartsCollapsedAndSaysSo', () => {
     expect(markup).toContain('aria-expanded="false"')
     expect(markup).toContain('Credits and licences')
     // The body is not merely hidden — it is not rendered at all.
@@ -37,11 +37,11 @@ describe('the attribution the licences require', () => {
     ['the championship dataset', 'Chess-Dataset'],
     ['where the famous games came from', 'pgnmentor.com'],
     ['where federations came from', 'ratings.fide.com'],
-  ])('credits %s', (_what, needle) => {
+  ])('Credits_Source_Credits%s', (_what, needle) => {
     expect(source).toContain(needle)
   })
 
-  it('disclaims affiliation rather than implying endorsement', () => {
+  it('Credits_Affiliation_IsDisclaimedRatherThanImplied', () => {
     expect(source).toContain('Not affiliated')
   })
 })

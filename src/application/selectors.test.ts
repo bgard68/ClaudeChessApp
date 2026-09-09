@@ -29,21 +29,21 @@ const OPENING: readonly LegalMove[] = [
 ]
 
 describe('movesFrom', () => {
-  it('keeps only the moves leaving the square asked about', () => {
+  it('movesFromSquare_SquareWithMoves_KeepsOnlyMovesLeavingIt', () => {
     expect(movesFrom(OPENING, toSquare('e2'))).toHaveLength(2)
     expect(movesFrom(OPENING, toSquare('g1'))).toHaveLength(2)
   })
 
   // A square with no piece, or a piece with nowhere to go, are the same
   // answer to the board: nothing to highlight.
-  it('finds nothing from a square with no moves', () => {
+  it('movesFromSquare_SquareWithNoMoves_FindsNothing', () => {
     expect(movesFrom(OPENING, toSquare('a1'))).toEqual([])
     expect(movesFrom([], toSquare('e2'))).toEqual([])
   })
 })
 
 describe('destinationsFrom', () => {
-  it('lists where a piece can go', () => {
+  it('destinationSquares_PieceWithMoves_ListsWhereItCanGo', () => {
     expect(destinationsFrom(OPENING, toSquare('e2'))).toEqual(['e3', 'e4'])
   })
 
@@ -52,13 +52,13 @@ describe('destinationsFrom', () => {
    * per destination, so without collapsing them it would stack four dots on
    * e8 — and any transparency in the marker would show it.
    */
-  it('names a square once however many moves reach it', () => {
+  it('destinationSquares_SeveralMovesToOneSquare_NamesTheSquareOnce', () => {
     expect(destinationsFrom(PROMOTIONS, toSquare('e7'))).toEqual(['e8'])
   })
 })
 
 describe('promotionChoices', () => {
-  it('offers what the rules allow, not a fixed four', () => {
+  it('promotionChoices_PromotingMove_OffersWhatTheRulesAllow', () => {
     expect(promotionChoices(PROMOTIONS, toSquare('e7'), toSquare('e8'))).toEqual([
       'queen',
       'rook',
@@ -71,23 +71,23 @@ describe('promotionChoices', () => {
    * An empty list is how the board knows not to ask. Returning the pieces for
    * an ordinary move would open the dialog on every pawn push.
    */
-  it('offers nothing for a move that is not a promotion', () => {
+  it('promotionChoices_NonPromotionMove_OffersNothing', () => {
     expect(promotionChoices(OPENING, toSquare('e2'), toSquare('e4'))).toEqual([])
   })
 
-  it('offers nothing for a move that is not legal at all', () => {
+  it('promotionChoices_IllegalMove_OffersNothing', () => {
     expect(promotionChoices(PROMOTIONS, toSquare('e7'), toSquare('d8'))).toEqual([])
   })
 
   // Two pawns can promote on the same rank; only the one being moved counts.
-  it('does not mix up promotions from a different square', () => {
+  it('promotionChoices_DifferentSquare_DoesNotMixUpPromotions', () => {
     const both = [...PROMOTIONS, move('d7', 'd8', { isPromotion: true, promotion: 'queen' })]
     expect(promotionChoices(both, toSquare('d7'), toSquare('d8'))).toEqual(['queen'])
   })
 })
 
 describe('toMovePairs', () => {
-  it('numbers each pair of half-moves once', () => {
+  it('moveRows_PairedHalfMoves_NumbersEachPairOnce', () => {
     expect(toMovePairs(['e4', 'e5', 'Nf3', 'Nc6'])).toEqual([
       { moveNumber: 1, white: 'e4', black: 'e5' },
       { moveNumber: 2, white: 'Nf3', black: 'Nc6' },
@@ -96,15 +96,15 @@ describe('toMovePairs', () => {
 
   // A game ending on White's move still needs the row, or the last move has
   // nowhere to be shown.
-  it('leaves Black null when there was no reply', () => {
+  it('moveRows_WhiteMoveWithoutReply_LeavesBlackNull', () => {
     expect(toMovePairs(['e4'])).toEqual([{ moveNumber: 1, white: 'e4', black: null }])
   })
 
-  it('has no rows before the first move', () => {
+  it('moveRows_BeforeTheFirstMove_HasNoRows', () => {
     expect(toMovePairs([])).toEqual([])
   })
 
-  it('keeps numbering into a long game', () => {
+  it('moveRows_LongGame_KeepsNumberingThroughout', () => {
     const forty = Array.from({ length: 80 }, (_, index) => `m${index}`)
     const pairs = toMovePairs(forty)
     expect(pairs).toHaveLength(40)

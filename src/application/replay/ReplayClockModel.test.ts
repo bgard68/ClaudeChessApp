@@ -29,7 +29,7 @@ function gameFrom(pgn: string) {
 }
 
 describe('ReplayClockModel', () => {
-  it('uses recorded readings when the PGN carries them', () => {
+  it('forGame_RecordedClockAnnotations_UsesTheRecordedReadings', () => {
     const model = ReplayClockModel.forGame(gameFrom(BROADCAST_GAME))
 
     expect(model.source).toBe('recorded')
@@ -50,7 +50,7 @@ describe('ReplayClockModel', () => {
    * assumption, and a model that assumed a five-minute blitz clock for a 1972
    * championship game would pass a non-null check while showing nonsense.
    */
-  it('falls back to a simulation, and says which control it assumed', () => {
+  it('forGame_NoClockRecord_SimulatesAndNamesTheAssumedControl', () => {
     const model = ReplayClockModel.forGame(gameFrom(HISTORIC_GAME))
 
     expect(model.source).toBe('simulated')
@@ -63,7 +63,7 @@ describe('ReplayClockModel', () => {
     })
   })
 
-  it('starts both simulated clocks at the full budget', () => {
+  it('readingAt_PlyZeroSimulated_StartsBothClocksAtTheFullBudget', () => {
     const model = ReplayClockModel.forGame(gameFrom(HISTORIC_GAME), classical(40, 120, 60))
     const start = model.readingAt(0)
 
@@ -83,7 +83,7 @@ describe('ReplayClockModel', () => {
     expect(model.readingAt(2).whiteMs).toBe(model.readingAt(1).whiteMs)
   })
 
-  it('spends the first control at an even pace', () => {
+  it('readingAt_SimulatedFirstControl_SpendsItAtAnEvenPace', () => {
     const model = ReplayClockModel.forGame(gameFrom(HISTORIC_GAME), classical(40, 120, 60))
     const perMove = (120 * 60_000) / 40
 
@@ -91,8 +91,44 @@ describe('ReplayClockModel', () => {
     expect(model.readingAt(3).whiteMs).toBe(120 * 60_000 - 2 * perMove)
   })
 
-  it('clamps requests beyond the end of the game', () => {
+  it('readingAt_PlyBeyondTheGame_ClampsToTheFinalReading', () => {
     const model = ReplayClockModel.forGame(gameFrom(HISTORIC_GAME))
     expect(model.readingAt(999)).toEqual(model.readingAt(6))
+  })
+})
+
+/*
+ * Added by the mutation audit. Two gaps: nothing read a recorded model's
+ * starting reading, and nothing crossed a stage boundary in the simulation.
+ */
+describe('the readings the audit found unwitnessed', () => {
+  it('readingAt_PlyZeroOfARecordedGame_ShowsTheDeclaredStartingBudget', () => {
+    const model = ReplayClockModel.forGame(gameFrom(BROADCAST_GAME))
+
+    const start = model.readingAt(0)
+
+    expect(start).toEqual({ whiteMs: 7_200_000, blackMs: 7_200_000, source: 'recorded' })
+  })
+
+  it('readingAt_SimulatedStageBoundary_AddsTheNextBudgetOnTheQuotaMoveNotAfter', () => {
+    // One move completes the first stage, so the second stage's budget lands
+    // as White's first move finishes — not one move late.
+    const oneMoveStages = {
+      kind: 'staged',
+      stages: [
+        { movesToComplete: 1, addedMs: 60_000, incrementMs: 0 },
+        { movesToComplete: null, addedMs: 60_000, incrementMs: 0 },
+      ],
+    } as const
+    const fourPlies = `[Event "E"]\n[Result "*"]\n\n1. c4 e6 2. Nf3 d5 *\n`
+    const model = ReplayClockModel.forGame(gameFrom(fourPlies), oneMoveStages)
+
+    const afterWhiteFirst = model.readingAt(1)
+    const afterAllFour = model.readingAt(4)
+
+    // The whole first budget was spent on the move, and the second arrived.
+    expect(afterWhiteFirst.whiteMs).toBe(60_000)
+    // Both budgets fully paced out by the second (final) white move.
+    expect(afterAllFour.whiteMs).toBe(0)
   })
 })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { suddenDeath, UNLIMITED } from '@domain/clock/TimeControl'
+import type { RecordedGame } from '@application/ports/GameStore'
 import { HumanOpponent } from '@application/HumanOpponent'
 import { LiveGame } from '@application/LiveGame'
 import { recordGame } from '@application/recordGame'
@@ -41,7 +42,7 @@ async function playSampleGame(timeControl = suddenDeath(5)) {
 }
 
 describe('writePgn', () => {
-  it('records the clock the player actually had left after each move', async () => {
+  it('writePgn_TimedGame_RecordsTheClockThePlayerActuallyHadLeft', async () => {
     const { game } = await playSampleGame()
     const [first, second] = game.state.history
 
@@ -50,7 +51,7 @@ describe('writePgn', () => {
     expect(second?.clockAfterMs).toBe(300_000 - 5_000)
   })
 
-  it('round-trips a saved game back into the archive, clocks intact', async () => {
+  it('writePgn_SavedGame_RoundTripsIntoTheArchiveClocksIntact', async () => {
     const { game } = await playSampleGame()
     game.resign('black')
 
@@ -70,7 +71,7 @@ describe('writePgn', () => {
     expect(parsed!.moves[1]!.recordedClockMs).toBe(295_000)
   })
 
-  it('preserves the result and why the game ended', async () => {
+  it('writePgn_FinishedGame_PreservesTheResultAndWhy', async () => {
     const { game } = await playSampleGame()
     game.resign('black')
 
@@ -84,7 +85,7 @@ describe('writePgn', () => {
     })
   })
 
-  it('preserves the time control it was played under', async () => {
+  it('writePgn_TimedGame_PreservesTheTimeControl', async () => {
     const { game } = await playSampleGame(suddenDeath(3, 2))
     game.resign('black')
 
@@ -96,7 +97,7 @@ describe('writePgn', () => {
     })
   })
 
-  it('writes no clock annotations for an untimed game', async () => {
+  it('writePgn_UntimedGame_WritesNoClockAnnotations', async () => {
     const { game } = await playSampleGame(UNLIMITED)
     game.resign('black')
 
@@ -105,5 +106,50 @@ describe('writePgn', () => {
     expect(pgn).not.toContain('%clk')
     expect(pgn).toContain('[TimeControl "-"]')
     expect(parseArchivedGame(pgn, 'x')!.hasRecordedClocks).toBe(false)
+  })
+})
+
+/*
+ * Added by the mutation audit. Two gaps: the 80-column wrap was never hit at
+ * exactly 80, and a decisive game with an unknown reason was never written.
+ */
+describe('the edges the audit found unwitnessed', () => {
+  const gameWith = (
+    outcome: RecordedGame['outcome'],
+    moves: RecordedGame['moves'],
+  ): RecordedGame => ({
+    white: 'A',
+    black: 'B',
+    event: 'E',
+    site: 'S',
+    playedOn: '2026.09.09',
+    outcome,
+    timeControl: UNLIMITED,
+    moves,
+    recordedAt: '2026-09-09T12:00:00.000Z',
+  })
+
+  it('writePgn_LineLandingExactlyOnTheLimit_KeepsItOnOneLine', () => {
+    // "1." + space + 77 characters = 80: exactly the limit, so no wrap.
+    const fitted = gameWith({ status: 'in_progress' }, [
+      { ply: 1, color: 'white', san: 'X'.repeat(77), clockAfterMs: null } as never,
+    ])
+
+    const pgn = writePgn(fitted)
+
+    expect(pgn.endsWith(`\n\n1. ${'X'.repeat(77)}\n*\n`)).toBe(true)
+  })
+
+  it('writePgn_DecisiveGameWithUnknownReason_WritesNoTerminationTag', () => {
+    // "unknown" is the absence of a reason; writing it would record one.
+    const unexplained = gameWith(
+      { status: 'decisive', winner: 'white', reason: 'unknown' },
+      [],
+    )
+
+    const pgn = writePgn(unexplained)
+
+    expect(pgn).not.toContain('[Termination')
+    expect(pgn).toContain('[Result "1-0"]')
   })
 })

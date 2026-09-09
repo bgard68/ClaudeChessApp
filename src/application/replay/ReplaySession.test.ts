@@ -61,19 +61,19 @@ describe('ReplaySession', () => {
   })
 
   describe('where it starts', () => {
-    it('opens on the position before the first move', () => {
+    it('state_BeforeAnyStep_OpensOnThePositionBeforeTheFirstMove', () => {
       expect(session.state.ply).toBe(0)
       expect(session.state.position.fen).toBe(START.fen)
       expect(session.state.lastMove).toBeNull()
       expect(session.state.isPlaying).toBe(false)
     })
 
-    it('knows how long the game is', () => {
+    it('state_TotalPlies_ReportsTheGameLength', () => {
       expect(session.state.totalPlies).toBe(3)
     })
 
     // A game with no moves at all must not blow up on the starting position.
-    it('survives a game with no moves', () => {
+    it('state_GameWithNoMoves_SurvivesWithZeroPlies', () => {
       const empty = new ReplaySession(ticker, game([]))
       expect(empty.state.totalPlies).toBe(0)
       expect(() => empty.state.position.fen).not.toThrow()
@@ -81,21 +81,21 @@ describe('ReplaySession', () => {
   })
 
   describe('stepping', () => {
-    it('shows the position a move produced, not the one before it', () => {
+    it('next_OneStep_ShowsThePositionTheMoveProduced', () => {
       session.next()
       expect(session.state.ply).toBe(1)
       expect(session.state.position.fen).toBe(AFTER_E4.fen)
       expect(session.state.lastMove?.san).toBe('e4')
     })
 
-    it('goes back the way it came', () => {
+    it('previous_AfterSteppingForward_GoesBackTheWayItCame', () => {
       session.goTo(2)
       session.previous()
       expect(session.state.ply).toBe(1)
       expect(session.state.position.fen).toBe(AFTER_E4.fen)
     })
 
-    it('jumps to either end', () => {
+    it('goTo_EitherEnd_JumpsStraightThere', () => {
       session.last()
       expect(session.state.ply).toBe(3)
       expect(session.state.position.fen).toBe(AFTER_NF3.fen)
@@ -108,7 +108,7 @@ describe('ReplaySession', () => {
      * stay enabled at the ends, and a held arrow key sends many more presses
      * than there are moves.
      */
-    it('holds at the ends instead of running off them', () => {
+    it('next_AtTheFinalPly_HoldsInsteadOfRunningOff', () => {
       session.previous()
       expect(session.state.ply).toBe(0)
 
@@ -123,7 +123,7 @@ describe('ReplaySession', () => {
   })
 
   describe('telling anyone who is listening', () => {
-    it('publishes each step', () => {
+    it('subscribe_EachStep_PublishesTheNewState', () => {
       const seen: ReplayState[] = []
       session.subscribe((state) => seen.push(state))
 
@@ -135,7 +135,7 @@ describe('ReplaySession', () => {
 
     // Nothing changed, so nothing is announced: a re-render per ignored click
     // is how a list this long starts to feel slow.
-    it('says nothing when a step changes nothing', () => {
+    it('goTo_SamePly_SaysNothingWhenNothingChanged', () => {
       const listener = vi.fn()
       session.subscribe(listener)
 
@@ -145,7 +145,7 @@ describe('ReplaySession', () => {
       expect(listener).not.toHaveBeenCalled()
     })
 
-    it('stops telling a listener that has unsubscribed', () => {
+    it('unsubscribe_ThenStep_StopsTellingThatListener', () => {
       const listener = vi.fn()
       const unsubscribe = session.subscribe(listener)
       session.next()
@@ -157,19 +157,19 @@ describe('ReplaySession', () => {
   })
 
   describe('playing', () => {
-    it('starts the ticker and says it is playing', () => {
+    it('togglePlay_FromPaused_StartsTheTickerAndReportsPlaying', () => {
       session.play()
       expect(ticker.isRunning).toBe(true)
       expect(session.state.isPlaying).toBe(true)
     })
 
-    it('advances a move once enough time has passed', () => {
+    it('advance_EnoughTimeForAMove_AdvancesOnePly', () => {
       session.play()
       ticker.advance(MS_PER_MOVE)
       expect(session.state.ply).toBe(1)
     })
 
-    it('does not advance before a move is due', () => {
+    it('advance_LessThanAMove_DoesNotAdvanceEarly', () => {
       session.play()
       ticker.advance(MS_PER_MOVE - 1)
       expect(session.state.ply).toBe(0)
@@ -180,20 +180,20 @@ describe('ReplaySession', () => {
      * large elapsed time when it wakes. Advancing one move per tick would run
      * the replay in slow motion for the rest of the game.
      */
-    it('covers several moves when a tick arrives late', () => {
+    it('advance_LateTick_CoversSeveralMovesAtOnce', () => {
       session.play()
       ticker.advance(MS_PER_MOVE * 2)
       expect(session.state.ply).toBe(2)
     })
 
-    it('runs faster when told to', () => {
+    it('setSpeed_Faster_AdvancesMorePerTick', () => {
       session.setSpeed(2)
       session.play()
       ticker.advance(MS_PER_MOVE)
       expect(session.state.ply).toBe(2)
     })
 
-    it('runs slower too', () => {
+    it('setSpeed_Slower_AdvancesLessPerTick', () => {
       session.setSpeed(0.5)
       session.play()
       ticker.advance(MS_PER_MOVE)
@@ -202,7 +202,7 @@ describe('ReplaySession', () => {
       expect(session.state.ply).toBe(1)
     })
 
-    it('pauses on its own at the end of the game', () => {
+    it('advance_ReachingTheEnd_PausesOnItsOwn', () => {
       session.play()
       ticker.advance(MS_PER_MOVE * 3)
 
@@ -213,28 +213,28 @@ describe('ReplaySession', () => {
 
     // Pressing play on the final position replays from the start, rather than
     // doing nothing and looking broken.
-    it('restarts from the beginning when play is pressed at the end', () => {
+    it('togglePlay_AtTheEnd_RestartsFromTheBeginning', () => {
       session.last()
       session.play()
       expect(session.state.ply).toBe(0)
       expect(session.state.isPlaying).toBe(true)
     })
 
-    it('stops the ticker when paused', () => {
+    it('togglePlay_ToPaused_StopsTheTicker', () => {
       session.play()
       session.pause()
       expect(ticker.isRunning).toBe(false)
       expect(session.state.isPlaying).toBe(false)
     })
 
-    it('toggles between the two', () => {
+    it('togglePlay_Twice_TogglesBetweenTheTwoStates', () => {
       session.togglePlay()
       expect(session.state.isPlaying).toBe(true)
       session.togglePlay()
       expect(session.state.isPlaying).toBe(false)
     })
 
-    it('ignores play while already playing', () => {
+    it('play_WhileAlreadyPlaying_IsIgnored', () => {
       session.play()
       session.play()
       expect(session.state.isPlaying).toBe(true)
@@ -242,11 +242,11 @@ describe('ReplaySession', () => {
   })
 
   describe('speed', () => {
-    it('starts at normal', () => {
+    it('state_InitialSpeed_StartsAtNormal', () => {
       expect(session.state.speed).toBe(1)
     })
 
-    it('announces a change', () => {
+    it('setSpeed_NewSpeed_AnnouncesTheChange', () => {
       const listener = vi.fn()
       session.subscribe(listener)
       session.setSpeed(4)
@@ -254,7 +254,7 @@ describe('ReplaySession', () => {
       expect(listener).toHaveBeenCalledTimes(1)
     })
 
-    it('says nothing when set to the speed it already runs at', () => {
+    it('setSpeed_SameSpeed_SaysNothing', () => {
       const listener = vi.fn()
       session.subscribe(listener)
       session.setSpeed(1)
@@ -263,7 +263,7 @@ describe('ReplaySession', () => {
   })
 
   describe('disposal', () => {
-    it('stops the ticker and lets its listeners go', () => {
+    it('dispose_WhilePlaying_StopsTheTickerAndReleasesListeners', () => {
       const listener = vi.fn()
       session.subscribe(listener)
       session.play()
@@ -280,14 +280,14 @@ describe('ReplaySession', () => {
 
     // Leaving the screen twice, or a double-invoked effect cleanup, must not
     // stop a ticker that a newer session has since started.
-    it('can be disposed twice without stopping anything again', () => {
+    it('dispose_CalledTwice_DoesNotStopAnythingAgain', () => {
       session.dispose()
       const stopsAfterFirst = ticker.stops.length
       session.dispose()
       expect(ticker.stops).toHaveLength(stopsAfterFirst)
     })
 
-    it('refuses to start playing once disposed', () => {
+    it('togglePlay_AfterDispose_RefusesToStart', () => {
       session.dispose()
       session.play()
       expect(session.state.isPlaying).toBe(false)
@@ -298,7 +298,7 @@ describe('ReplaySession', () => {
   describe('the clock beside it', () => {
     // No game here carries recorded times, so every reading is simulated —
     // and the session has to say so rather than pass invention off as record.
-    it('reports a simulated clock as simulated', () => {
+    it('state_SimulatedClock_ReportsTheClockSourceAsSimulated', () => {
       expect(session.state.clockSource).toBe('simulated')
       expect(session.clockModelInfo.source).toBe('simulated')
     })
@@ -308,7 +308,7 @@ describe('ReplaySession', () => {
      * returned the starting budget at every ply — or charged the wrong player —
      * satisfied "is not undefined" while showing a clock that never moved.
      */
-    it('charges only the player who moved, at each position in turn', () => {
+    it('goTo_EachPosition_ChargesOnlyThePlayerWhoMoved', () => {
       session.goTo(0)
       expect(session.state.clock).toEqual({
         whiteMs: 7_200_000,
@@ -332,7 +332,7 @@ describe('ReplaySession', () => {
       })
     })
 
-    it('keeps the reading consistent when stepping back to a position', () => {
+    it('goTo_BackAndForth_KeepsTheReadingConsistent', () => {
       session.goTo(3)
       const atEnd = session.state.clock
 

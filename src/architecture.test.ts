@@ -74,12 +74,12 @@ const files = sourceFiles(SRC).map((path) => ({
 }))
 
 describe('the dependency rule', () => {
-  it('finds source files to check', () => {
+  it('sourceTree_Scan_FindsFilesToCheck', () => {
     // Guards the guard: a broken walk would make every assertion below vacuous.
     expect(files.length).toBeGreaterThan(40)
   })
 
-  it.each(Object.keys(INWARD))('%s imports only itself or inward', (layer) => {
+  it.each(Object.keys(INWARD))('layer_%s_ImportsOnlyItselfOrInward', (layer) => {
     const allowed = INWARD[layer]!
     const breaches: string[] = []
 
@@ -99,7 +99,7 @@ describe('the dependency rule', () => {
     expect(breaches).toEqual([])
   })
 
-  it('keeps outer libraries out of domain and application', () => {
+  it('domainAndApplication_OuterLibraries_AreKeptOut', () => {
     const breaches: string[] = []
 
     for (const file of files) {
@@ -117,7 +117,7 @@ describe('the dependency rule', () => {
     expect(breaches).toEqual([])
   })
 
-  it('lets only the composition root name concrete adapters', () => {
+  it('concreteAdapters_OutsideCompositionRoot_AreNotNamed', () => {
     const ADAPTERS =
       /new (ChessJsRules|StockfishEngine|SqliteClient|SqliteGameArchive|IntervalTicker|HttpPgnSource)\(/
 
@@ -129,7 +129,7 @@ describe('the dependency rule', () => {
     expect(breaches).toEqual([])
   })
 
-  it('does not reach infrastructure from presentation, beyond the accepted list', () => {
+  it('presentation_InfrastructureImports_StayWithinTheAcceptedList', () => {
     const breaches: string[] = []
 
     for (const file of files.filter((f) => layerOf(f.relative) === 'presentation')) {
@@ -144,7 +144,7 @@ describe('the dependency rule', () => {
     expect(breaches).toEqual([])
   })
 
-  it('has no stale entries in the accepted list', () => {
+  it('acceptedList_Entries_AllStillExist', () => {
     // An exception that no longer applies should be deleted, not left to imply
     // a breach that has been fixed is still tolerated.
     const stale = ACCEPTED.filter((entry) => !files.some((file) => file.relative === entry))

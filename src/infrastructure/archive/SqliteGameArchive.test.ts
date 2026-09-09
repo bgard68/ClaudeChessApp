@@ -90,7 +90,7 @@ class FlakySource {
 }
 
 describe('SqliteGameArchive first-load recovery', () => {
-  it('seeds once, on the first query', async () => {
+  it('list_FirstQueryOnEmptyDatabase_SeedsExactlyOnce', async () => {
     const client = new ScriptedClient()
     const source = new FlakySource('games', 0)
     const archive = new SqliteGameArchive(client.asClient(), [
@@ -105,7 +105,7 @@ describe('SqliteGameArchive first-load recovery', () => {
     expect(archive.failures).toEqual([])
   })
 
-  it('retries seeding on the next query after a source failed', async () => {
+  it('list_QueryAfterASourceFailed_RetriesTheSeed', async () => {
     const client = new ScriptedClient()
     const source = new FlakySource('games', 1)
     const archive = new SqliteGameArchive(client.asClient(), [
@@ -125,7 +125,7 @@ describe('SqliteGameArchive first-load recovery', () => {
     expect(archive.failures).toEqual([])
   })
 
-  it('shares one attempt between concurrent queries, even a failing one', async () => {
+  it('list_ConcurrentQueries_ShareOneSeedAttemptEvenAFailingOne', async () => {
     const client = new ScriptedClient()
     const source = new FlakySource('games', 1)
     const archive = new SqliteGameArchive(client.asClient(), [
@@ -138,7 +138,7 @@ describe('SqliteGameArchive first-load recovery', () => {
     expect(source.loads).toBe(1)
   })
 
-  it('retries a database that failed to open', async () => {
+  it('list_DatabaseFailedToOpen_RetriesTheOpenOnTheNextQuery', async () => {
     const client = new ScriptedClient(1)
     const source = new FlakySource('games', 0)
     const archive = new SqliteGameArchive(client.asClient(), [
@@ -151,5 +151,67 @@ describe('SqliteGameArchive first-load recovery', () => {
     expect(client.openCalls).toBe(2)
     expect(client.storedGames()).toBe(1)
     expect(archive.failures).toEqual([])
+  })
+})
+
+/*
+ * Added by the mutation audit. The scripted client above ignores SQL entirely,
+ * so nothing witnessed the query the archive actually builds — the year-range
+ * operators, the page size, and which filters a blank query omits. This client
+ * records every select, and the tests read the SQL back.
+ */
+class RecordingClient extends ScriptedClient {
+  readonly selects: Array<{ sql: string; params: readonly unknown[] }> = []
+
+  override select<T extends SqlRow = SqlRow>(sql: string, params?: readonly unknown[]): Promise<T[]> {
+    this.selects.push({ sql, params: params ?? [] })
+    return super.select(sql)
+  }
+
+  /** The paged game query — the one SELECT carrying LIMIT and OFFSET. */
+  pageQuery(): { sql: string; params: readonly unknown[] } {
+    const found = this.selects.find((entry) => entry.sql.includes('LIMIT ? OFFSET ?'))
+    if (found === undefined) throw new Error('no paged select was issued')
+    return found
+  }
+}
+
+describe('the SQL the archive actually issues', () => {
+  it('list_YearRange_FiltersInclusivelyOnBothEnds', async () => {
+    const client = new RecordingClient()
+    const archive = new SqliteGameArchive(client.asClient(), [])
+
+    await archive.list({ yearFrom: 1972, yearTo: 1999 })
+
+    const { sql, params } = client.pageQuery()
+    expect(sql).toContain('year >= ?')
+    expect(sql).toContain('year <= ?')
+    expect(params).toContain(1972)
+    expect(params).toContain(1999)
+  })
+
+  it('list_NoFilters_IssuesAnUnfilteredQueryWithTheDefaultPage', async () => {
+    const client = new RecordingClient()
+    const archive = new SqliteGameArchive(client.asClient(), [])
+
+    await archive.list()
+
+    const { sql, params } = client.pageQuery()
+    expect(sql).not.toContain('WHERE')
+    expect(sql).not.toContain('event = ?')
+    // Default page size and first page, as the two trailing bindings.
+    expect(params.slice(-2)).toEqual([50, 0])
+  })
+
+  it('list_EmptyStringFilters_AreTreatedAsAbsentNotAsValues', async () => {
+    const client = new RecordingClient()
+    const archive = new SqliteGameArchive(client.asClient(), [])
+
+    await archive.list({ event: '', result: '' })
+
+    const { sql, params } = client.pageQuery()
+    expect(sql).not.toContain('event = ?')
+    expect(sql).not.toContain('result = ?')
+    expect(params).not.toContain('')
   })
 })

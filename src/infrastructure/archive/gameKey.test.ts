@@ -98,25 +98,25 @@ const GAMES: readonly { readonly name: string; readonly pgn: string }[] = [
 ]
 
 describe('gameKey, across both implementations', () => {
-  it.each(GAMES)('agrees on $name', ({ pgn }) => {
+  it.each(GAMES)('gameKey_BothImplementations_AgreeOn$name', ({ pgn }) => {
     expect(scriptKey(pgn)).toBe(gameKey(pgn))
   })
 
-  it('is stable — a key is not accidentally derived from object identity', () => {
+  it('gameKey_SameStringTwice_IsStable', () => {
     const { pgn } = GAMES[0]!
     expect(gameKey(pgn)).toBe(gameKey(`${pgn}`))
   })
 
-  it('recognises the same game with and without clock annotations as one', () => {
+  it('gameKey_ClockAnnotationsPresentOrNot_RecognisesOneGame', () => {
     expect(gameKey(GAMES[0]!.pgn)).toBe(gameKey(GAMES[1]!.pgn))
     expect(gameKey(GAMES[0]!.pgn)).toBe(gameKey(GAMES[2]!.pgn))
   })
 
-  it('folds punctuation and case in player names', () => {
+  it('gameKey_PunctuationAndCaseInNames_AreFolded', () => {
     expect(gameKey(GAMES[0]!.pgn)).toBe(gameKey(GAMES[3]!.pgn))
   })
 
-  it('separates identical moves played by different people', () => {
+  it('gameKey_IdenticalMovesByDifferentPeople_AreSeparated', () => {
     expect(gameKey(GAMES[0]!.pgn)).not.toBe(gameKey(GAMES[5]!.pgn))
   })
 
@@ -129,25 +129,25 @@ describe('gameKey, across both implementations', () => {
 })
 
 describe('the helpers the scripts share', () => {
-  it('reads a tag, and returns empty for one that is absent', () => {
+  it('scriptTag_PresentAndAbsentTags_ReadsOneAndReturnsEmptyForTheOther', () => {
     expect(scriptTag(GAMES[0]!.pgn, 'White')).toBe('Anderssen, Adolf')
     expect(scriptTag(GAMES[0]!.pgn, 'Nickname')).toBe('')
   })
 
-  it('strips tags, comments, glyphs and whitespace from the move text', () => {
+  it('scriptMoveText_AnnotatedGame_StripsTagsCommentsGlyphsAndWhitespace', () => {
     expect(scriptMoveText(GAMES[1]!.pgn)).toBe(scriptMoveText(GAMES[0]!.pgn))
     expect(scriptMoveText(GAMES[0]!.pgn)).not.toContain('[')
     expect(scriptMoveText(GAMES[0]!.pgn)).not.toContain(' ')
   })
 
-  it('leaves a forfeit with no move text at all', () => {
+  it('scriptMoveText_Forfeit_LeavesNoMoveTextAtAll', () => {
     // Load-bearing: an empty move list is a prefix of every other, which is why
     // build-library and the audits special-case it rather than treating a
     // forfeit as a truncated copy of a real game.
     expect(scriptMoveText(GAMES[4]!.pgn)).toBe('')
   })
 
-  it('builds identity as white|black|moves', () => {
+  it('scriptIdentity_OrdinaryGame_BuildsWhiteBlackMoves', () => {
     expect(scriptIdentity(GAMES[0]!.pgn)).toBe(
       'anderssenadolf|kieseritzkylionel|1.e4e52.f4exf43.bc4qh4+1-0',
     )
