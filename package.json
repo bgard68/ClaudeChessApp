@@ -37,7 +37,7 @@
     "react": "^19.3.0",
     "react-chessboard": "^5.12.1",
     "react-dom": "^19.3.0",
-    "stockfish": "^18.0.8"
+    "stockfish": "^19.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.5.1",
