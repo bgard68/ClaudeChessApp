@@ -9,10 +9,10 @@
  * WHICH BUILD, AND WHY. The package ships four, and only one of them is usable
  * here:
  *
- *   stockfish-18.wasm              113 MB, needs SharedArrayBuffer
- *   stockfish-18-single.wasm       113 MB, no threads
- *   stockfish-18-lite.wasm         7.1 MB, needs SharedArrayBuffer
- *   stockfish-18-lite-single.wasm  7.3 MB, no threads   <- this one
+ *   stockfish-19.wasm              95 MB, needs SharedArrayBuffer
+ *   stockfish-19-single.wasm       95 MB, no threads
+ *   stockfish-19-lite.wasm         1.6 MB, needs SharedArrayBuffer
+ *   stockfish-19-lite-single.wasm  1.7 MB, no threads   <- this one
  *
  * `single` is not a preference. The threaded builds need SharedArrayBuffer,
  * which needs COOP and COEP response headers — exactly what the SAH-pool VFS in
@@ -40,7 +40,7 @@ const targetDir = join(projectRoot, 'public', 'engine')
  * Kept beside ENGINE_WORKER_URL in composition/services.ts — the two have to
  * agree, and nothing but a broken engine says so if they stop.
  */
-const BUILD = 'stockfish-18-lite-single'
+const BUILD = 'stockfish-19-lite-single'
 const ENGINE_FILES = [`${BUILD}.js`, `${BUILD}.wasm`]
 
 /**

@@ -23,7 +23,7 @@ export const KNOCKOUT_PGN_URL = '/games/world-championship-knockout.pgn'
  * bearing — the threaded builds need COOP/COEP headers this app does not set.
  * That script chooses the file; this constant has to match it.
  */
-export const ENGINE_WORKER_URL = '/engine/stockfish-18-lite-single.js'
+export const ENGINE_WORKER_URL = '/engine/stockfish-19-lite-single.js'
 
 const CLOCK_TICK_MS = 100
 
