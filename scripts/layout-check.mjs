@@ -77,6 +77,52 @@ async function settle(page) {
 }
 
 /**
+ * Wait until `.board` stops resizing, then report its width.
+ *
+ * react-chessboard sizes itself from its container *after* mount, and on a slow
+ * CI runner that lands well after fonts plus two frames — so `settle()` and the
+ * fixed 400ms pause that follows it are not enough on their own. Measuring
+ * mid-resize is what produced the flake this guards: the same commit reported
+ * `Puzzle @ desktop` at 482px (too small) on one run and `Puzzle @ phone-tall`
+ * at 301px (too big) on the next, while both passed locally. A fault that
+ * changes viewport *and* direction between runs is a measurement race, not a
+ * regression.
+ *
+ * Polling for a repeated width is deterministic where a longer sleep is only a
+ * bigger guess. Screens with no board return immediately, so this costs nothing
+ * on the setup and archive screens.
+ */
+async function waitForStableBoard(page, timeoutMs = 10_000) {
+  const readWidth = () => {
+    const el = document.querySelector('.board')
+    return el ? Math.round(el.getBoundingClientRect().width) : -1
+  }
+
+  const deadline = Date.now() + timeoutMs
+  let last = -1
+  let repeats = 0
+
+  while (Date.now() < deadline) {
+    const width = await page.evaluate(readWidth)
+    if (width === -1) return -1 // no board on this screen
+    if (width === last) {
+      // Three identical reads ~100ms apart: the resize observer has finished.
+      if (++repeats >= 3) return width
+    } else {
+      repeats = 0
+    }
+    last = width
+    await page.waitForTimeout(100)
+  }
+
+  // Deliberately not fatal: fall through and let the width assertion report the
+  // real number, so a genuine sizing bug is still visible rather than masked by
+  // a timeout error.
+  console.warn(`warn: .board never held a steady width within ${timeoutMs}ms (last ${last}px)`)
+  return last
+}
+
+/**
  * The three widths the stylesheets actually branch on: a desktop with both
  * rails, the 861px boundary where the rail becomes a bottom bar, and a phone.
  * The short desktop is here because height is what the setup screen runs out
@@ -123,7 +169,28 @@ const SCREENS = [
     requires: ['.board', '.setup__options', '.setup__actions'],
     reach: '.setup__actions .button--primary',
   },
-  { name: 'Puzzle', rail: 'Puzzle', requires: ['.screen--puzzle'], reach: '.puzzle__actions button' },
+  /*
+   * `.screen--puzzle` is present while the puzzle is still loading — PuzzleScreen
+   * renders a loading card first and only mounts the board and its side panel once
+   * `phase.kind === 'ready'`. Waiting on the screen alone therefore measured a
+   * half-built layout: the board sized against a container that had no panel beside
+   * it yet, reporting 481px where 626px was expected, and only on the slower runs.
+   * Requiring the panel's actions makes the wait depend on the ready state itself.
+   */
+  {
+    name: 'Puzzle',
+    rail: 'Puzzle',
+    requires: ['.screen--puzzle', '.board', '.puzzle__actions'],
+    reach: '.puzzle__actions button',
+    /*
+     * Measured on this screen, not inherited from the viewport. The panel sits
+     * beside the board on the two desktop widths, so the board is narrower there
+     * than on Play; on phone-tall the panel stacks underneath and the board is
+     * bounded by width instead of height, so it is *wider*. Only `phone` happens
+     * to match the viewport default.
+     */
+    board: { desktop: 481, 'desktop-short': 455, phone: 297, 'phone-tall': 301 },
+  },
   {
     name: 'Championships',
     rail: 'Titles',
@@ -263,6 +330,10 @@ try {
         }
       }
 
+      // The board is the one element that keeps resizing after settle(); wait for
+      // it to hold still so the width below is measured once, not mid-resize.
+      await waitForStableBoard(page)
+
       const m = await page.evaluate(measure, screen.reach ?? null)
 
       if (m.horizontalOverflow) note(screen.name, viewport.name, 'page scrolls sideways')
@@ -296,11 +367,21 @@ try {
         if (Math.abs(m.board.width - m.board.height) > 2) {
           note(screen.name, viewport.name, `board is ${m.board.width}x${m.board.height}, not square`)
         }
-        if (Math.abs(m.board.width - viewport.board) > BOARD_TOLERANCE) {
+        /*
+         * The expected width is per viewport AND per screen. It used to be per
+         * viewport alone, which assumed every screen gives its board the same
+         * room — and the Puzzle screen does not: it sets an <aside> panel beside
+         * the board on wide viewports, so a narrower board there is correct, and
+         * on phone-tall the panel stacks and the board gets *more* room. Measured
+         * against the Play screen's numbers the Puzzle screen could only ever be
+         * wrong, which is the failure this check kept reporting.
+         */
+        const expected = screen.board?.[viewport.name] ?? viewport.board
+        if (Math.abs(m.board.width - expected) > BOARD_TOLERANCE) {
           note(
             screen.name,
             viewport.name,
-            `board is ${m.board.width}px, expected about ${viewport.board}px`,
+            `board is ${m.board.width}px, expected about ${expected}px`,
           )
         }
       }
