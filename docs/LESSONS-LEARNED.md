@@ -776,3 +776,43 @@ operation rather than an audit scope.
 **Two numbers changing at once is not evidence about either one.** The check
 that settled it was asking npm directly for its dependency breakdown, which took
 one command and replaced a plausible story with a fact.
+
+## A flaky gate was three bugs wearing one error message
+
+The CI gate failed intermittently on the Puzzle screen — `board is 482px,
+expected about 626px` on one run, `board is 301px, expected about 276px` on the
+next. Different viewports, different directions, green locally. The obvious
+reading was a flaky runner to be rerun until green, and rerunning is exactly
+what would have buried all three of the real causes:
+
+1. **The measurement raced the board.** react-chessboard sizes itself from its
+   container *after* mount, later than the gate's wait of fonts + two frames +
+   400ms on a slow runner. The gate now polls until `.board` reports the same
+   width on three consecutive reads (`waitForStableBoard`), which is a
+   condition, not a guess. A fault that changes viewport *and* direction
+   between runs is a measurement race, not a regression — that asymmetry was
+   the tell, and it was visible in the very first pair of failures.
+
+2. **The gate measured the loading screen.** The Puzzle entry waited for
+   `.screen--puzzle`, which is present while the screen still shows its loading
+   card — the board and its side panel mount later, on `phase.kind === 'ready'`.
+   So the "stable" width it eventually measured was a board sized against a
+   container whose panel had not arrived yet. The entry now requires
+   `.puzzle__actions` too, so the wait is pinned to the ready state itself.
+
+3. **The expected widths assumed every screen is the Play screen.** One
+   `board:` number per viewport meant the Puzzle board — which shares its row
+   with a panel on desktop and stacks above it on phones — could never measure
+   correct. Expected widths are now per screen as well as per viewport.
+
+With the race fixed the gate became deterministic and kept failing — on
+`text under 12px`, every run, same two elements. That failure was **right**:
+two rules set 0.72rem (= 11.52px) on real content, under the 12px floor the
+gate enforces on phones. The fix for a correct failure is in the stylesheet,
+not the gate: both rules now sit at 0.75rem = 12px exactly.
+
+**Rerunning a flaky check is how its real causes stay unfound.** The sequence
+that worked: reproduce locally in a loop (2 of 3 runs failed), make the
+measurement deterministic first, and only then believe what the check says —
+at which point one "flaky" failure resolved into two gate bugs and one genuine
+CSS violation the flake had been hiding.
