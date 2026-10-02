@@ -2342,10 +2342,16 @@ body {
   gap: 10px;
 }
 
+/*
+ * 0.75rem, not 0.72rem: these metas render real content ("Mate in 2", the move
+ * counters), and 0.72rem computes to 11.52px — under the 12px readability floor
+ * that layout-check.mjs enforces on phone viewports. The check was right and the
+ * style was wrong; 12px is the floor, so sit on it rather than just under it.
+ */
 .phase46-puzzle-board-meta,
 .phase46-replay__board-meta {
   color: var(--p2-muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
 }
 
 .phase46-puzzle-grid .phase46-board-frame {
@@ -2423,6 +2429,12 @@ body {
   background: rgba(3, 13, 10, 0.42);
 }
 
+/*
+ * The step numbers in the combination list. 0.75rem, not 0.72rem: 0.72 computes
+ * to 11.52px, under the 12px readability floor layout-check.mjs enforces on phone
+ * viewports — and these are real content (which step of the combination you are
+ * on), not decoration. The 24px circle has room for 12px text.
+ */
 .phase46-puzzle-progress li > span {
   width: 24px;
   height: 24px;
@@ -2430,7 +2442,7 @@ body {
   place-items: center;
   border: 1px solid var(--p46-line);
   border-radius: 50%;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 760;
 }
 
