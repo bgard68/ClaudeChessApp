@@ -4,6 +4,7 @@ import type { LiveGame } from '@application/LiveGame'
 import type { ReplaySession } from '@application/replay/ReplaySession'
 import { AppIcon } from './components/AppIcon'
 import { AppShell } from './components/AppShell'
+import { ScreenErrorBoundary } from './components/ScreenErrorBoundary'
 import { ArchiveScreen } from './screens/ArchiveScreen'
 import { NewGameScreen } from './screens/NewGameScreen'
 import { PlayScreen } from './screens/PlayScreen'
@@ -115,7 +116,12 @@ export function App() {
       context={shellContext(view)}
       onNavigate={navigate}
     >
-      {renderView()}
+      {/* Keyed by screen so a crash in one does not leave the boundary tripped
+          when the user navigates to another. `view.name` is enough: the two
+          archive halves already carry their own keys below it. */}
+      <ScreenErrorBoundary key={view.name} onReset={() => goTo({ name: 'setup' })}>
+        {renderView()}
+      </ScreenErrorBoundary>
     </AppShell>
   )
 

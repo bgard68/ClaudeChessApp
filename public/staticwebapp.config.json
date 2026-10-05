@@ -18,5 +18,14 @@
       "/engine/*",
       "/games/*"
     ]
-  }
+  },
+  "routes": [
+    {
+      "route": "/sw.js",
+      "headers": {
+        "Cache-Control": "no-cache",
+        "Content-Security-Policy": "default-src 'self'; worker-src 'self'; connect-src 'self'"
+      }
+    }
+  ]
 }

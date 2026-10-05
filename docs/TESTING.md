@@ -3,7 +3,7 @@
 How this app is tested, why the tools are the ones they are, what they cannot
 reach, and how to add a check of your own.
 
-There are three test environments and four browser scripts. The split is not
+There are three test environments and six browser scripts. The split is not
 ceremony: each catches a class of fault the others are blind to, and every one of
 them exists because something got through.
 
@@ -56,7 +56,7 @@ pwsh scripts/test-gate.ps1
 
 ---
 
-## The four browser scripts
+## The browser scripts
 
 Each answers a different question, and each exists because of a specific
 failure.
@@ -92,6 +92,15 @@ query for a while, and nothing that ran on a commit could have noticed.
 
 **`a11y-check.mjs`** — *can any of it be used?* axe-core over four screens at
 two widths, against WCAG 2.1 A and AA.
+
+**`offline-check.mjs`** — *does the shell survive without a network?* Primes the
+service worker online, cuts the network, cold-reloads, and asserts the board
+draws its 64 squares from cache — plus the negative: first-visit PGN data stays
+*out* of the cache. Exists because a service worker is the canonical
+check-that-passes-while-wrong: it can register cleanly, serve nothing offline,
+and no other test would notice. Found a real one before it shipped — a
+`Vary: Origin` mismatch that failed every cached asset while the cache sat
+full; the note on `ignoreVary` in `src/sw.ts` is its record.
 
 **`paths-check.mjs`** — *is anything tracked that should not be?* Two questions,
 because one of them cannot be asked yet at the moment it matters. First: which
@@ -336,6 +345,13 @@ right. None of the eleven looked wrong.
 6. **Would this survive being run twice?** StrictMode double-renders and
    double-invokes effects. No writes to refs during render, every effect's
    cleanup fully undoing it, and no state initialiser with a side effect.
+7. **What happens when this screen's dependencies misbehave — and does anything
+   define it?** The six questions above interrogate code that exists; this one
+   hunts absences, which have no line for a question to land on. Unvalidated
+   data crossing a boundary, a render throw with no boundary above it, a
+   capability (offline, a worker dying) with no defined behaviour. Added after
+   the resilience sweep found four such absences that three code audits had no
+   way to see — [RESILIENCE-AUDIT.md](RESILIENCE-AUDIT.md).
 
 And one rule about where the answer goes: **a timing decision belongs in a
 function, not in a component.** `adviceFor`, `previewCaption` and

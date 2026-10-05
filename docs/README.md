@@ -11,6 +11,7 @@ what it can do. These go deeper, one question each.
 | [LESSONS-LEARNED.md](LESSONS-LEARNED.md) | What broke, what actually caused it, and what was the wrong explanation that looked right first? |
 | [TESTING.md](TESTING.md) | How is it tested, why Playwright rather than jsdom, what is deliberately not covered, and how do I add a check? |
 | [REACT-TIMING-AUDIT.md](REACT-TIMING-AUDIT.md) | Which render-timing defects were in the presentation layer, how were they found and fixed, and why did review miss all of them? |
+| [RESILIENCE-AUDIT.md](RESILIENCE-AUDIT.md) | What happens when a screen throws, a data file is malformed, or the network is gone — and why three audits of the code never asked? |
 | [SUPPLY-CHAIN.md](SUPPLY-CHAIN.md) | What does the build enforce, why, how do I audit it, and what would quietly undo it? |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | How does it get to Azure, and how do I set that up from scratch? |
 | [UI-REDESIGN.md](UI-REDESIGN.md) | What did the presentation rewrite change on each screen, what did it deliberately leave alone, and what was actually verified? |

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { validDirectory } from './federations'
 
 /*
  * The module caches its fetch in module state — `loading ??= fetch(...)` —
@@ -157,5 +158,46 @@ describe('federationFor', () => {
       module.federationFor('Ljubojevic, Ljubomir'),
     )
     expect(module.federationFor('Ljubojević, Ljubomir')?.title).toBe('GM')
+  })
+})
+
+/*
+ * The fetched file, no longer trusted on shape.
+ *
+ * Every other untrusted read in the app validated — both localStorage readers
+ * check their fields — and this one cast `json()` straight to the record type.
+ * The odd one out, found by asking where unvalidated data enters, not by a bug
+ * report: the failure needs a bad build of player-federations.json, which had
+ * not happened yet. It would have presented as the archive screen crashing at
+ * render, since `federationFor` reads properties off each entry while painting
+ * rows.
+ */
+describe('validDirectory', () => {
+  it('validDirectory_WellFormedFile_KeepsItsEntries', () => {
+    const kept = validDirectory({
+      'Carlsen, Magnus': { fed: 'NOR', title: 'GM', elo: 2839 },
+      'Polgar, Judit': { fed: 'HUN', title: 'GM', elo: null },
+    })
+    expect(Object.keys(kept)).toHaveLength(2)
+    expect(kept['Carlsen, Magnus']?.fed).toBe('NOR')
+    expect(kept['Polgar, Judit']?.elo).toBeNull()
+  })
+
+  // One truncated record costs that player a flag, not everybody theirs.
+  it('validDirectory_OneMalformedEntry_DropsItAlone', () => {
+    const kept = validDirectory({
+      'Carlsen, Magnus': { fed: 'NOR', title: 'GM', elo: 2839 },
+      'Broken, Entry': { fed: 42, title: 'GM', elo: 2700 },
+      'Also, Broken': 'not a record',
+      'Missing, Title': { fed: 'USA', elo: 2700 },
+    })
+    expect(Object.keys(kept)).toEqual(['Carlsen, Magnus'])
+  })
+
+  it('validDirectory_NotAnObjectAtAll_IsAnEmptyDirectory', () => {
+    expect(validDirectory(null)).toEqual({})
+    expect(validDirectory('[]')).toEqual({})
+    expect(validDirectory([{ fed: 'NOR' }])).toEqual({})
+    expect(validDirectory(7)).toEqual({})
   })
 })

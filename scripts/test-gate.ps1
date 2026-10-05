@@ -59,6 +59,7 @@ Invoke-Gate 'build'     { & npm run build }
 Invoke-Gate 'smoke test against the built app' { & node scripts/smoke-test.mjs }
 Invoke-Gate 'layout invariants on every screen' { & node scripts/layout-check.mjs }
 Invoke-Gate 'behaviour in a real browser'       { & node scripts/behaviour-check.mjs }
+Invoke-Gate 'the shell survives offline'        { & node scripts/offline-check.mjs }
 Invoke-Gate 'accessibility on every screen'     { & node scripts/a11y-check.mjs }
 Invoke-Gate 'forbidden paths'                   { & node scripts/paths-check.mjs }
 

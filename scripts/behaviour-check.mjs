@@ -288,6 +288,22 @@ try {
    * still drawn. Weak as a guard on the memo; exactly right as a guard on the
    * failure the memo is for.
    */
+  /*
+   * The clock must visibly count. `Clock` and its ticker have unit tests, but
+   * no test anywhere watched the wiring between them and the screen — a ticker
+   * that never started, or a panel bound to the wrong field, would pass every
+   * unit test and show a frozen clock to every player. The two readings are
+   * taken 3 seconds apart around the board assertion below, so the wait is
+   * shared rather than doubled.
+   *
+   * Which side is counting depends on who is to move, and the engine replies in
+   * its own time — so the assertion is that the *pair* of readings changed, not
+   * a particular face.
+   */
+  const clockBefore = await page.evaluate(() =>
+    [...document.querySelectorAll('.clock-face__time')].map((el) => el.textContent),
+  )
+
   await page.waitForTimeout(3_000)
   const underTick = await page.evaluate(() => ({
     squares: document.querySelectorAll('[data-square]').length,
@@ -297,6 +313,15 @@ try {
     'the board is still drawn after the clock has run for three seconds',
     underTick.squares === 64 && underTick.pieces > 0,
     `${underTick.squares} squares, ${underTick.pieces} pieces`,
+  )
+
+  const clockAfter = await page.evaluate(() =>
+    [...document.querySelectorAll('.clock-face__time')].map((el) => el.textContent),
+  )
+  check(
+    'the game clock visibly counts down',
+    clockBefore.length > 0 && JSON.stringify(clockBefore) !== JSON.stringify(clockAfter),
+    `${clockBefore.join('/')} → ${clockAfter.join('/')}`,
   )
 
   /* --------------------------------------------------------------- console */
