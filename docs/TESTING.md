@@ -309,6 +309,56 @@ be reached from either suite; the client that talks to it is covered.
 
 ---
 
+## The mutation-testing audit, and why there is no mutation score
+
+Attempted 2026-10-05 with Stryker (`@stryker-mutator/core` 9.2 + vitest runner),
+as a one-off audit: install, run over the pure layers, record, uninstall. The
+uninstall happened early, because **the tool does not work on this stack, and —
+more importantly — it fails in the direction that lies.**
+
+Two incompatibilities, in increasing order of danger:
+
+1. Its sandbox preprocessor calls `ts.parseConfigFileTextToJson`, a TypeScript
+   JS-API function that TypeScript 7's native compiler no longer ships. Loud,
+   honest, and bypassable (point `tsconfigFile` at a name that does not exist;
+   vitest resolves TS through vite and never needed the rewrite).
+2. Mutant activation is silently inert under this vitest setup. Stryker reported
+   **0 of 102** Clock mutants killed and **0 of 28** in `formatDuration` — with
+   full coverage, and still zero with `coverageAnalysis: off`, which runs every
+   test against every mutant. The report, taken at face value, says the clock
+   tests catch nothing.
+
+The report is false, and here is the proof, which doubles as the audit's actual
+result. The same mutations planted by hand and run through plain `vitest`:
+
+| Hand-planted mutant | Result |
+| --- | --- |
+| `Clock.advance`: `remainingMs - elapsedMs` → `+ elapsedMs` | **4 tests fail** |
+| `formatDuration`: `/ 1000` → `/ 999` | **4 of 7 tests fail** |
+
+So the assertions are real; the tool's instrumentation never activated inside
+the vitest workers. Root cause not chased past that line — it sits somewhere in
+Stryker's per-worker mutant switching against vitest 5, and debugging a
+mutation framework is not this project's job.
+
+**Why this is written up rather than shrugged off:** a mutation tool that fails
+silently produces exactly the wrong artifact. "0% killed" against a sound suite
+invites a pointless test-rewriting spree; the same inertness behind a *passing*
+score would mint false confidence. Either way the output deserves the treatment
+every other tool here gets — the gate's negative probes exist because a check
+that cannot fail is not a check. The hand-planted mutants above are that probe,
+applied to Stryker itself, and Stryker failed it.
+
+**Standing position.** Assertion strength is verified two ways, neither
+systematic: every audit-era regression test was confirmed to fail against the
+unfixed code, and the two hand-planted mutants above spot-check the oldest part
+of the suite. A full mutation score stays unmeasured until a mutation tool
+demonstrably activates its mutants on this stack — re-attempt on a major Stryker
+release, and gate any future run on a hand-planted canary mutant first: if the
+tool does not kill the canary, its report is void.
+
+---
+
 ## Reviewing for timing
 
 The first row of the table above — *the unit suite sees the first commit, and is
