@@ -773,8 +773,16 @@ weakest. Either should reopen it; neither has happened.
 
 #### O2 — The security review in §6 was written by the author of the code
 
-**What is missing.** No independent assessment. §6 is a careful review, and it is
-a review of this code by whoever wrote it. No outside human has looked.
+**What is missing.** No independent assessment of the *code*. §6 is a careful
+review, and it is a review of this code by whoever wrote it.
+
+Precisely, because the usual phrasing would overstate it: the project does have a
+directing maintainer who sets its standards and who has twice supplied the outside
+frame that caught what the implementer missed — the React timing taxonomy behind
+[REACT-TIMING-AUDIT.md](REACT-TIMING-AUDIT.md), and the push that turned a hedged
+answer into the second sweep documented there. That is the reviewer function
+working. What is absent is a second *implementer*, and a security assessment by
+someone who has read the code and did not write it.
 
 **What partly covers it.** CodeQL runs on every pull request and is genuinely
 independent of the author's model of the code; it is a required check. So are
@@ -805,8 +813,8 @@ data, and nothing crossing the network at runtime except the files it was served
 exposure that was real was in the build pipeline, which is where the controls
 went.
 
-**What would change this.** An outside review, which is the only thing that
-actually closes it. Short of that, the practice adopted after the timing audit
+**What would change this.** An outside review of the code, which is the only thing
+that actually closes it. Short of that, the practice adopted after the timing audit
 applies here too: run future reviews from an external checklist rather than by
 reading, and record what was *cleared* as well as what was found — see
 [TESTING.md § Reviewing for timing](TESTING.md#reviewing-for-timing).
@@ -837,7 +845,11 @@ and confirming the failure, then restoring — see §8.10. The fifth rule added 
 `test-support/`, was checked the same way. A guard that has only ever passed is
 not known to work.
 
-Two things remain unexercised: the promotion chooser needs a game reaching a
-seventh-rank pawn, and storage persistence has only been observed being
+The promotion chooser has since been covered — see
+[TESTING.md § A third environment](TESTING.md#a-third-environment-for-failure-only)
+— and storage persistence deliberately has not, because the only assertion a
+headless browser can make about it describes the headless profile rather than this
+app. One thing therefore remains unexercised: storage persistence has only been
+observed being
 *refused* — Chrome declines a low-engagement `localhost` origin, which is the
 pessimistic path and the one worth having seen.

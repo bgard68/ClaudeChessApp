@@ -41,6 +41,23 @@ export class StockfishEngine implements ChessEngine {
   private initialisation: Promise<void> | null = null
   private uciHandshake: Deferred<void> | null = null
   private search: Deferred<MoveIntent> | null = null
+  /**
+   * How many `bestmove` lines the engine still owes for searches nobody wants.
+   *
+   * UCI emits exactly one `bestmove` per `go`, and `stop` does not cancel that
+   * — it hurries it. So an abandoned search still has an answer in flight, and
+   * without counting them the next search adopts it: `handleLine` would find
+   * whatever is in `this.search` and resolve it with a move chosen for the
+   * previous position.
+   *
+   * That is reachable from the board. Undo while the computer is thinking and
+   * the turn loop starts a fresh search; the abandoned one then answers first.
+   * The move is either played against a position it was never computed for, or
+   * rejected as illegal — and `LiveGame` treats an engine proposing an illegal
+   * move as a malfunction and forfeits the game on its behalf. Losing the game
+   * you were trying to take a move back in is a poor reward for using undo.
+   */
+  private owedBestMoves = 0
   private configuration: EngineConfiguration | null = null
   private disposed = false
 
@@ -90,7 +107,16 @@ export class StockfishEngine implements ChessEngine {
     const search = this.search
     if (search === null) return
 
+    /*
+     * Counted here and nowhere else, and the placement is the correctness
+     * argument: reaching this line means a `go` is outstanding whose `bestmove`
+     * has not been consumed, because a consumed one leaves `this.search` null
+     * and returns above. So the count only ever rises when an answer really is
+     * still owed, and can never strand the next search waiting for a line that
+     * is not coming.
+     */
     this.search = null
+    this.owedBestMoves += 1
     this.send('stop')
     search.reject(new SearchAbandoned('Search abandoned'))
   }
@@ -147,6 +173,13 @@ export class StockfishEngine implements ChessEngine {
 
     const bestMove = BEST_MOVE_PATTERN.exec(line)
     if (bestMove === null) return
+
+    // An answer to a question already withdrawn. Discarded before it can be
+    // mistaken for an answer to the current one.
+    if (this.owedBestMoves > 0) {
+      this.owedBestMoves -= 1
+      return
+    }
 
     const search = this.search
     if (search === null) return
