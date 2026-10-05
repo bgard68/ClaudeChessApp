@@ -29,6 +29,7 @@
     "verify": "npm run typecheck && npm test && npm audit --audit-level=moderate",
     "layout-check": "node scripts/layout-check.mjs",
     "behaviour-check": "node scripts/behaviour-check.mjs",
+    "offline-check": "node scripts/offline-check.mjs",
     "a11y-check": "node scripts/a11y-check.mjs",
     "paths-check": "node scripts/paths-check.mjs"
   },

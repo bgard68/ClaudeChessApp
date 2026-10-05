@@ -63,14 +63,43 @@ let loading: Promise<void> | null = null
 export function loadFederations(): Promise<void> {
   loading ??= fetch(DIRECTORY_URL)
     .then((response) => (response.ok ? response.json() : {}))
-    .then((json: Record<string, FideRecord>) => {
-      directory = json
+    .then((json: unknown) => {
+      directory = validDirectory(json)
     })
     .catch(() => {
       // A missing file costs flags, not function.
       directory = {}
     })
   return loading
+}
+
+/**
+ * Keeps only the entries shaped like a record, rather than trusting the file.
+ *
+ * This was the one fetched input the app cast on faith — `json()` straight to
+ * the record type — while both localStorage readers validated theirs. The
+ * threat is not an attacker (the file is same-origin and built by our own
+ * scripts) but a bad build or a partial deploy, and the failure mode was the
+ * bad kind: `federationFor` reads `.fed` and `.title` off each entry *during
+ * render*, so a malformed file took the archive screen down at paint time
+ * rather than failing the fetch.
+ *
+ * Per entry rather than all-or-nothing: one truncated record in a file of
+ * thousands should cost that player a flag, not everybody theirs.
+ */
+export function validDirectory(json: unknown): Readonly<Record<string, FideRecord>> {
+  if (typeof json !== 'object' || json === null || Array.isArray(json)) return {}
+
+  const kept: Record<string, FideRecord> = {}
+  for (const [name, value] of Object.entries(json)) {
+    if (typeof value !== 'object' || value === null) continue
+    const record = value as Record<string, unknown>
+    if (typeof record.fed !== 'string') continue
+    if (typeof record.title !== 'string') continue
+    if (typeof record.elo !== 'number' && record.elo !== null) continue
+    kept[name] = { fed: record.fed, title: record.title, elo: record.elo }
+  }
+  return kept
 }
 
 /**

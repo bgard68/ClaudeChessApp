@@ -72,8 +72,65 @@ const cspMetaTag = (): Plugin => ({
   ],
 })
 
+/**
+ * Builds the service worker and tells it what to precache.
+ *
+ * Hand-written rather than vite-plugin-pwa, on the same ledger as everything
+ * else here (§8.12 O1): the plugin would bring Workbox and tens of transitive
+ * packages to generate what is, for this app, a hundred-line worker with three
+ * routing rules. The cost of writing it by hand is reimplementing cache
+ * cleanup, which is seven lines. The repo already builds its own Vite plugin
+ * for the CSP tag; this is the same move.
+ *
+ * The worker cannot be bundled as a chunk — it must be its own classic script
+ * at a stable URL ('/sw.js'), and it needs the list of hashed asset names,
+ * which exist only once the bundle is written. Hence `generateBundle`: compile
+ * `src/sw.ts`, splice in the real asset list, and emit the result
+ * beside the bundle. Build only; dev runs without a worker for the same reason
+ * it runs without the CSP — serving a cached shell against Vite's module graph
+ * causes exactly the stale-module confusion the comment below warns about.
+ */
+const serviceWorker = (): Plugin => {
+  return {
+    name: 'service-worker',
+    apply: 'build',
+    async generateBundle(_options, bundle) {
+      const { readFile } = await import('node:fs/promises')
+
+      const assets = Object.keys(bundle)
+        .filter((name) => /\.(js|css|wasm)$/.test(name))
+        .map((name) => `/${name}`)
+
+      const source = await readFile(
+        fileURLToPath(new URL('./src/sw.ts', import.meta.url)),
+        'utf8',
+      )
+      /*
+       * "Transpiled" by deleting the declarations, and that is a contract, not
+       * a shortcut. `src/sw.ts` is written as plain JavaScript plus `declare`
+       * lines for the worker globals — no annotations, no enums, no TS syntax
+       * in executable positions — so stripping `///` references and `declare`
+       * statements yields valid JS. No transpiler dependency to go stale, and
+       * the build below fails loudly if the contract is ever broken, because
+       * the emitted file would carry TS syntax a browser refuses to parse —
+       * which the offline browser check would catch before any user did.
+       */
+      const stripped = source
+        .split('\n')
+        .filter((line) => !line.startsWith('///') && !line.startsWith('declare '))
+        .join('\n')
+
+      this.emitFile({
+        type: 'asset',
+        fileName: 'sw.js',
+        source: `const __PRECACHE__=${JSON.stringify(assets)};\n${stripped}`,
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), cspMetaTag()],
+  plugins: [react(), cspMetaTag(), serviceWorker()],
   resolve: {
     alias: {
       '@domain': resolvePath('domain'),
