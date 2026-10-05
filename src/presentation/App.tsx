@@ -33,7 +33,26 @@ export function App() {
   const [view, setView] = useState<View>({ name: 'setup' })
   const disposableView = useRef<View | null>(null)
 
+  /*
+   * Which navigation is the current one.
+   *
+   * Work started in order to *reach* a screen outlives the decision to go
+   * there: loading an archived game takes as long as it takes, and the only
+   * thing stopping a resolved load from taking over the screen was that nobody
+   * had tried it. Clicking a game and then reaching for the sidebar — or
+   * clicking a second game — pulled you into the first one when it landed, and
+   * two clicks in quick succession opened whichever game answered last rather
+   * than the one asked for second.
+   *
+   * Bumped by every `goTo`, so an async navigation can compare the count it
+   * started with against the count now and stand down. A `cancelled` flag per
+   * request would not do: the cancellation here is *any* later navigation, from
+   * anywhere, not just the next call to this one function.
+   */
+  const navigation = useRef(0)
+
   const goTo = useCallback((next: View) => {
+    navigation.current += 1
     disposeView(disposableView.current)
     disposableView.current = next
     setView(next)
@@ -60,15 +79,24 @@ export function App() {
   const openArchivedGame = useCallback(
     (id: string) => {
       goTo({ name: 'loading', message: 'Loading game…' })
+      const request = navigation.current
+
       services.archive
         .load(id)
-        .then((game) => goTo({ name: 'replay', session: factory.createReplaySession(game) }))
-        .catch((cause: unknown) =>
+        .then((game) => {
+          // Checked before the session is built, not after: a replay session
+          // holds resources, and one created for a screen nobody is waiting for
+          // would have to be disposed again immediately.
+          if (request !== navigation.current) return
+          goTo({ name: 'replay', session: factory.createReplaySession(game) })
+        })
+        .catch((cause: unknown) => {
+          if (request !== navigation.current) return
           goTo({
             name: 'error',
             message: cause instanceof Error ? cause.message : String(cause),
-          }),
-        )
+          })
+        })
     },
     [services.archive, factory, goTo],
   )

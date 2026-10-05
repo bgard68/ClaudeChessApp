@@ -13,9 +13,36 @@ export interface StoredDailyPuzzle extends GeneratedPuzzle {
   readonly day: string
 }
 
+/** How far through the self-play game the generator has got. */
+export type ProgressListener = (ply: number) => void
+
 export const STORAGE_KEY = 'chess.daily-puzzle'
 
-let inFlight: { day: string; promise: Promise<StoredDailyPuzzle> } | null = null
+/**
+ * The generation running now, if there is one.
+ *
+ * Progress is fanned out from here rather than wired straight to the caller
+ * that happened to start it, because the two have different lifetimes. A
+ * second caller *joins* the promise — the whole point of this cache — but used
+ * to join it without any way to hear progress, since the running generator was
+ * reporting to the first caller's callback and that caller was gone. The
+ * symptom: the screen sat on "Warming up…" for the entire twelve seconds,
+ * every time in development, where StrictMode makes the second caller the only
+ * one that matters, and in production for anyone who left the screen and came
+ * back.
+ *
+ * `lastPly` is replayed to a joiner on arrival, because the next ply can be a
+ * second or more away and starting from nothing is the same bug in miniature.
+ */
+interface Generation {
+  readonly day: string
+  readonly promise: Promise<StoredDailyPuzzle>
+  readonly listeners: Set<ProgressListener>
+  /** Mutable, and shared with the reporter that advances it. */
+  readonly progress: { lastPly: number }
+}
+
+let inFlight: Generation | null = null
 
 /**
  * `isUsable` is asked whether a *stored* puzzle can still be played, because
@@ -26,17 +53,32 @@ let inFlight: { day: string; promise: Promise<StoredDailyPuzzle> } | null = null
  */
 export function todaysPuzzle(
   day: string,
-  generate: () => Promise<GeneratedPuzzle>,
+  generate: (onProgress: ProgressListener) => Promise<GeneratedPuzzle>,
   isUsable: (puzzle: StoredDailyPuzzle) => boolean = () => true,
+  onProgress: ProgressListener = () => {},
 ): Promise<StoredDailyPuzzle> {
   const stored = readStored()
   if (stored !== null && stored.day === day) {
     if (isUsable(stored)) return Promise.resolve(stored)
     discardStored()
   }
-  if (inFlight !== null && inFlight.day === day) return inFlight.promise
 
-  const promise = generate()
+  if (inFlight !== null && inFlight.day === day) {
+    const joined = inFlight
+    joined.listeners.add(onProgress)
+    if (joined.progress.lastPly > 0) onProgress(joined.progress.lastPly)
+    return joined.promise
+  }
+
+  const listeners = new Set<ProgressListener>([onProgress])
+  // Its own object so the reporter below can advance it before `inFlight`,
+  // which shares it, has been assigned.
+  const progress = { lastPly: 0 }
+
+  const promise = generate((ply) => {
+    progress.lastPly = ply
+    for (const listener of listeners) listener(ply)
+  })
     .then((puzzle) => {
       const record: StoredDailyPuzzle = { ...puzzle, day }
       try {
@@ -48,9 +90,15 @@ export function todaysPuzzle(
     })
     .finally(() => {
       inFlight = null
+      // Releases the listeners' closures. There is deliberately no unsubscribe
+      // API: a listener that outlives its screen is already harmless — the
+      // screen ignores anything arriving after its own cleanup — and the set is
+      // emptied here within seconds either way. A subscription protocol to
+      // shorten that would be ceremony, not safety.
+      listeners.clear()
     })
 
-  inFlight = { day, promise }
+  inFlight = { day, promise, listeners, progress }
   return promise
 }
 

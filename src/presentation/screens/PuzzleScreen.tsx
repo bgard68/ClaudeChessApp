@@ -5,7 +5,7 @@ import type { Square } from '@domain/chess/Square'
 import { dailySeed } from '@application/puzzle/DailyPuzzle'
 import { mateStartingMove, solvesMateWithin, toughestDefence } from '@application/puzzle/mate'
 import { AppIcon, type AppIconName } from '../components/AppIcon'
-import { ChessBoardView } from '../components/ChessBoardView'
+import { ChessBoardView, NO_MOVES } from '../components/ChessBoardView'
 import { ScreenHeader } from '../components/ScreenHeader'
 import { todaysPuzzle, type StoredDailyPuzzle } from '../dailyPuzzle'
 import {
@@ -66,15 +66,18 @@ export function PuzzleScreen() {
     setPhase({ kind: 'generating', ply: 0 })
     todaysPuzzle(
       today,
-      () =>
-        factory.createPuzzleGenerator().generate(dailySeed(new Date()), (ply) => {
-          if (!cancelled) {
-            setPhase((current) =>
-              current.kind === 'generating' ? { kind: 'generating', ply } : current,
-            )
-          }
-        }),
+      // Progress is reported to `todaysPuzzle`, which fans it out to everyone
+      // waiting on this generation — not to the closure below, which only the
+      // caller that started it would ever hear from.
+      (onProgress) =>
+        factory.createPuzzleGenerator().generate(dailySeed(new Date()), onProgress),
       isUsable,
+      (ply) => {
+        if (cancelled) return
+        setPhase((current) =>
+          current.kind === 'generating' ? { kind: 'generating', ply } : current,
+        )
+      },
     )
       .then((puzzle) => {
         if (cancelled) return
@@ -94,7 +97,17 @@ export function PuzzleScreen() {
     }
   }, [factory, today, begin, isUsable])
 
-  useEffect(() => load(), [load])
+  /*
+   * The effect is the only thing that ever starts a generation.
+   *
+   * "Try again" used to call `load()` directly and drop the cleanup it returns
+   * on the floor, leaving that generation's `cancelled` flag unreachable: there
+   * was then no way to tell it the screen had gone. Retrying by bumping a
+   * counter keeps one owner for the lifecycle, and the cleanup always belongs to
+   * the call it came from.
+   */
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => load(), [load, attempt])
 
   const tryMove = (intent: MoveIntent): boolean => {
     if (position === null || status === 'solved') return false
@@ -122,7 +135,11 @@ export function PuzzleScreen() {
     const defended = rules.play(played.position, defence)!
     setPosition(defended.position)
     setLastMove({ from: defence.from, to: defence.to })
-    setMovesLeft(movesLeft - 1)
+    // From the previous value, not from the one this render closed over. Correct
+    // either way today — a click handler sees committed state — but the reading
+    // is what the countdown means, and the next caller of this may not be a
+    // click handler.
+    setMovesLeft((left) => left - 1)
     setStatus('solving')
     return true
   }
@@ -134,10 +151,26 @@ export function PuzzleScreen() {
   }
 
   const shownStreak = streakOn(streak, today)
-  const sideToMove =
-    phase.kind === 'ready'
-      ? rules.positionFromFen(phase.puzzle.fen).sideToMove
-      : 'white'
+
+  /*
+   * Whose puzzle this is, and what can be played — both memoised because both
+   * parse or search a position, and both were being recomputed on every render
+   * for a value that only changes when the puzzle or the position does.
+   *
+   * The side to move comes from the puzzle's own FEN rather than from the
+   * position on the board: it names who is solving, which holds for the whole
+   * puzzle, where `position.sideToMove` alternates as the defence replies.
+   */
+  const puzzleFen = phase.kind === 'ready' ? phase.puzzle.fen : null
+  const sideToMove = useMemo(
+    () => (puzzleFen === null ? 'white' : rules.positionFromFen(puzzleFen).sideToMove),
+    [rules, puzzleFen],
+  )
+  const legalMoves = useMemo(
+    () => (position === null ? NO_MOVES : rules.legalMoves(position)),
+    [rules, position],
+  )
+
   const totalMoves = phase.kind === 'ready' ? phase.puzzle.mateIn : movesLeft
   // The objective is fixed; only the countdown moves. Solving the last move
   // never decrements movesLeft — it ends the puzzle — so a solved board would
@@ -194,7 +227,11 @@ export function PuzzleScreen() {
           <div>
             <p className="phase2-kicker">Puzzle unavailable</p>
             <p className="notice notice--error">{phase.message}</p>
-            <button type="button" className="button" onClick={() => load()}>
+            <button
+              type="button"
+              className="button"
+              onClick={() => setAttempt((count) => count + 1)}
+            >
               <AppIcon name="sparkles" size={16} />
               Try again
             </button>
@@ -218,7 +255,7 @@ export function PuzzleScreen() {
                 fen={position.fen}
                 orientation={sideToMove}
                 interactive={status !== 'solved'}
-                legalMoves={rules.legalMoves(position)}
+                legalMoves={legalMoves}
                 lastMove={lastMove}
                 hint={hint}
                 onMove={tryMove}

@@ -393,6 +393,24 @@ promotion chooser, which needs a game to reach a seventh-rank pawn.
 
 ---
 
+## Eleven render-timing defects, and a suite that could not see any of them
+
+Kept separate because it is a class rather than a bug, and because the useful
+part is the method: a taxonomy of React timing failures, swept across the
+presentation layer one category at a time, found eleven defects that reading the
+code had not — including a memoised options object whose dependency list was
+invalidated ten times a second by a prop its caller built inline, disarming the
+guard that two days of the react-chessboard investigation below exists to
+provide.
+
+The unit suite renders one static commit and is blind to anything an effect
+does, so all eleven were outside what 789 passing tests could say anything
+about. Full write-up, with how each was found, what it was fixed with, and why
+review missed them: **[REACT-TIMING-AUDIT.md](REACT-TIMING-AUDIT.md)**. The
+checklist it produced is [TESTING.md § Reviewing for timing](TESTING.md#reviewing-for-timing).
+
+---
+
 # From the test suite
 
 These came out of a test-quality pass on 2026-09-09 — reading the existing 498

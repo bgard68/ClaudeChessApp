@@ -188,6 +188,51 @@ forgotten one. Anything not on that list fails the build.
 
 ---
 
+## Reviewing for timing
+
+The first row of the table above — *the unit suite sees the first commit, and is
+blind to anything an effect does* — is not a small gap. Run against
+`src/presentation/`, the six questions below found **eleven defects** that
+several careful reviews had missed, because every one of them lives in the
+second render or later and the suite therefore had nothing to say about any of
+them. The findings, and why reading the code did not surface them, are in
+[REACT-TIMING-AUDIT.md](REACT-TIMING-AUDIT.md).
+
+Ask these of any change under `src/presentation/`. Enumerate the answers — the
+point is a list you can check off, not a judgement about whether the code looks
+right. None of the eleven looked wrong.
+
+1. **Where does an async callback write state?** For each one: what cancels it,
+   and does that cover *every* way the user can make the result irrelevant — not
+   just the next call to the same function? A `cancelled` flag that cannot see a
+   navigation from elsewhere is not cancellation.
+2. **Does any state describe a moment?** A hint describes a position, a
+   selection describes a list, a save describes a ply. If so it must carry that
+   identity and be read back through it. State cleared by an effect watching for
+   staleness always commits the stale frame first.
+3. **Is any state computed from props or from other state?** Derive it during
+   render. If an effect exists only to keep two pieces of state agreeing, the
+   effect is the bug.
+4. **Are two booleans describing one lifecycle?** Count the combinations. If any
+   is unreachable, or if a state you need cannot be expressed, it wants to be a
+   union. Watch for the tell: branches that must be *ordered* to exclude a
+   combination.
+5. **Which dependency-list entries are freshly allocated?** An object or array
+   built inline in JSX, or a `.map()` result, is a new identity every render. In
+   a dependency list it makes the memo decoration. `exhaustive-deps` does not
+   check this; it only checks that nothing is missing.
+6. **Would this survive being run twice?** StrictMode double-renders and
+   double-invokes effects. No writes to refs during render, every effect's
+   cleanup fully undoing it, and no state initialiser with a side effect.
+
+And one rule about where the answer goes: **a timing decision belongs in a
+function, not in a component.** `adviceFor`, `previewCaption` and
+`statusForGame` exist because the node suite cannot drive a re-render but can
+test any function. A decision left inside a component is untestable here by
+construction — which is the mechanism by which all eleven survived.
+
+---
+
 ## Writing a new browser check
 
 All four scripts share a shape. Copy the nearest one rather than starting

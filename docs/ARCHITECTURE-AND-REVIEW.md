@@ -328,7 +328,7 @@ Strained:
   runs the one-time import, performs migrations, and rebuilds the player index —
   roughly 500 lines. Each piece is coherent and the comments explain why, but
   "the library" is a broad responsibility. If this file grows again, the player
-  index is the natural thing to extract — see V2 in §8.10 for why that wait is
+  index is the natural thing to extract — see V2 in §8.11 for why that wait is
   deliberate.
 - `ArchiveScreen` was the largest component in the app — 1,040 lines, 20
   `useState` and 6 `useEffect` — holding the query, filters, sort, pagination,
@@ -378,7 +378,7 @@ protocol-shaped stays in the adapter.
 `GameArchive` itself is the counter-example: `list`, `load`, `importPgn`,
 `durability`, `exportPgn`, `suggestPlayers`, `facets`. That is a wide interface,
 and a screen that only lists games depends on all of it. Splitting it further
-would be defensible; V3 in §8.10 sets out why it is not being done.
+would be defensible; V3 in §8.11 sets out why it is not being done.
 
 ### 8.5 Dependency Inversion (DIP) — honoured, and now enforced
 
@@ -455,30 +455,64 @@ Deliberately duplicated:
 
 | Principle | Verdict | The tradeoff |
 | --- | --- | --- |
-| SRP | Mostly held | `SqliteGameArchive` does too much; extraction deferred by design (§8.10 V2) |
+| SRP | Mostly held | `SqliteGameArchive` does too much; extraction deferred by design (§8.11 V2) |
 | OCP | Held where extension is likely | Screens are closed to extension by choice |
 | LSP | Held, and load-bearing | Capability check (`isInteractive`) instead of type check |
-| ISP | Held | `GameArchive` is wide; splitting prevents no defect (§8.10 V3) |
-| DIP | Held, and enforced | `architecture.test.ts` asserts it; one exception, argued in §8.10 V1 |
+| ISP | Held | `GameArchive` is wide; splitting prevents no defect (§8.11 V3) |
+| DIP | Held, and enforced | `architecture.test.ts` asserts it; one exception, argued in §8.11 V1 |
 | Clean Arch | Dependency rule yes, taxonomy no | No use-case classes, no DI container |
 | DRY | Mostly | Game identity duplicated 2× for a real reason, and test-locked |
 
-### 8.9 The scan, and what was done about it
+### 8.9 The timing sweep, and what it says about these principles
+
+A second sweep — six questions about render timing, run across
+`src/presentation/` — found eleven defects, all of them in the gap between a
+correct intention and what React does with it on a later render. Written up in
+full, with how each was found and fixed, in
+[REACT-TIMING-AUDIT.md](REACT-TIMING-AUDIT.md).
+
+Three of its conclusions bear on the principles above rather than on the bugs.
+
+**Making illegal states unrepresentable did more than SRP would have.** Two of
+the eleven were an `isAdvising` boolean beside a nullable hint, and a nullable
+game standing for both "loading" and "failed". Neither file had a
+responsibility problem; both had a *type* problem, and the fix was a
+discriminated union rather than a split. Where a component's states are modelled
+honestly, the exhaustiveness check does work that no amount of decomposition
+would have.
+
+**DRY applied to a hazard, not to code.** The memo dependency fix lives inside
+`ChessBoardView` rather than being repeated as a `useMemo` at each of its three
+call sites. The duplication worth avoiding was not the lines — it was three
+independent chances to get the same subtle thing wrong.
+
+**Nine of eleven fixes made their file smaller, and no abstraction was added.**
+The one new concept, a listener set in `todaysPuzzle`, earns its place because a
+module-level cache and a component genuinely have different lifetimes and
+something has to reconcile them. Nothing else needed a port, a layer, or a
+protocol — and a cancellation protocol that *was* considered for the puzzle
+generator was rejected on the grounds that the work it would cancel is work we
+want finished. §8.11 is the standing record of refusals; that one is argued in
+the audit instead, where its reasoning belongs.
+
+---
+
+### 8.10 The scan, and what was done about it
 
 The verdicts above came partly from reading the code as it was written and partly
 from a deliberate scan for violations — greps for outward imports, concrete
 adapters named outside the composition root, duplicated logic, interface widths
 and file sizes. Six things came out of it. Three were fixed; three stand, and are
-argued in §8.10.
+argued in §8.11.
 
 | # | Finding | Disposition |
 | --- | --- | --- |
 | 1 | The dependency rule was a convention nothing checked | **Fixed** — `src/architecture.test.ts` |
 | 2 | `gameKey.ts` and this document both claimed a safety net that did not exist | **Fixed** — comment corrected, §8.7 carries the correction |
 | 3 | Game identity implemented three times, nothing holding them in agreement | **Fixed** — reduced to two, locked by `gameKey.test.ts` |
-| 4 | `useFederations` imports infrastructure directly | **Stands** — §8.10 V1 |
-| 5 | `SqliteGameArchive` carries six responsibilities | **Stands** — §8.10 V2 |
-| 6 | `GameArchive` is a wide interface | **Stands** — §8.10 V3 |
+| 4 | `useFederations` imports infrastructure directly | **Stands** — §8.11 V1 |
+| 5 | `SqliteGameArchive` carries six responsibilities | **Stands** — §8.11 V2 |
+| 6 | `GameArchive` is a wide interface | **Stands** — §8.11 V3 |
 
 #### How 1 was fixed
 
@@ -529,7 +563,7 @@ changed no answer.
 
 ---
 
-### 8.10 Known violations left standing
+### 8.11 Known violations left standing
 
 Three violations found by a deliberate scan are **not** being fixed. They are
 recorded here with what is actually wrong, what fixing it would cost, and why the
