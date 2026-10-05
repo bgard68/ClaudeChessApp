@@ -3,22 +3,26 @@
 How this app is tested, why the tools are the ones they are, what they cannot
 reach, and how to add a check of your own.
 
-There are two test environments and four browser scripts. The split is not
-ceremony: each catches a class of fault the other is blind to, and every one of
+There are three test environments and four browser scripts. The split is not
+ceremony: each catches a class of fault the others are blind to, and every one of
 them exists because something got through.
 
 ---
 
-## The two environments
+## The three environments
 
-| | Unit suite | Browser checks |
-| --- | --- | --- |
-| Runner | Vitest, `environment: 'node'` | `playwright-core` against system Chrome |
-| Renders with | `renderToStaticMarkup` | The real thing, from `dist/` |
-| Sees | The first commit of a component | Effects, state, interaction, layout, contrast |
-| Blind to | Anything an effect does | Nothing much — but cannot inject failure |
-| Speed | 494 tests in ~7s | ~30s per script |
-| Files | 48 under `src/**/*.test.ts(x)` | 4 under `scripts/` |
+| | Unit suite | Failure suite | Browser checks |
+| --- | --- | --- | --- |
+| Runner | Vitest, `environment: 'node'` | Vitest, `environment: 'jsdom'` | `playwright-core` against system Chrome |
+| Renders with | `renderToStaticMarkup` | Testing Library, real effects | The real thing, from `dist/` |
+| Sees | The first commit of a component | Effects, state, clicks — with services it controls | Effects, state, interaction, layout, contrast |
+| Blind to | Anything an effect does | Layout, geometry, real breakpoints | Nothing much — but cannot inject failure |
+| Speed | 810 tests in ~7s | included above, ~2s of it | ~30s per script |
+| Files | 59 under `src/**/*.test.ts(x)` | 2, by docblock | 4 under `scripts/` |
+
+The middle column is new and deliberately small — two files, both named
+`*.failures.test.tsx`. Its reason for existing is the one thing neither other
+column can do: **make a dependency fail on purpose.**
 
 ### Running them
 
@@ -129,41 +133,42 @@ smoke test — extended to cover behaviour and accessibility.
   class turned into a 72px strip. jsdom runs effects, so it would have caught
   the first; it has no layout engine at all, so it could never have caught the
   second.
-- **One environment fewer.** jsdom would have made three: node units, jsdom
-  components, real-Chrome end-to-end. Three places to ask "where does this test
-  belong?" is worse than two.
+- **One environment fewer** — this argument has since been *partly conceded*,
+  and it is worth being straight about that rather than quietly leaving the
+  original text. jsdom was added later for one job the other two cannot do at
+  all: making a dependency fail. That makes three environments, with the cost
+  this bullet predicted — a third place to ask "where does this test belong?" —
+  paid down by a rule narrow enough to answer it: *only failure goes there*. See
+  [§ A third environment](#a-third-environment-for-failure-only). Everything
+  else below still stands.
 
 ### What it costs
 
-- **Seconds, not milliseconds.** A browser script is ~30s against ~7s for 494
+- **Seconds, not milliseconds.** A browser script is ~30s against ~7s for 810
   unit tests. Fine at four scripts; it would not be fine at four hundred tests.
-- **Failure cannot be injected.** This is the real loss. The browser gets the
-  real SQLite database, which always succeeds, so "what does the screen do when
-  the query throws?" is not reachable. Those paths stay the unit suite's job,
-  where a stand-in service can be handed in through `ServicesProvider`.
+- **Failure cannot be injected.** This was the real loss, and it is the one that
+  eventually justified a third environment — the node suite could take a
+  stand-in service through `ServicesProvider` but never ran the effect that used
+  it, so between them the two environments could hand over a failing dependency
+  and never see what the screen did about it.
 - **Setup, not assertion, is where the time goes.** See
   [the trap below](#the-trap-waiting-for-the-wrong-signal).
 
-### If you want jsdom anyway
+### And if you want more of it
 
-Nothing above rules it out — it is a reasonable choice for fine-grained
-component and hook tests, and it would reach the paths listed under *What it
-costs*.
+jsdom is now here, for failure injection only, and the advice this section used
+to give about *how* to add it turned out to be right and was followed: it is
+opted into per file rather than by flipping `environment` in `vite.config.ts`, so
+the other 59 files stay on node and keep their speed.
 
-```bash
-npm install --save-dev jsdom @testing-library/react @testing-library/user-event
-```
+What has not changed is the argument against using it for general component
+work — there is a real Chrome two columns over, and a fake DOM has no layout
+engine. Before adding a third jsdom file, read the rules in
+[§ A third environment](#a-third-environment-for-failure-only) and check the test
+could not go in the node suite or a browser script instead.
 
-Do **not** flip `environment` in `vite.config.ts`. Opt in per file, so the 494
-existing tests stay on node and keep their speed:
-
-```ts
-// @vitest-environment jsdom
-import { render, screen } from '@testing-library/react'
-```
-
-Regenerate the lock file the way [SUPPLY-CHAIN.md](SUPPLY-CHAIN.md) requires,
-or the Linux deploy breaks.
+If you add a dependency for it, regenerate the lock file the way
+[SUPPLY-CHAIN.md](SUPPLY-CHAIN.md) requires, or the Linux deploy breaks.
 
 ---
 
@@ -173,9 +178,9 @@ Honesty about the holes matters more than the number of tests.
 
 | Not covered | Why |
 | --- | --- |
-| Error paths in screens — a failed query, a rejected import | The browser gets the real database, which succeeds. Needs jsdom with an injected service, or a fault-injection seam. |
+| Error paths in screens — a failed import, a failed export | **Partly closed.** A failed archive query and a failed save are covered by the jsdom failure suite; import and export still are not, because both go through a `File` and a download the environment cannot supply. |
 | `PlayerSearch`'s suggestion list | Only exists after an effect resolves, so a static render is always `null`. A test asserting that would pass whether or not the component worked. |
-| `useArchiveQuery`'s wiring | The decisions it makes are extracted into `archiveQuery.ts` and tested directly; the effects around them are not. |
+| `useArchiveQuery`'s wiring | The decisions it makes are extracted into `archiveQuery.ts` and tested directly. Its failure path is now covered through the screen; its paging is not, and depends on an invariant documented at `accumulatePages`. |
 | `StockfishEngine`, the SQLite worker, storage persistence | Need a real browser environment plus the engine binary. The smoke test proves the engine answers; nothing tests its UCI handling in isolation. |
 | Real devices | Everything runs in headless Chrome, which has no collapsing URL bar, no home-indicator inset, and no touch. See [UI-REDESIGN.md](UI-REDESIGN.md#browser-qa-still-worth-doing). |
 | Pieces having accessible names | `react-chessboard` gives every piece `role="button"` with no name and hardcodes `roleDescription`. Recorded as a known finding in `a11y-check.mjs` and printed on every run. |
@@ -185,6 +190,89 @@ That last row is a policy as much as an entry: the accessibility script keeps a
 here. They are **printed every run rather than filtered out**, because a check
 that quietly drops what it cannot fix is how a known problem becomes a
 forgotten one. Anything not on that list fails the build.
+
+---
+
+## A third environment, for failure only
+
+Two files run under jsdom instead of node:
+`src/presentation/screens/ArchiveScreen.failures.test.tsx` and
+`PlayScreen.failures.test.tsx`. They opt in with a docblock on line one —
+
+```tsx
+/** @vitest-environment jsdom */
+```
+
+— which is the entire configuration. The suite default stays `node`, so the
+other 59 files are unaffected and pay nothing for this.
+
+### Why it exists
+
+The table above has a column that reads *"cannot inject failure"*, and the
+documented coverage holes all sat behind it: a rejected query, a failed import, a
+preview that will not load. The node suite never runs the effect that queries;
+the browser scripts get the real SQLite library, which succeeds. Neither can be
+told to fail, so the words the app says when something breaks were never checked.
+
+The seam was already there and unused. `ServicesProvider` takes an optional
+`value` prop, documented from the start as *"stand-in services, for tests… opening
+a real database is not something a test of a screen should have to do."* All that
+was missing was an environment where effects run.
+
+### The rules for this column
+
+**Only failure.** If a test does not depend on a service refusing, it does not
+belong here — it belongs in the node suite, which is faster, or in a browser
+script, which is real. This column is not for convenience, and growing it into a
+general component suite would mean asserting against a fake DOM when a real
+Chrome is already wired up two columns over.
+
+**No geometry, ever.** `src/test-support/dom.ts` stubs `ResizeObserver`,
+`matchMedia` and `scrollIntoView` because jsdom has no layout engine. They are
+stubs, not polyfills: the observer never fires. Anything about size, breakpoints
+or scrolling is `layout-check.mjs`'s job, against actual Chrome. A rule in
+`architecture.test.ts` asserts no shipped file imports `test-support/`, because a
+`ResizeObserver` that never fires is correct in a test and silently wrong in an
+application — and would fail by doing nothing.
+
+**Known limit, recorded in place.** The archive's *failed preview caption* cannot
+be driven here. React renders the right text — confirmed by instrumenting it —
+and the update never reaches the DOM; `PlayScreen` does the same thing
+successfully, so it is specific to the subtree with the board in it rather than
+to jsdom. The decision itself is covered by `previewCaption`'s unit tests. The
+full note is in the test file, where whoever next tries it will find it.
+
+---
+
+## Coverage
+
+```bash
+npm run coverage
+```
+
+Prints a table and writes `coverage/` (gitignored). **There is no threshold, and
+that is a decision rather than an omission.** A number that fails the build is a
+number people raise by touching lines, and this repository has already produced
+[a test that asserted nothing and passed](#a-test-that-asserts-nothing-and-passes).
+Coverage here is for reading, not for enforcing.
+
+What it is worth reading *for* is which layer is thin. As of this writing:
+
+| Layer | Lines |
+| --- | --- |
+| `domain/archive` | 100% |
+| `domain/clock` | 100% |
+| `domain/chess` | 97% |
+| `application` | 97% |
+| `composition` | 60% |
+| `presentation` | 59% |
+
+That shape is the point. The inner layers are pure functions and are thoroughly
+covered; `presentation` is a third less covered and is where every defect in
+[REACT-TIMING-AUDIT.md](REACT-TIMING-AUDIT.md) lived. The number did not find
+those bugs and would not have — but it does tell you, in one line, where to point
+the next sweep. `composition` is low for a benign reason: it wires adapters that
+only a browser can construct.
 
 ---
 

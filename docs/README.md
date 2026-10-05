@@ -41,7 +41,12 @@ Two more live outside this folder because convention puts them there:
   [TESTING.md § Writing a new browser check](TESTING.md#writing-a-new-browser-check),
   including the wait that passes while asserting the wrong state.
 - **Why not jsdom** — [TESTING.md § Playwright, not jsdom](TESTING.md#playwright-not-jsdom),
-  with what it costs and how to add it anyway.
+  with what it costs. It is now used for one narrow job — making a dependency
+  fail on purpose — under the rules in
+  [§ A third environment, for failure only](TESTING.md#a-third-environment-for-failure-only).
+- **How well covered is it, and where is it thin** —
+  [TESTING.md § Coverage](TESTING.md#coverage): `npm run coverage`, deliberately
+  without a threshold, and what the shape of the numbers means.
 - **What the tests cannot reach** —
   [TESTING.md § What is not covered, and why](TESTING.md#what-is-not-covered-and-why).
 - **The six questions to ask of any presentation change** —

@@ -87,6 +87,9 @@ export default defineConfig({
   // neither may be rewritten by the dependency optimizer.
   optimizeDeps: { exclude: ['stockfish', '@sqlite.org/sqlite-wasm'] },
   test: {
+    // The default. A handful of files opt into jsdom with a
+    // `@vitest-environment jsdom` docblock, which is the whole configuration
+    // that needs: see TESTING.md § A third environment, for failure only.
     environment: 'node',
     // .tsx as well as .ts: the presentation tests render components through
     // react-dom/server, which needs no DOM, but they live in .tsx files and a
@@ -94,5 +97,31 @@ export default defineConfig({
     // without them. That is how the UI redesign's two component tests went
     // unrun from the day they were written.
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    /*
+     * Coverage reports. It is deliberately not a gate.
+     *
+     * No `thresholds` key, and that is the point rather than an omission. A
+     * number that fails the build is a number people raise by touching lines,
+     * and this suite has already produced a test that asserted nothing and
+     * passed — see LESSONS-LEARNED § A test that asserts nothing, and passes.
+     * The useful reading of coverage here is *which layer is thin*, which is a
+     * thing to look at occasionally, not to enforce.
+     *
+     * Run with `npm run coverage`.
+     */
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      reportsDirectory: 'coverage',
+      include: ['src/**/*.ts', 'src/**/*.tsx'],
+      exclude: [
+        'src/**/*.test.ts',
+        'src/**/*.test.tsx',
+        // Test support, and the two entry points a unit test never reaches.
+        'src/test-support/**',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+      ],
+    },
   },
 })
