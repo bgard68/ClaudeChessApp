@@ -88,6 +88,22 @@ export function toArchiveQuery(
  * Offset zero means this is a first page and replaces what came before —
  * a new question, not more of the old one. Appending there instead would
  * leave the previous question's games above the new question's.
+ *
+ * **This appends blindly, and relies on each page being asked for once.** It
+ * does not place rows by offset, so a page requested twice is appended twice.
+ * What makes that safe is not here — it is that `useArchiveQuery` runs one
+ * request per question in a single effect, and that effect's dependencies are
+ * primitives. Two clicks on "Load more" before the first answers therefore
+ * recompute the *same* `offset` and `limit`, the dependencies do not change, and
+ * no second request is made at all; any genuinely different question cancels the
+ * one in flight.
+ *
+ * So it is load-bearing that those dependencies stay primitive, and that paging
+ * stays inside that one effect. Deriving the offset into an object, or firing a
+ * page from a handler instead, reintroduces duplicate rows here rather than
+ * where the change was made. Written down because it is an invariant held at a
+ * distance, which is the kind this codebase has been bitten by — see
+ * docs/REACT-TIMING-AUDIT.md.
  */
 export function accumulatePages<T>(
   current: readonly T[],
