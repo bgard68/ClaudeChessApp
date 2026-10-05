@@ -144,6 +144,22 @@ describe('the dependency rule', () => {
     expect(breaches).toEqual([])
   })
 
+  /*
+   * `test-support/` holds stubs for browser APIs jsdom lacks. Nothing that
+   * ships may reach them: a ResizeObserver that never fires is correct in a
+   * test and silently wrong in an application, and it would fail by doing
+   * nothing rather than by throwing. The directory sits outside the layer map,
+   * so none of the rules above constrain it — this is the rule that does.
+   */
+  it('testSupport_ShippedCode_CannotReachIt', () => {
+    const breaches = files
+      .filter((file) => layerOf(file.relative) !== 'test-support')
+      .filter((file) => /from\s+'[^']*test-support/.test(readFileSync(file.path, 'utf8')))
+      .map((file) => file.relative)
+
+    expect(breaches).toEqual([])
+  })
+
   it('acceptedList_Entries_AllStillExist', () => {
     // An exception that no longer applies should be deleted, not left to imply
     // a breach that has been fixed is still tolerated.

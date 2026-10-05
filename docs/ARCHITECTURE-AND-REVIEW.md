@@ -516,13 +516,14 @@ argued in §8.11.
 
 #### How 1 was fixed
 
-`src/architecture.test.ts` asserts four rules: each layer imports only itself or
+`src/architecture.test.ts` asserts five rules: each layer imports only itself or
 inward; `react`, `chess.js`, `stockfish`, `react-dom`, `react-chessboard` and
 `@sqlite.org/sqlite-wasm` stay out of `domain/` and `application/`; only
 `composition/` constructs adapters; and `presentation/` does not import
-`@infrastructure`. It walks `src/` itself and reads the import specifiers — no
+`@infrastructure`; and nothing that ships imports `test-support/`, whose browser
+stubs would fail by doing nothing rather than by throwing. It walks `src/` itself and reads the import specifiers — no
 ESLint, because the project has no linter and adding one plus a plugin to assert
-four things is a worse trade than thirty lines that already run in the commit
+five things is a worse trade than thirty lines that already run in the commit
 hook.
 
 Two details that make it a guard rather than a decoration. It asserts it found

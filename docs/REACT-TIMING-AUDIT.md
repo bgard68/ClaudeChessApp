@@ -346,6 +346,15 @@ section: the unit suite cannot observe a second render, so any decision left
 *inside* a component is untestable by construction. Moving the decision out is
 what makes it visible.
 
+A jsdom failure suite was added afterwards — two files, failure injection only,
+documented at [TESTING.md § A third environment](TESTING.md#a-third-environment-for-failure-only).
+It closes the *other* half of the hole: what a screen says when a dependency
+refuses. It does not supersede the rule above. Pulling the decision into a
+function is still the first move, because a pure function is cheaper to test, is
+exhaustively checkable, and cannot be defeated by an environment that lacks a
+layout engine — as one of those tests discovered when it could not drive the
+preview caption at all.
+
 The four `todaysPuzzle` tests were checked against the old implementation and
 **all four fail on it**. That check is not optional in this repository — see
 [LESSONS-LEARNED § Assertions that survive the bug they exist to catch](LESSONS-LEARNED.md#assertions-that-survive-the-bug-they-exist-to-catch).
@@ -401,8 +410,11 @@ perspective is not a nice-to-have on self-reviewed code.
 
 [TESTING.md](TESTING.md) has a table of what each environment sees. The unit row
 reads: *Sees — the first commit of a component. Blind to — anything an effect
-does.* 59 files and 789 tests, and not one of them can observe a second render,
-because they all render once through `renderToStaticMarkup`.
+does.* At the time: 59 files and 789 tests, and not one of them could observe a
+second render, because they all rendered once through `renderToStaticMarkup`.
+(A jsdom layer was added afterwards, for injected failure — see
+[TESTING.md § A third environment](TESTING.md#a-third-environment-for-failure-only)
+— but it did not exist while any of these eleven were written or reviewed.)
 
 Every one of these eleven defects lives in the second render or later.
 
