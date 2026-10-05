@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
 import type { LegalMove, MoveIntent } from '@domain/chess/Move'
 import type { PieceColor, PromotionPiece } from '@domain/chess/Piece'
@@ -22,6 +22,16 @@ interface ChessBoardViewProps {
 /** The same blue as a selected square, so advice reads as UI rather than as a
  *  played move — and it clears every board theme, which no theme colour does. */
 const HINT_ARROW_COLOR = '#5896ff'
+
+/**
+ * For a board nobody can move on.
+ *
+ * Shared rather than written `legalMoves={[]}` at each call site, because an
+ * array literal in JSX is a new array on every render of the parent, and this
+ * prop is a dependency of the memo below — see the long note on it. A board
+ * with nothing to offer should not be the thing that invalidates it.
+ */
+export const NO_MOVES: readonly LegalMove[] = []
 
 /** Order they are offered in — a promotion is a queen nearly always. */
 const PROMOTION_ORDER: readonly PromotionPiece[] = ['queen', 'rook', 'bishop', 'knight']
@@ -55,8 +65,33 @@ export function ChessBoardView({
   onMove,
 }: ChessBoardViewProps) {
   const [areaRef, area] = useElementSize<HTMLDivElement>()
-  const [selected, setSelected] = useState<Square | null>(null)
-  const [promotion, setPromotion] = useState<{ from: Square; to: Square } | null>(null)
+
+  /*
+   * A click half-made, and the position it was made in.
+   *
+   * Both are stamped with the FEN they belong to and read back only for that
+   * FEN, because neither survives the position changing underneath it: an
+   * undo, or the other player moving, leaves a selected square whose piece has
+   * gone — highlighted blue, with no destination dots, because the legal-move
+   * list no longer mentions it.
+   *
+   * Derived on the way out rather than cleared in an effect. An effect would
+   * commit the stale frame first and clear it on the next one, which is the
+   * flicker it exists to prevent.
+   */
+  const [selection, setSelection] = useState<{ fen: string; square: Square } | null>(null)
+  const [pendingPromotion, setPendingPromotion] = useState<{
+    fen: string
+    from: Square
+    to: Square
+  } | null>(null)
+
+  const selected = selection !== null && selection.fen === fen ? selection.square : null
+  const promotion =
+    pendingPromotion !== null && pendingPromotion.fen === fen ? pendingPromotion : null
+
+  const select = (square: Square | null) =>
+    setSelection(square === null ? null : { fen, square })
 
   // The largest square that fits the space the layout gave us, in both
   // directions. Taking the width alone is what pushes the board off the bottom
@@ -65,14 +100,14 @@ export function ChessBoardView({
   const sized = boardSize > 0
 
   const submit = (intent: MoveIntent): boolean => {
-    setSelected(null)
+    select(null)
     return onMove?.(intent) ?? false
   }
 
   /** True when the move needs a piece chosen, in which case the dialog opens. */
   const opensPromotion = (from: Square, to: Square): boolean => {
     if (promotionChoices(legalMoves, from, to).length === 0) return false
-    setPromotion({ from, to })
+    setPendingPromotion({ fen, from, to })
     return true
   }
 
@@ -109,13 +144,13 @@ export function ChessBoardView({
     // Select a square that has somewhere to go; anything else clears. Whether
     // a piece stands there is implied by the legal-move list, so there is no
     // need to depend on the board reporting one.
-    setSelected(legalMoves.some((move) => move.from === clicked) ? clicked : null)
+    select(legalMoves.some((move) => move.from === clicked) ? clicked : null)
   }
 
   const choosePromotion = (piece: PromotionPiece) => {
     if (promotion === null) return
     const { from, to } = promotion
-    setPromotion(null)
+    setPendingPromotion(null)
     submit({ from, to, promotion: piece })
   }
 
@@ -132,14 +167,41 @@ export function ChessBoardView({
    * The handlers ride in a ref so the memo does not have to be invalidated to
    * keep them current — they close over `selected` and `legalMoves`, which
    * change with play.
+   *
+   * Updated in an effect rather than during render. A render may be thrown away
+   * — StrictMode discards one deliberately, and a concurrent render can be
+   * abandoned — and writing a ref from a render that never commits publishes
+   * handlers closed over state the committed tree does not have. The effect runs
+   * after the commit, which is still before any click can reach the board.
    */
   const handlers = useRef({ handleDrop, handleSquareClick })
-  handlers.current = { handleDrop, handleSquareClick }
+  useEffect(() => {
+    handlers.current = { handleDrop, handleSquareClick }
+  })
 
   // Read fresh each render rather than passed as a prop: the preference is set
   // on the setup screen, whose own re-render is what brings the new colours to
   // its preview, and every other screen mounts after the choice was made.
+  // Cached by `currentBoardTheme`, so the identity below is stable.
   const theme = currentBoardTheme()
+
+  /*
+   * Unpacked to squares before the memo, and this is the whole point of it.
+   *
+   * `lastMove` and `hint` are objects their callers build inline in JSX — the
+   * play screen's `lastMove={lastMove ? { from, to } : null}` is a *new object
+   * every render*, and that screen re-renders on every clock tick, ten times a
+   * second. Listing the objects as dependencies therefore invalidated this memo
+   * ten times a second and reconfigured the board on each one, which is exactly
+   * the failure the note below describes: the memo was here, and bought nothing.
+   *
+   * Squares are strings. Equal squares are equal dependencies however many
+   * objects were allocated to carry them.
+   */
+  const lastMoveFrom = lastMove?.from ?? null
+  const lastMoveTo = lastMove?.to ?? null
+  const hintFrom = hint?.from ?? null
+  const hintTo = hint?.to ?? null
 
   const boardOptions = useMemo(
     () => ({
@@ -151,7 +213,13 @@ export function ChessBoardView({
         handlers.current.handleDrop(args),
       onSquareClick: (args: { piece: unknown; square: string }) =>
         handlers.current.handleSquareClick(args),
-      squareStyles: squareStyles(selected, legalMoves, lastMove),
+      squareStyles: squareStyles(
+        selected,
+        legalMoves,
+        lastMoveFrom !== null && lastMoveTo !== null
+          ? { from: lastMoveFrom, to: lastMoveTo }
+          : null,
+      ),
       boardStyle: { borderRadius: '6px' },
       darkSquareStyle: { backgroundColor: theme.dark },
       lightSquareStyle: { backgroundColor: theme.light },
@@ -162,14 +230,26 @@ export function ChessBoardView({
       darkSquareNotationStyle: { color: '#f7f6f2', fontWeight: 600 },
       lightSquareNotationStyle: { color: '#3a3833', fontWeight: 600 },
       animationDurationInMs: 180,
-      arrows: hint
-        ? [{ startSquare: hint.from, endSquare: hint.to, color: HINT_ARROW_COLOR }]
-        : [],
+      arrows:
+        hintFrom !== null && hintTo !== null
+          ? [{ startSquare: hintFrom, endSquare: hintTo, color: HINT_ARROW_COLOR }]
+          : [],
       // Hand-drawn arrows are a study tool this app does not offer, and drawing
       // one by accident with the right button is confusing.
       allowDrawingArrows: false,
     }),
-    [fen, orientation, interactive, selected, legalMoves, lastMove, hint, theme],
+    [
+      fen,
+      orientation,
+      interactive,
+      selected,
+      legalMoves,
+      lastMoveFrom,
+      lastMoveTo,
+      hintFrom,
+      hintTo,
+      theme,
+    ],
   )
 
   const offered =
@@ -218,7 +298,7 @@ export function ChessBoardView({
             <button
               type="button"
               className="promotion__cancel"
-              onClick={() => setPromotion(null)}
+              onClick={() => setPendingPromotion(null)}
             >
               Cancel
             </button>

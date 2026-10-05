@@ -4,7 +4,7 @@ import type { LiveGame } from '@application/LiveGame'
 import type { GameConfiguration } from '@application/GameConfiguration'
 import { suddenDeath } from '@domain/clock/TimeControl'
 import { ServicesProvider } from '../ServicesContext'
-import { PlayScreen } from './PlayScreen'
+import { PlayScreen, adviceFor, statusForGame, type Advice } from './PlayScreen'
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
@@ -173,5 +173,105 @@ describe('PlayScreen', () => {
       const played = render({ history: [{ san: 'e4' }] })
       expect(buttonFor(played, 'Save game')).not.toContain('disabled')
     })
+  })
+})
+
+/*
+ * A hint, and whether it is about the position on the board.
+ *
+ * These replace an `isAdvising` boolean beside a nullable hint, where the
+ * position a hint belonged to was not recorded at all — so a hint had to be
+ * cleared by an effect watching the FEN, which committed one frame first with
+ * the old arrow drawn over the new position. The same gap had no way to say
+ * that an answer had arrived too late to use, so the Hint button simply went
+ * quiet and produced nothing.
+ *
+ * All of it is decided here, in a function, because the unit suite renders a
+ * single static commit and cannot drive a worker search.
+ */
+const AFTER_E4 = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'
+
+describe('adviceFor', () => {
+  const ready: Advice = {
+    kind: 'ready',
+    fen: START,
+    from: 'g1' as never,
+    to: 'f3' as never,
+    san: 'Nf3',
+  }
+
+  it('hintAdvice_AnswerAboutThePositionOnTheBoard_IsOffered', () => {
+    expect(adviceFor(ready, START)).toBe(ready)
+  })
+
+  /*
+   * The arrow must not survive the move that answered it.
+   *
+   * This is the one that was visible: the board drew the previous position's
+   * suggestion over the new position for a frame, because clearing it was an
+   * effect and effects run after the commit.
+   */
+  it('hintAdvice_AnswerAboutAPositionAlreadyPlayedOutOf_IsNotAdviceAtAll', () => {
+    expect(adviceFor(ready, AFTER_E4)).toEqual({ kind: 'none' })
+  })
+
+  // Otherwise the Hint button stays disabled for the rest of the game: the
+  // search it is waiting on is about a position nobody is looking at.
+  it('hintAdvice_SearchLeftBehindByAMove_StopsCountingAsThinking', () => {
+    const thinking: Advice = { kind: 'thinking', fen: START }
+
+    expect(adviceFor(thinking, START)).toBe(thinking)
+    expect(adviceFor(thinking, AFTER_E4)).toEqual({ kind: 'none' })
+  })
+
+  it('hintAdvice_NoHintAsked_StaysThatWay', () => {
+    expect(adviceFor({ kind: 'none' }, START)).toEqual({ kind: 'none' })
+  })
+})
+
+describe('statusForGame', () => {
+  const status = (advice: Advice, over: Record<string, unknown> = {}) =>
+    statusForGame({
+      gameOver: false,
+      advice,
+      isCheck: false,
+      awaitingKind: 'human',
+      awaitingName: 'You',
+      ...over,
+    })
+
+  it('playStatus_SearchRunning_SaysTheEngineIsWorking', () => {
+    expect(status({ kind: 'thinking', fen: START }).label).toContain('finding a useful idea')
+  })
+
+  it('playStatus_HintReady_NamesTheMove', () => {
+    expect(
+      status({ kind: 'ready', fen: START, from: 'g1' as never, to: 'f3' as never, san: 'Nf3' })
+        .label,
+    ).toBe('Suggested move: Nf3')
+  })
+
+  /*
+   * The case that previously had no words.
+   *
+   * Asking for a hint and then moving dropped the answer silently: the button
+   * stopped saying "Thinking…", no arrow appeared, and nothing accounted for
+   * it. A request that cannot be answered has to say so.
+   */
+  it('playStatus_AnswerArrivedTooLate_SaysSoRatherThanNothing', () => {
+    const label = status({ kind: 'stale', fen: START }).label
+    expect(label).toContain('position changed')
+    expect(label).toContain('Ask again')
+  })
+
+  it('playStatus_HintUnavailable_SaysSo', () => {
+    expect(status({ kind: 'failed', fen: START }).label).toContain('unavailable')
+  })
+
+  // The game being over, and being in check, both outrank advice about it.
+  it('playStatus_GameOverOrInCheck_OutranksAnyHint', () => {
+    const advice: Advice = { kind: 'thinking', fen: START }
+    expect(status(advice, { gameOver: true }).label).toContain('complete')
+    expect(status(advice, { isCheck: true }).label).toContain('Check')
   })
 })

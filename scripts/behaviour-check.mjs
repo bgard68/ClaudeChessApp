@@ -272,6 +272,33 @@ try {
     (moveList ?? '').trim().slice(0, 60),
   )
 
+  /*
+   * The board has to survive the clock.
+   *
+   * This screen re-renders ten times a second, and react-chessboard 5 mounted
+   * or reconfigured under that load is what produced the empty board that cost
+   * two days — see LESSONS-LEARNED. The memoised options object exists to stop
+   * it, and for a long time did not actually do so: its dependency list
+   * included objects the play screen rebuilt inline on every render, so it was
+   * invalidated on every tick.
+   *
+   * What that memo really guarantees cannot be observed from out here. What
+   * can, and what anybody would actually report, is this: after several seconds
+   * of a running clock there are still sixty-four squares and the pieces are
+   * still drawn. Weak as a guard on the memo; exactly right as a guard on the
+   * failure the memo is for.
+   */
+  await page.waitForTimeout(3_000)
+  const underTick = await page.evaluate(() => ({
+    squares: document.querySelectorAll('[data-square]').length,
+    pieces: document.querySelectorAll('[data-contrast-piece]').length,
+  }))
+  check(
+    'the board is still drawn after the clock has run for three seconds',
+    underTick.squares === 64 && underTick.pieces > 0,
+    `${underTick.squares} squares, ${underTick.pieces} pieces`,
+  )
+
   /* --------------------------------------------------------------- console */
 
   // Ignore the noise a dev-less preview still produces for missing favicons.

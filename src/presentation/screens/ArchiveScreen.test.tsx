@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { RecordedMove } from '@domain/archive/ArchivedGame'
-import { ResultPill, describeResults, movetext } from './ArchiveScreen'
+import { ResultPill, describeResults, movetext, previewCaption } from './ArchiveScreen'
 
 /*
  * The screen itself needs the game library — every list it draws arrives from
@@ -108,5 +108,26 @@ describe('ResultPill', () => {
     expect(markup).toContain('No result recorded')
     expect(markup).toContain('result-pill--unknown')
     expect(markup).not.toContain('½')
+  })
+})
+
+/*
+ * The preview pane's caption.
+ *
+ * "Loading" and "could not be loaded" used to be the same state — one nullable
+ * game — so a failed load sat under "Loading the game…" indefinitely, with the
+ * starting position on the board beneath it looking like a real answer.
+ */
+describe('previewCaption', () => {
+  it('previewCaption_GameLoaded_NamesThePositionAndTheLength', () => {
+    expect(previewCaption('ready', 41)).toBe('Final position · 41 moves')
+  })
+
+  it('previewCaption_StillLoading_SaysSo', () => {
+    expect(previewCaption('loading', 41)).toBe('Loading the game…')
+  })
+
+  it('previewCaption_LoadFailed_SaysThatInsteadOfLoadingForever', () => {
+    expect(previewCaption('failed', 41)).toContain('could not be loaded')
   })
 })

@@ -19,10 +19,45 @@ import { useServices } from '../ServicesContext'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
-interface Hint {
-  readonly from: Square
-  readonly to: Square
-  readonly san: string | null
+/**
+ * A hint, and the position it belongs to.
+ *
+ * One value rather than an `isAdvising` boolean beside a nullable hint. Two
+ * variables made four combinations where only three are reachable, and the
+ * unreachable one — thinking, with a hint already on the board — had to be
+ * excluded by *ordering the branches* of the status line rather than by being
+ * impossible. The states also could not express an answer that arrived too late
+ * to use, so that case had no words and said nothing at all.
+ *
+ * Every variant carries the FEN it applies to, and `adviceFor` below is the
+ * only reader. Advice for a position that has since been played out of is not
+ * stale state to be cleared by an effect — it simply is not advice about the
+ * position on the board.
+ */
+export type Advice =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'thinking'; readonly fen: string }
+  | {
+      readonly kind: 'ready'
+      readonly fen: string
+      readonly from: Square
+      readonly to: Square
+      readonly san: string | null
+    }
+  /** The engine answered, but about a position no longer on the board. */
+  | { readonly kind: 'stale'; readonly fen: string }
+  | { readonly kind: 'failed'; readonly fen: string }
+
+/**
+ * The advice as it applies to `fen` — which is none, for anything asked about
+ * or answered about another position.
+ *
+ * Exported for its own tests: the screen reaches these states only through a
+ * worker search, which a static render cannot drive.
+ */
+export function adviceFor(advice: Advice, fen: string): Advice {
+  if (advice.kind === 'none') return advice
+  return advice.fen === fen ? advice : { kind: 'none' }
 }
 
 interface PlayScreenProps {
@@ -35,9 +70,19 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
   const state = useObservableStore(game)
   const { services, factory } = useServices()
   const durability = useLibraryDurability()
-  const [saveState, setSaveState] = useState<SaveState>('idle')
-  const [hint, setHint] = useState<Hint | null>(null)
-  const [isAdvising, setAdvising] = useState(false)
+  /*
+   * The save, and the move count it was made at.
+   *
+   * `saved` disabled the button on the grounds that the game had been stored —
+   * and then kept it disabled as play continued, so a game saved at move 20 and
+   * played on to move 40 could not be saved again. Stamped with the ply it
+   * covers, the button re-arms itself the moment there is something new to save.
+   */
+  const [save, setSave] = useState<{ kind: SaveState; ply: number }>({
+    kind: 'idle',
+    ply: 0,
+  })
+  const [advice, setAdvice] = useState<Advice>({ kind: 'none' })
   const adviser = useRef<HintAdviser | null>(null)
   const [autoFlip, setAutoFlip] = useState(configuration.opponent === 'human')
   const [manualOrientation, setManualOrientation] = useState<PieceColor>(
@@ -52,10 +97,19 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
   const isWatching = configuration.opponent === 'engines'
   const names = seatNames(configuration)
   const fen = state.position.fen
-  const fenNow = useRef(fen)
-  fenNow.current = fen
 
-  useEffect(() => setHint(null), [fen, gameOver])
+  // Only ever read by the search below, to learn what the board was showing by
+  // the time its answer arrived. Written after the commit rather than during the
+  // render: a render can be discarded — StrictMode throws one away on purpose —
+  // and a ref written by one that never committed describes a tree nobody saw.
+  const committedFen = useRef(fen)
+  useEffect(() => {
+    committedFen.current = fen
+  })
+
+  const currentAdvice = adviceFor(advice, fen)
+  const isAdvising = currentAdvice.kind === 'thinking'
+  const saveState: SaveState = save.ply === state.history.length ? save.kind : 'idle'
 
   useEffect(
     () => () => {
@@ -67,23 +121,30 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
 
   const requestHint = async () => {
     if (isAdvising) return
-    setAdvising(true)
     const askedFor = state.position
+    setAdvice({ kind: 'thinking', fen: askedFor.fen })
     try {
       adviser.current ??= factory.createHintAdviser()
       const intent = await adviser.current.advise(askedFor)
-      if (fenNow.current !== askedFor.fen) return
       const san = services.rules.play(askedFor, intent)?.move.san ?? null
-      setHint({ from: intent.from, to: intent.to, san })
+      // Answered about the position still on the board, or about one that has
+      // been played out of — in which case say so, against the position the
+      // player is actually looking at. Silently dropping it left the button
+      // going quiet with no hint and no explanation.
+      setAdvice(
+        committedFen.current === askedFor.fen
+          ? { kind: 'ready', fen: askedFor.fen, from: intent.from, to: intent.to, san }
+          : { kind: 'stale', fen: committedFen.current },
+      )
     } catch {
-      // The screen closed while the worker was searching.
-    } finally {
-      setAdvising(false)
+      // The screen closed, or the engine went away, while the worker searched.
+      setAdvice({ kind: 'failed', fen: committedFen.current })
     }
   }
 
   const saveGame = async () => {
-    setSaveState('saving')
+    const ply = state.history.length
+    setSave({ kind: 'saving', ply })
     try {
       await services.store.save(
         recordGame(state, {
@@ -94,10 +155,10 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
           at: new Date(),
         }),
       )
-      setSaveState('saved')
+      setSave({ kind: 'saved', ply })
     } catch (error) {
       console.error('Could not save the game.', error)
-      setSaveState('error')
+      setSave({ kind: 'error', ply })
     }
   }
 
@@ -116,9 +177,8 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
   const durabilityWarning = describeDurability(durability)
   const currentStatus = statusForGame({
     gameOver,
-    isAdvising,
+    advice: currentAdvice,
     isCheck: state.isCheck,
-    hintSan: hint?.san ?? null,
     awaitingKind: state.awaiting?.kind ?? null,
     awaitingName: state.awaiting?.name ?? null,
   })
@@ -211,7 +271,11 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
             interactive={isHumanToMove && !gameOver}
             legalMoves={state.legalMoves}
             lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
-            hint={hint}
+            hint={
+              currentAdvice.kind === 'ready'
+                ? { from: currentAdvice.from, to: currentAdvice.to }
+                : null
+            }
             onMove={(intent) => game.submitMove(intent)}
           />
         </div>
@@ -335,25 +399,40 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
   )
 }
 
-function statusForGame({
+/** Exported for its own tests, as `adviceFor` is and for the same reason. */
+export function statusForGame({
   gameOver,
-  isAdvising,
+  advice,
   isCheck,
-  hintSan,
   awaitingKind,
   awaitingName,
 }: {
   readonly gameOver: boolean
-  readonly isAdvising: boolean
+  readonly advice: Advice
   readonly isCheck: boolean
-  readonly hintSan: string | null
   readonly awaitingKind: 'human' | 'engine' | null
   readonly awaitingName: string | null
 }): { readonly icon: AppIconName; readonly label: string; readonly tone: string } {
   if (gameOver) return { icon: 'check', label: 'The game is complete.', tone: 'complete' }
   if (isCheck) return { icon: 'warning', label: 'Check — respond to the attack.', tone: 'warning' }
-  if (isAdvising) return { icon: 'sparkles', label: 'Stockfish is finding a useful idea…', tone: 'thinking' }
-  if (hintSan !== null) return { icon: 'hint', label: `Suggested move: ${hintSan}`, tone: 'hint' }
+  if (advice.kind === 'thinking') {
+    return { icon: 'sparkles', label: 'Stockfish is finding a useful idea…', tone: 'thinking' }
+  }
+  if (advice.kind === 'ready' && advice.san !== null) {
+    return { icon: 'hint', label: `Suggested move: ${advice.san}`, tone: 'hint' }
+  }
+  // Worth saying out loud. The alternative — which is what happened — is a
+  // Hint button that stops saying "Thinking…" and produces nothing.
+  if (advice.kind === 'stale') {
+    return {
+      icon: 'hint',
+      label: 'The position changed before the hint arrived. Ask again.',
+      tone: 'neutral',
+    }
+  }
+  if (advice.kind === 'failed') {
+    return { icon: 'warning', label: 'The hint is unavailable.', tone: 'warning' }
+  }
   if (awaitingKind === 'engine') {
     return { icon: 'computer', label: `${awaitingName ?? 'Stockfish'} is thinking…`, tone: 'thinking' }
   }

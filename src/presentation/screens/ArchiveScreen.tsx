@@ -16,7 +16,7 @@ import {
 } from '@application/ports/GameArchive'
 import { describeOversizeImport } from '@application/importLimits'
 import { AppIcon } from '../components/AppIcon'
-import { ChessBoardView } from '../components/ChessBoardView'
+import { ChessBoardView, NO_MOVES } from '../components/ChessBoardView'
 import { PlayerSearch } from '../components/PlayerSearch'
 import { ScreenHeader } from '../components/ScreenHeader'
 import { ArchiveFilters } from '../components/ArchiveFilters'
@@ -32,6 +32,36 @@ interface ImportState {
   readonly done: number
   readonly total: number
   readonly name: string
+}
+
+/**
+ * The game behind the chosen row, and how that is going.
+ *
+ * Stamped with the id it describes, so a pane showing one game cannot be read
+ * as describing another. The three outcomes were previously one nullable game,
+ * which made "still loading" and "could not be loaded" the same value — and the
+ * pane said "Loading the game…" for both, the second one indefinitely.
+ */
+type Preview =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'loading'; readonly id: string }
+  | { readonly kind: 'ready'; readonly id: string; readonly game: ArchivedGame }
+  | { readonly kind: 'failed'; readonly id: string }
+
+/** What the pane says under the board. Exported for its own tests. */
+export function previewCaption(
+  kind: Preview['kind'],
+  moveCount: number,
+): string {
+  switch (kind) {
+    case 'ready':
+      return `Final position · ${moveCount} moves`
+    case 'failed':
+      return 'This game could not be loaded.'
+    case 'loading':
+    case 'idle':
+      return 'Loading the game…'
+  }
 }
 
 const SEARCH_PLACEHOLDERS: Readonly<Record<SearchField, string>> = {
@@ -164,29 +194,37 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
 
   // Master/detail: which row is chosen, and the full game behind it.
   const hasPane = useMediaQuery(PREVIEW_LAYOUT)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [previewGame, setPreviewGame] = useState<ArchivedGame | null>(null)
+  const [chosenId, setChosenId] = useState<string | null>(null)
+  const [preview, setPreview] = useState<Preview>({ kind: 'idle' })
   const selectedRow = useRef<HTMLTableRowElement | null>(null)
 
-  // A narrowed list can drop the selected game; the preview must not outlive it.
-  useEffect(() => {
-    if (selectedId !== null && !games.some((game) => game.id === selectedId)) {
-      setSelectedId(null)
-      setPreviewGame(null)
-    }
-  }, [games, selectedId])
+  /*
+   * A narrowed list can drop the chosen game, and a selection the list no
+   * longer contains is not a selection.
+   *
+   * Read back through the list rather than cleared in an effect when it
+   * disappears. The effect version committed a frame with the stale id still
+   * live — long enough to ask the library to load a game that is no longer on
+   * screen — and needed `games` and `selectedId` as dependencies to notice, so
+   * every page of results re-ran it.
+   */
+  const selected = games.find((game) => game.id === chosenId) ?? null
+  const selectedId = selected?.id ?? null
 
   useEffect(() => {
     if (!hasPane || selectedId === null) return
     let cancelled = false
+    setPreview({ kind: 'loading', id: selectedId })
 
     services.archive
       .load(selectedId)
       .then((game) => {
-        if (!cancelled) setPreviewGame(game)
+        if (!cancelled) setPreview({ kind: 'ready', id: selectedId, game })
       })
       .catch(() => {
-        if (!cancelled) setPreviewGame(null)
+        // Distinct from loading, which it used to be indistinguishable from: a
+        // failed load left "Loading the game…" on screen forever.
+        if (!cancelled) setPreview({ kind: 'failed', id: selectedId })
       })
 
     return () => {
@@ -247,6 +285,17 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
   }
 
   const importFile = async (file: File) => {
+    /*
+     * One import at a time.
+     *
+     * Two of them shared `importing`, so whichever finished first cleared the
+     * progress line while the other was still running — and the only progress
+     * line is the thing keeping a hundred-thousand-game import from looking like
+     * a hung tab. The menu item is disabled below as well; this guard is the
+     * invariant, and does not depend on the control staying wired to it.
+     */
+    if (importing !== null) return
+
     archive.clearError()
 
     // Checked before the file is read, not after: reading it is the part that
@@ -297,7 +346,7 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
       onOpenGame(id)
       return
     }
-    setSelectedId(id)
+    setChosenId(id)
   }
 
   /** Arrow keys browse, Enter replays — a list this long earns keyboard legs. */
@@ -313,10 +362,8 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
     if (next === null) return
 
     event.preventDefault()
-    setSelectedId(next)
+    setChosenId(next)
   }
-
-  const selected = games.find((game) => game.id === selectedId) ?? null
 
   return (
     <div className="screen screen--archive phase3-archive phase46-archive">
@@ -641,7 +688,7 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
         {hasPane ? (
           <GamePreview
             selected={selected}
-            game={previewGame}
+            preview={preview}
             lookup={lookup}
             onReplay={onOpenGame}
           />
@@ -654,12 +701,12 @@ export function ArchiveScreen({ scope, onOpenGame }: ArchiveScreenProps) {
 /** The right-hand pane: the selected game, without leaving the list. */
 function GamePreview({
   selected,
-  game,
+  preview,
   lookup,
   onReplay,
 }: {
   selected: ArchivedGameSummary | null
-  game: ArchivedGame | null
+  preview: Preview
   lookup: FederationLookup
   onReplay: (id: string) => void
 }) {
@@ -675,7 +722,11 @@ function GamePreview({
 
   // The pane renders from the summary at once; the board and moves fill in
   // when the full game arrives, rather than the whole pane blinking empty.
-  const loaded = game !== null && game.id === selected.id
+  // Anything describing another row reads as still loading, which is what a
+  // pane that has just been pointed at a new game is.
+  const state = preview.kind !== 'idle' && preview.id === selected.id ? preview : null
+  const game = state?.kind === 'ready' ? state.game : null
+  const loaded = game !== null
   const last = loaded ? (game.moves.at(-1) ?? null) : null
 
   const detail = [
@@ -703,7 +754,7 @@ function GamePreview({
           fen={last?.positionAfter.fen ?? STARTING_FEN}
           orientation="white"
           interactive={false}
-          legalMoves={[]}
+          legalMoves={NO_MOVES}
           lastMove={last !== null ? { from: last.from, to: last.to } : null}
         />
       </div>

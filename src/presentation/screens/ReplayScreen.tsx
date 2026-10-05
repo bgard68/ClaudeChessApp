@@ -3,7 +3,7 @@ import { displayYear } from '@domain/archive/ArchivedGame'
 import { describeTimeControl } from '@domain/clock/TimeControl'
 import { REPLAY_SPEEDS, type ReplaySession, type ReplaySpeed } from '@application/replay/ReplaySession'
 import { AppIcon, type AppIconName } from '../components/AppIcon'
-import { ChessBoardView } from '../components/ChessBoardView'
+import { ChessBoardView, NO_MOVES } from '../components/ChessBoardView'
 import { ClockPanel } from '../components/ClockPanel'
 import { MoveList } from '../components/MoveList'
 import { describeOutcome } from '../components/OutcomeBanner'
@@ -88,7 +88,7 @@ export function ReplayScreen({ session }: ReplayScreenProps) {
             fen={state.position.fen}
             orientation="white"
             interactive={false}
-            legalMoves={[]}
+            legalMoves={NO_MOVES}
             lastMove={
               state.lastMove ? { from: state.lastMove.from, to: state.lastMove.to } : null
             }

@@ -10,6 +10,7 @@ what it can do. These go deeper, one question each.
 | [DATA-MODEL.md](DATA-MODEL.md) | What is stored, where does it live, and how does a row get written? |
 | [LESSONS-LEARNED.md](LESSONS-LEARNED.md) | What broke, what actually caused it, and what was the wrong explanation that looked right first? |
 | [TESTING.md](TESTING.md) | How is it tested, why Playwright rather than jsdom, what is deliberately not covered, and how do I add a check? |
+| [REACT-TIMING-AUDIT.md](REACT-TIMING-AUDIT.md) | Which render-timing defects were in the presentation layer, how were they found and fixed, and why did review miss all of them? |
 | [SUPPLY-CHAIN.md](SUPPLY-CHAIN.md) | What does the build enforce, why, how do I audit it, and what would quietly undo it? |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | How does it get to Azure, and how do I set that up from scratch? |
 | [UI-REDESIGN.md](UI-REDESIGN.md) | What did the presentation rewrite change on each screen, what did it deliberately leave alone, and what was actually verified? |
@@ -43,6 +44,12 @@ Two more live outside this folder because convention puts them there:
   with what it costs and how to add it anyway.
 - **What the tests cannot reach** —
   [TESTING.md § What is not covered, and why](TESTING.md#what-is-not-covered-and-why).
+- **The six questions to ask of any presentation change** —
+  [TESTING.md § Reviewing for timing](TESTING.md#reviewing-for-timing). They
+  found eleven defects the first time they were run; the write-up is
+  [REACT-TIMING-AUDIT.md](REACT-TIMING-AUDIT.md).
+- **Why a careful review kept missing render-timing bugs** —
+  [REACT-TIMING-AUDIT.md § Why review did not find these](REACT-TIMING-AUDIT.md#why-review-did-not-find-these).
 - **Why the cascade is ordered the way it is** —
   [UI-ARCHITECTURE.md § Known debt](UI-ARCHITECTURE.md#known-debt): four
   stylesheets became sections of one file in the order the browser used to
