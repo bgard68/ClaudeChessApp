@@ -224,10 +224,15 @@ the session record; the standing decisions are these):
 - **Lazy-loading the archive data** — recommended against a premise that was
   false: the games were never in the bundle. They are static files fetched once
   and stored in SQLite.
-- **Clock-state splitting for 60 FPS** — the correct fix for a problem not yet
-  demonstrated. Measure first; the re-render is currently cheap because the
-  board memo holds (REACT-TIMING-AUDIT #1). Restructuring state unmeasured is
-  the box-ticking §8.11 exists to refuse.
+- **Clock-state splitting for 60 FPS** — the correct fix for a problem that,
+  once measured, turned out not to exist. Tested 2026-10-05 on a physical
+  Samsung Galaxy over Wi-Fi against the dev build (the slower build): bullet
+  games, pieces dragged *while* the engine searched, clock run below twenty
+  seconds — no drag lag, no clock stutter, no tap-to-highlight delay. The
+  ten-per-second re-render is cheap because the board memo holds
+  (REACT-TIMING-AUDIT #1). Declined as measured. Reopen only on a reproducible
+  report of jank on a specific device, re-confirmed against a production
+  build — not on the theoretical argument, which was already weighed here.
 
 ## See also
 
