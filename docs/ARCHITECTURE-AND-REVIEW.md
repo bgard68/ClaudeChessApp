@@ -190,6 +190,12 @@ sinks, atomic transactions, invariants documented where the decision was made.
 The real exposure was never in `src/` — it was in the build pipeline and the
 absence of anything enforcing the controls that already existed.
 
+One limit on that verdict, stated up front rather than left for a reader to
+notice: **this review was written by the author of the code.** It found and fixed
+real problems, which argues it was done properly; it does not argue it was
+complete, and there is evidence in this repository of what self-review misses.
+Recorded as §8.12 O2.
+
 ### 6.2 Findings and disposition
 
 | ID | Finding | Status |
@@ -698,6 +704,113 @@ technicality that would cost plumbing and prevent nothing. Fixing all three woul
 score better against a checklist and leave the app no more correct — which is the
 argument for writing down why, instead of doing it.
 
+§8.12 does the same for two things a reviewer will expect and not find.
+
+---
+
+### 8.12 Deliberate omissions: tooling and process
+
+V1–V3 are things in the code that a principle says should not be there. These two
+are the opposite — things *not* here that a reviewer will look for. Both get asked
+about, both have an answer, and until now the answer lived in nobody's notes.
+
+#### O1 — There is no linter
+
+**What is missing.** No ESLint, no `typescript-eslint`, no `eslint-plugin-react-hooks`.
+Static analysis is `tsc` plus CodeQL, and CodeQL is looking for security patterns
+rather than code quality.
+
+**What the compiler already covers.** `tsconfig.json` is stricter than most
+projects ever set:
+
+| Flag | What it catches |
+| --- | --- |
+| `strict` | the whole family — null checks, implicit `any`, unsound `this` |
+| `noUnusedLocals`, `noUnusedParameters` | dead variables and arguments, the single most common lint finding |
+| `noUncheckedIndexedAccess` | `array[i]` treated as possibly absent, which few teams turn on |
+| `noFallthroughCasesInSwitch` | the missing `break` |
+
+These run in the pre-commit hook, so they block a commit rather than printing a
+warning. During the timing audit they rejected three unused variables before a
+commit was possible.
+
+**What a linter would add that the compiler does not.**
+`react-hooks/rules-of-hooks` (a hook called conditionally),
+`@typescript-eslint/no-floating-promises` (an un-awaited promise), and stylistic
+consistency. The first finds nothing here today. The third is a team concern, and
+there is one author.
+
+**The second one is the honest counter-argument** and should be recorded as such:
+this is an async-heavy presentation layer, and `no-floating-promises` is exactly
+the rule that earns its keep in one. The reason it is not decisive is that the
+practice it enforces is already followed by hand — `void saveGame()`,
+`void importFile(file)`, `void requestHint()` — so the rule would ratify existing
+code rather than correct it. That is an argument from current discipline, which is
+weaker than an argument from structure, and it is the first thing that would stop
+being true if the habit lapsed.
+
+**What it costs.** ESLint with `typescript-eslint` and the React plugins is on the
+order of a hundred transitive packages. Set that against what this repository
+already does about its dependencies: SHA-pinned actions, `npm ci` from the lock
+and never a re-resolve, gitleaks over full history, `npm audit` gating at
+moderate, a documented lock-file procedure that breaks the Linux deploy when
+mishandled (§SUPPLY-CHAIN), and Dependabot auto-merge limited to minor and patch.
+A hundred packages is a real entry on that ledger, not a rounding error.
+
+**The evidence that settled it.** The thirteen defects in
+[REACT-TIMING-AUDIT.md](REACT-TIMING-AUDIT.md) are the largest cluster of real
+bugs this project has found at once, and `exhaustive-deps` — the rule most likely
+to have helped — scores **zero** against them. Every dependency list involved was
+already complete and correct. The chessboard memo listed all eight of its
+dependencies; two of them were freshly allocated on every render, which that rule
+does not examine. A linter would have reported the unused variables `tsc` had
+already rejected.
+
+**What would change this.** A second contributor, at which point consistency
+becomes the point and the argument from discipline stops applying. Or a shipped
+bug from a floating promise, which would make O1 wrong in the one place it is
+weakest. Either should reopen it; neither has happened.
+
+#### O2 — The security review in §6 was written by the author of the code
+
+**What is missing.** No independent assessment. §6 is a careful review, and it is
+a review of this code by whoever wrote it. No outside human has looked.
+
+**What partly covers it.** CodeQL runs on every pull request and is genuinely
+independent of the author's model of the code; it is a required check. So are
+dependency review and the gate's gitleaks scan. `npm audit` blocks at moderate.
+These are real, and they are all automated — they find what their rules describe
+and nothing else.
+
+**Why this is recorded rather than asserted away.** There is direct evidence in
+this repository of what self-review misses, and it is not small. Several careful
+passes over `src/presentation/` found no timing defects. An ordinary six-item
+checklist from outside the project found thirteen, in an afternoon, including a
+disarmed guard whose own comment claimed it was working. The reason that worked is
+set out in
+[REACT-TIMING-AUDIT.md § Why review did not find these](REACT-TIMING-AUDIT.md#why-review-did-not-find-these):
+a reviewer holding the author's model re-reads the intent, and the intent is
+usually right. An outside frame is not a nicety on self-reviewed code; it is the
+mechanism.
+
+That finding applies to §6 exactly as it applies to the presentation layer. §6
+having found real problems — H1, H2, H3, M1, all fixed — is evidence that it was
+done properly, not evidence that it was complete.
+
+**What is also absent, and why that is proportionate.** No DAST, no penetration
+test, no SBOM, no provenance attestation. This is a static client-side
+application: no server, no accounts, no authentication, no secrets, no personal
+data, and nothing crossing the network at runtime except the files it was served
+(§6.3, §4.3). There is no endpoint to probe and no credential to steal. The
+exposure that was real was in the build pipeline, which is where the controls
+went.
+
+**What would change this.** An outside review, which is the only thing that
+actually closes it. Short of that, the practice adopted after the timing audit
+applies here too: run future reviews from an external checklist rather than by
+reading, and record what was *cleared* as well as what was found — see
+[TESTING.md § Reviewing for timing](TESTING.md#reviewing-for-timing).
+
 ---
 
 ## 9. Verification
@@ -707,7 +820,7 @@ Everything above was checked rather than assumed.
 | Gate | Result |
 | --- | --- |
 | `npm run typecheck` | clean |
-| `npm test` | 107 passing, 11 files — including the two architecture guards |
+| `npm test` | 810 passing, 61 files — including the architecture and game-identity guards; `architecture.test.ts` now asserts five rules |
 | `npm run build` | clean; CSP meta tag present in output |
 | `npm audit` | 0 vulnerabilities |
 | `npm run audit-pgn` | 130,565 games, 0 duplicates, 11,142,485 half-moves replayed |
@@ -719,8 +832,10 @@ the cross-check worth having: `audit-pgn-archive` and `audit-library` share no
 code.
 
 The two guard tests were each verified by injecting the fault they exist to catch
-and confirming the failure, then restoring — see §8.9. A guard that has only ever
-passed is not known to work.
+and confirming the failure, then restoring — see §8.10. The fifth rule added to
+`architecture.test.ts` later, which forbids shipped code from importing
+`test-support/`, was checked the same way. A guard that has only ever passed is
+not known to work.
 
 Two things remain unexercised: the promotion chooser needs a game reaching a
 seventh-rank pawn, and storage persistence has only been observed being

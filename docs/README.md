@@ -55,6 +55,10 @@ Two more live outside this folder because convention puts them there:
   [REACT-TIMING-AUDIT.md](REACT-TIMING-AUDIT.md).
 - **Why a careful review kept missing render-timing bugs** —
   [REACT-TIMING-AUDIT.md § Why review did not find these](REACT-TIMING-AUDIT.md#why-review-did-not-find-these).
+- **Why there is no linter, and why the security review is not independent** —
+  [ARCHITECTURE-AND-REVIEW.md § 8.12](ARCHITECTURE-AND-REVIEW.md#812-deliberate-omissions-tooling-and-process):
+  the two things a reviewer looks for and does not find, each with what would
+  change the decision.
 - **Why the cascade is ordered the way it is** —
   [UI-ARCHITECTURE.md § Known debt](UI-ARCHITECTURE.md#known-debt): four
   stylesheets became sections of one file in the order the browser used to
