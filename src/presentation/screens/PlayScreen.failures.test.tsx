@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { GameConfiguration } from '@application/GameConfiguration'
 import type { LiveGame } from '@application/LiveGame'
 import { suddenDeath } from '@domain/clock/TimeControl'
@@ -18,6 +18,17 @@ import { PlayScreen } from './PlayScreen'
  */
 
 installDomStubs()
+
+/*
+ * Unmounts between tests, explicitly.
+ *
+ * Testing Library only registers its own cleanup when the test globals are
+ * injected, and this suite imports from 'vitest' instead. Without this every
+ * render stays in the document, so a `document.querySelector` finds the previous
+ * test's board and a click lands on a component nobody is asserting about —
+ * which is how three of these passed while testing the wrong tree.
+ */
+afterEach(cleanup)
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 const RAPID = suddenDeath(10)

@@ -29,6 +29,22 @@ export class SqliteClient {
   private nextId = 1
   private opened: Promise<void> | null = null
   private storageStatus: StorageStatus = { kind: 'memory', reason: 'no-opfs' }
+  /**
+   * Set once the worker is beyond use, and never cleared.
+   *
+   * A worker that fails to start answers nothing, and every request was waiting
+   * on an answer: `send` resolves only from `onmessage`, so a worker that never
+   * posts a message leaves each promise pending for the life of the page. The
+   * archive screen sets `isLoading` and waits on exactly those promises, so the
+   * failure presented as a library that is still searching — permanently, with
+   * no error, no empty state, and nothing to retry.
+   *
+   * Terminal rather than retried, deliberately: a `Worker` that errored cannot
+   * be restarted, only replaced, and this client owns one for the life of the
+   * session. Failing every later call immediately is what turns a hang into a
+   * message somebody can act on.
+   */
+  private failure: Error | null = null
 
   constructor() {
     this.worker = new Worker(new URL('./sqlite.worker.ts', import.meta.url), {
@@ -47,6 +63,23 @@ export class SqliteClient {
         pending.reject(new Error(response.error))
       }
     }
+
+    // Reaching either of these means no response is coming for anything.
+    this.worker.onerror = (event: ErrorEvent) =>
+      this.fail(
+        new Error(
+          `The game library could not be opened: ${event.message || 'the database worker failed to start'}`,
+        ),
+      )
+    this.worker.onmessageerror = () =>
+      this.fail(new Error('The game library sent a message that could not be read'))
+  }
+
+  /** Fails every request in flight, and every one after it. */
+  private fail(error: Error): void {
+    this.failure ??= error
+    for (const pending of this.pending.values()) pending.reject(this.failure)
+    this.pending.clear()
   }
 
   /**
@@ -102,16 +135,15 @@ export class SqliteClient {
   }
 
   dispose(): void {
-    for (const pending of this.pending.values()) {
-      pending.reject(new Error('Database closed'))
-    }
-    this.pending.clear()
+    this.fail(new Error('Database closed'))
     this.worker.terminate()
   }
 
   private send(
     request: WithoutId<WorkerRequest>,
   ): Promise<Extract<WorkerResponse, { ok: true }>> {
+    if (this.failure !== null) return Promise.reject(this.failure)
+
     const id = this.nextId
     this.nextId += 1
 

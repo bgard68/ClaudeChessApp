@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
-import { render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { installDomStubs } from '../../test-support/dom'
 import { ServicesProvider } from '../ServicesContext'
 import { ArchiveScreen } from './ArchiveScreen'
@@ -22,6 +22,17 @@ import { ArchiveScreen } from './ArchiveScreen'
 // The master/detail pane is gated on a media query. True here so the screen
 // renders its full desktop layout, which is the one with the most to go wrong.
 installDomStubs({ matchMedia: true })
+
+/*
+ * Unmounts between tests, explicitly.
+ *
+ * Testing Library only registers its own cleanup when the test globals are
+ * injected, and this suite imports from 'vitest' instead. Without this every
+ * render stays in the document, so a `document.querySelector` finds the previous
+ * test's board and a click lands on a component nobody is asserting about —
+ * which is how three of these passed while testing the wrong tree.
+ */
+afterEach(cleanup)
 
 /** An archive that answers however the test says, and nothing else. */
 const archiveThat = (over: Record<string, unknown>) =>
@@ -84,17 +95,17 @@ describe('the archive when the library fails', () => {
    * The update then does not reach the DOM, and neither `waitFor` nor an
    * explicit `act` flush moves it.
    *
-   * Narrow, and not a general jsdom limitation: `PlayScreen.failures.test.tsx`
-   * asserts against state that changes after its first commit and passes. So it
-   * is something about this subtree — the board the preview mounts is the
-   * obvious suspect, since react-chessboard is the one thing in it that jsdom
-   * cannot give real geometry to. Not chased further; it is a test-environment
-   * problem rather than a fault in the screen, and the screen's own decision is
-   * covered below.
+   * Two explanations have been ruled out. It is not a general jsdom limitation:
+   * `PlayScreen.failures.test.tsx` asserts on state that changes after its first
+   * commit and passes. And it is not leaked DOM between tests: the same failure
+   * survives `afterEach(cleanup)`, which did fix three genuinely wrong
+   * assertions in `ChessBoardView.interaction.test.tsx`. What is left is
+   * something about this subtree. Not chased further — it is a test-environment
+   * problem rather than a fault in the screen.
    *
    * So the failed caption is covered by `previewCaption`'s own unit tests over
    * its four states, and the path that reaches it is not covered end to end.
-   * Written down because a missing test that nobody can see is how
-   * "assertions that survive the bug they exist to catch" happened here before.
+   * Written down because a missing test nobody can see is how "assertions that
+   * survive the bug they exist to catch" happened here before.
    */
 })

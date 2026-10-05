@@ -181,7 +181,9 @@ Honesty about the holes matters more than the number of tests.
 | Error paths in screens — a failed import, a failed export | **Partly closed.** A failed archive query and a failed save are covered by the jsdom failure suite; import and export still are not, because both go through a `File` and a download the environment cannot supply. |
 | `PlayerSearch`'s suggestion list | Only exists after an effect resolves, so a static render is always `null`. A test asserting that would pass whether or not the component worked. |
 | `useArchiveQuery`'s wiring | The decisions it makes are extracted into `archiveQuery.ts` and tested directly. Its failure path is now covered through the screen; its paging is not, and depends on an invariant documented at `accumulatePages`. |
-| `StockfishEngine`, the SQLite worker, storage persistence | Need a real browser environment plus the engine binary. The smoke test proves the engine answers; nothing tests its UCI handling in isolation. |
+| Stockfish itself, and SQL execution | **Mostly closed, and the split matters.** The *engine binary* and *SQLite* need a real browser, but the protocol handling around them does not: `StockfishEngine.test.ts` and `SqliteClient.test.ts` drive both against a fake worker. That is where two real bugs were — see [REACT-TIMING-AUDIT.md § The second sweep](REACT-TIMING-AUDIT.md#the-second-sweep-the-layers-below-the-screens). What is still uncovered is whether Stockfish plays well and whether SQL is correct, which the smoke test and the PGN audits cover from the other side. |
+| Storage persistence | Still open, and deliberately. The assertion available in headless Chrome — that `navigator.storage.persist()` was granted — tests the headless profile's policy rather than this app's behaviour. `describeDurability` covers every state the app can be told about; which state a real browser reports is not ours to assert. |
+| The promotion chooser | **Closed** by `ChessBoardView.interaction.test.tsx`, after §9 had listed it as needing a game that reaches a seventh-rank pawn. |
 | Real devices | Everything runs in headless Chrome, which has no collapsing URL bar, no home-indicator inset, and no touch. See [UI-REDESIGN.md](UI-REDESIGN.md#browser-qa-still-worth-doing). |
 | Pieces having accessible names | `react-chessboard` gives every piece `role="button"` with no name and hardcodes `roleDescription`. Recorded as a known finding in `a11y-check.mjs` and printed on every run. |
 
@@ -221,11 +223,21 @@ was missing was an environment where effects run.
 
 ### The rules for this column
 
-**Only failure.** If a test does not depend on a service refusing, it does not
-belong here — it belongs in the node suite, which is faster, or in a browser
-script, which is real. This column is not for convenience, and growing it into a
-general component suite would mean asserting against a fake DOM when a real
-Chrome is already wired up two columns over.
+**Failure first, and interaction only when a browser genuinely cannot.** The rule
+began as *only failure*, and was broadened once — for the promotion chooser, which
+§9 had listed as never exercised because reaching a promotion in Chrome means
+playing twenty-odd moves through an engine. The bar is both halves of that reason:
+**unreachable from the static suite, and impractical in a browser.** A test that is
+merely more convenient here than in Chrome does not qualify. Growing this column
+into a general component suite would mean asserting against a fake DOM while a
+real one is wired up two columns over.
+
+**Call `cleanup` yourself.** Testing Library registers its own only when the test
+globals are injected, and these files import from `'vitest'`. Without an explicit
+`afterEach(cleanup)` every render stays in the document, a `querySelector` finds
+the previous test's tree, and a click lands on a component nobody is asserting
+about. Three tests in `ChessBoardView.interaction.test.tsx` passed that way before
+it was added.
 
 **No geometry, ever.** `src/test-support/dom.ts` stubs `ResizeObserver`,
 `matchMedia` and `scrollIntoView` because jsdom has no layout engine. They are
@@ -260,19 +272,31 @@ What it is worth reading *for* is which layer is thin. As of this writing:
 
 | Layer | Lines |
 | --- | --- |
-| `domain/archive` | 100% |
-| `domain/clock` | 100% |
+| `domain/archive`, `domain/clock` | 100% |
 | `domain/chess` | 97% |
 | `application` | 97% |
+| `infrastructure/engine` | 95% |
 | `composition` | 60% |
 | `presentation` | 59% |
+| `infrastructure/sqlite` | 50% |
+| All files | 75% |
 
-That shape is the point. The inner layers are pure functions and are thoroughly
-covered; `presentation` is a third less covered and is where every defect in
-[REACT-TIMING-AUDIT.md](REACT-TIMING-AUDIT.md) lived. The number did not find
-those bugs and would not have — but it does tell you, in one line, where to point
-the next sweep. `composition` is low for a benign reason: it wires adapters that
-only a browser can construct.
+That shape is the point, and it has already earned its keep once. The inner
+layers are pure functions and are thoroughly covered. `presentation` is a third
+less covered and is where every defect in
+[REACT-TIMING-AUDIT.md](REACT-TIMING-AUDIT.md) lived — the number did not find
+those bugs and would not have, but it does say in one line where to point a
+sweep.
+
+`infrastructure/engine` was at **zero** when this table was first written, and
+the second sweep found two severe bugs there within the hour — see
+[§ The second sweep](REACT-TIMING-AUDIT.md#the-second-sweep-the-layers-below-the-screens).
+That is the argument for reading the shape rather than the total.
+
+Two entries are low for reasons that are not debt. `infrastructure/sqlite` is
+held down by `sqlite.worker.ts` at 0%, which runs SQL inside a worker and cannot
+be reached from either suite; the client that talks to it is covered.
+`composition` wires adapters only a browser can construct.
 
 ---
 

@@ -387,6 +387,80 @@ for other reasons, that is fine — it is just not prevention for this.
 
 ---
 
+## The second sweep: the layers below the screens
+
+The first sweep covered `src/presentation/` against six React timing categories.
+That left an obvious hole in the claim: *one layer, one taxonomy*. A second sweep
+took `infrastructure` and `application` against a different list — resource
+lifecycles, request/response correlation, cancellation semantics, and what happens
+when a dependency never answers.
+
+It found **two bugs, both severe, both in code that had no tests at all** because
+`TESTING.md` had classified it as needing a real browser. That classification
+conflated two different things: Stockfish and SQLite do need a browser; the
+*protocol handling* wrapped around them does not. A fake worker is enough, and the
+protocol handling is where the ordering rules live.
+
+### A superseded engine search could lose you the game
+
+`stop` does not cancel a UCI search — it hurries it. One `go` produces exactly one
+`bestmove`, wanted or not, and nothing distinguished an abandoned search's answer
+from the current one's. `handleLine` resolved whatever was in `this.search`.
+
+**Undo while the computer is thinking** and `LiveGame`'s turn loop abandons that
+search and starts another. The abandoned one then answers first, and the new search
+adopts a move computed for the position *before* the undo. If that move happens to
+be legal in the new position it is simply played, wrongly. If it is not,
+`applyMove` rejects it — and `LiveGame` treats an engine proposing an illegal move
+as a malfunction and **forfeits the game on the engine's behalf.**
+
+Taking a move back could therefore lose the game outright. It is the most severe
+defect found in this project to date, and it sat behind `undo`, which is not an
+exotic thing to press.
+
+Fixed by counting the answers the engine still owes for searches nobody wants, and
+discarding exactly that many. The count can only rise when an answer really is
+outstanding — reaching that line requires an unconsumed `go` — so it can never
+strand the search that was actually wanted. Both halves are tested, including the
+over-count case that would hang.
+
+### A database worker that failed to start hung every query forever
+
+`SqliteClient` correlates replies to requests by id and does it correctly. It had
+no `onerror`. A worker that fails to construct or parse never posts a message, and
+`send` resolves only from `onmessage` — so every request stayed pending for the
+life of the page. Nothing timed out, nothing rejected.
+
+The symptom is the worst available: the archive screen sets `isLoading` and waits
+on those promises, so a total database failure presented as a library that was
+**still searching**, permanently, with no error, no empty state and nothing to
+retry. `StockfishEngine` handled this correctly on the next file over, which is
+how the gap survived — the pattern existed, it just was not applied here.
+
+Failure is terminal rather than retried, deliberately: an errored `Worker` cannot
+be restarted, only replaced, and this client owns one for the session. Every later
+call now rejects at once, which turns a hang into a message.
+
+### What the sweep says about method
+
+Both bugs are the same shape as the first eleven — correct logic, wrong about
+*when* — and both were found the same way: by asking a category's question of
+every file that could answer it, rather than by reading for mistakes. Neither is
+visible in a diff. Neither would be caught by any linter.
+
+And both were in the two files that the test documentation had written off. That is
+worth more than the bugs: **a documented coverage gap is a place to look first, not
+a place that has been accounted for.** The classification was half right, which is
+the most dangerous kind, because it reads as a decision.
+
+A third finding came out of writing the tests rather than the sweep: three
+assertions in a new jsdom file passed while testing the previous test's DOM,
+because Testing Library's automatic cleanup does not register when the test globals
+are not injected. Caught by the tests failing when the fix made them meaningful —
+which is the only reason to check that a new test fails against the old code.
+
+---
+
 ## Why review did not find these
 
 The honest answer, in order of how much each actually mattered.
