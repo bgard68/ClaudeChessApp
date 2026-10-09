@@ -36,6 +36,33 @@ function Invoke-Gate {
     }
 }
 
+function Invoke-Advisory {
+    # Reported, never fatal.
+    #
+    # For a question worth asking on every run whose answer does not depend on
+    # the change being tested. A pull request cannot be held responsible for the
+    # state of the tree it is branching from, and holding it responsible anyway
+    # is not a stricter gate - it is a broken one. Dependabot pull request #81
+    # sat red for a day over an advisory in a package it does not touch, and
+    # auto-merge did exactly as it was told and refused to merge a red branch.
+    # Every other open dependency update was stuck behind the same wall, none of
+    # them able to fix it.
+    #
+    # Use it only where something else still asks the question in a place a
+    # person reads. A warning nobody is accountable for is not a softer gate,
+    # it is an absent one.
+    param([string]$Name, [scriptblock]$Action)
+    Write-Host ''
+    Write-Host "== $Name (advisory)" -ForegroundColor Cyan
+    & $Action | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "WARN  $Name - reported, not blocking" -ForegroundColor Yellow
+        Write-Host "::warning title=$Name::Reported by the gate without blocking it. See .github/workflows/dependency-audit.yml, which owns this question on a schedule."
+    } else {
+        Write-Host "PASS  $Name" -ForegroundColor Green
+    }
+}
+
 function Invoke-Probe {
     # The tool under test must REJECT the input; acceptance is the failure.
     param([string]$Name, [scriptblock]$Action)
@@ -54,7 +81,33 @@ function Invoke-Probe {
 
 Invoke-Gate 'typecheck' { & npx tsc --noEmit }
 Invoke-Gate 'tests'     { & npx vitest run }
-Invoke-Gate 'audit'     { & npm audit --audit-level=moderate }
+# Two audits, because "vulnerable" means two different things here.
+#
+# Production dependencies ship. An advisory in react, chess.js, stockfish or
+# sqlite-wasm is in the bundle a person loads, so it blocks - this gate, and the
+# deploy behind it. It reports nothing today, which is the point: it costs us
+# nothing now and is in place for the day it does not.
+#
+# Development dependencies do not ship. A denial of service in a source-map
+# parser that the coverage tool calls at build time cannot reach a user, and
+# failing somebody else's branch over it is a category error that cost a day:
+# Dependabot #81 went red over `source-map-js`, a package it does not touch and
+# could not fix, and auto-merge then correctly declined to merge a red branch
+# while every other dependency update queued behind it.
+#
+# Reported rather than ignored, and the distinction is load bearing. A
+# development dependency that is *compromised* rather than merely buggy can
+# inject into what we ship - the whole subject of SUPPLY-CHAIN.md - so this
+# answer has to land somewhere a person reads. dependency-audit.yml owns that:
+# it asks the same question daily against main, fails, and opens an issue. If
+# that workflow is ever removed, this leg must go back to blocking, because it
+# would then be the only thing asking.
+#
+# Still blocking in `npm run verify` either way. A person about to commit can
+# fix an advisory and should be stopped by one; a dependency bump waiting on a
+# required check cannot.
+Invoke-Gate 'audit: production dependencies' { & npm audit --omit=dev --audit-level=moderate }
+Invoke-Advisory 'audit: the whole tree, development included' { & npm audit --audit-level=moderate }
 Invoke-Gate 'build'     { & npm run build }
 Invoke-Gate 'smoke test against the built app' { & node scripts/smoke-test.mjs }
 Invoke-Gate 'layout invariants on every screen' { & node scripts/layout-check.mjs }
