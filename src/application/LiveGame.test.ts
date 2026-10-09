@@ -5,8 +5,32 @@ import { ChessJsRules } from '@infrastructure/chess/ChessJsRules'
 import { flushAsync, FakeTicker, ScriptedOpponent } from '../testing/fakes'
 import { HumanOpponent } from './HumanOpponent'
 import { LiveGame } from './LiveGame'
+import { EngineUnavailable } from './ports/ChessEngine'
+import type { Opponent, OpponentKind } from './Opponent'
 
 const rules = new ChessJsRules()
+
+/**
+ * A seat whose engine has gone — a worker that failed to start, or died mid
+ * search.
+ *
+ * Distinct from `ScriptedOpponent` running out of script, which stalls. That is
+ * the difference the game has to tell: a request nobody will answer because it
+ * was abandoned is ordinary, and one nobody will answer because the engine is
+ * gone has to be said out loud.
+ */
+class BrokenEngineOpponent implements Opponent {
+  readonly kind: OpponentKind = 'engine'
+
+  constructor(readonly name = 'Computer') {}
+
+  requestMove(): Promise<MoveIntent> {
+    return Promise.reject(new EngineUnavailable('The engine stopped responding: out of memory'))
+  }
+
+  cancel(): void {}
+  dispose(): void {}
+}
 
 /** 1. f3 e5 2. g4 Qh4# — the fastest mate available. */
 const FOOLS_MATE: readonly MoveIntent[] = [
@@ -307,6 +331,109 @@ describe('LiveGame state identity and pass-and-play undo', () => {
     // whose move vanished is a person who can simply move again.
     expect(undone).toBe(true)
     expect(game.state.history.map((move) => move.san)).toEqual(['e4'])
+    game.dispose()
+  })
+})
+
+describe('LiveGame when the engine goes away', () => {
+  let ticker: FakeTicker
+
+  beforeEach(() => {
+    ticker = new FakeTicker()
+  })
+
+  /*
+   * The defect this covers.
+   *
+   * `EngineUnavailable` and an abandoned request both reach the turn loop as a
+   * rejection, and the loop caught both the same way: it returned, `awaiting`
+   * stayed set, and the screen said the computer was thinking until the page
+   * was reloaded. No error, no outcome, nothing to retry.
+   */
+  it('engineFails_MidGame_SaysSoRatherThanWaitingForever', async () => {
+    const human = new HumanOpponent('You')
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: human, black: new BrokenEngineOpponent(), timeControl: UNLIMITED },
+    )
+
+    game.start()
+    await flushAsync()
+    game.submitMove({ from: 'e2', to: 'e4' })
+    await flushAsync(8)
+
+    expect(game.state.engineFailure).toMatch(/stopped responding/i)
+    expect(game.state.awaiting).toBeNull()
+    game.dispose()
+  })
+
+  /*
+   * A crashed worker is not a chess result. Recording one would write a game
+   * the player never lost into their own permanent archive, so the game stays
+   * in progress — unplayable, and honest about why.
+   */
+  it('engineFails_MidGame_RecordsNoResultAndKeepsTheMovesSaveable', async () => {
+    const human = new HumanOpponent('You')
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: human, black: new BrokenEngineOpponent(), timeControl: UNLIMITED },
+    )
+
+    game.start()
+    await flushAsync()
+    game.submitMove({ from: 'e2', to: 'e4' })
+    await flushAsync(8)
+
+    expect(game.state.outcome.status).toBe('in_progress')
+    expect(game.state.history.map((move) => move.san)).toEqual(['e4'])
+    expect(game.state.canUndo).toBe(true)
+    game.dispose()
+  })
+
+  /*
+   * The part that costs a game if it is missed: a clock left running charges the
+   * player for the engine's failure, and they flag against a dead worker.
+   */
+  it('engineFails_TimedGame_StopsTheClockRatherThanFlaggingThePlayer', async () => {
+    const human = new HumanOpponent('You')
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: human, black: new BrokenEngineOpponent(), timeControl: suddenDeath(1) },
+    )
+
+    game.start()
+    await flushAsync()
+    game.submitMove({ from: 'e2', to: 'e4' })
+    await flushAsync(8)
+
+    expect(ticker.isRunning).toBe(false)
+    const stoppedAt = game.state.clock
+    ticker.advance(90_000) // Longer than the whole game, had anything been live.
+
+    expect(game.state.clock).toEqual(stoppedAt)
+    expect(game.state.outcome.status).toBe('in_progress')
+    game.dispose()
+  })
+
+  // Terminal: the worker cannot be restarted, so undo must not quietly resume a
+  // game that still has nobody to play the other side.
+  it('undo_AfterTheEngineFailed_DoesNotRestartTheClockOrTheLoop', async () => {
+    const human = new HumanOpponent('You')
+    const game = new LiveGame(
+      { rules, ticker },
+      { white: human, black: new BrokenEngineOpponent(), timeControl: suddenDeath(1) },
+    )
+
+    game.start()
+    await flushAsync()
+    game.submitMove({ from: 'e2', to: 'e4' })
+    await flushAsync(8)
+
+    expect(game.undo()).toBe(true)
+    await flushAsync(8)
+
+    expect(ticker.isRunning).toBe(false)
+    expect(game.state.engineFailure).toMatch(/stopped responding/i)
     game.dispose()
   })
 })

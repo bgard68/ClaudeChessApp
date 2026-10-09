@@ -12,11 +12,17 @@ import type { AppServices } from './services'
 /** Deals out scripted moves; which seat asks is what the factory decides. */
 class ScriptedEngine implements ChessEngine {
   configured: EngineConfiguration | null = null
+  newGames = 0
   private index = 0
 
   constructor(private readonly moves: readonly MoveIntent[] = []) {}
 
   init(): Promise<void> {
+    return Promise.resolve()
+  }
+
+  newGame(): Promise<void> {
+    this.newGames += 1
     return Promise.resolve()
   }
 

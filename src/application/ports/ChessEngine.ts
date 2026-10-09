@@ -1,12 +1,21 @@
-import type { MoveIntent } from '@domain/chess/Move'
+import type { MoveIntent, MoveSequence } from '@domain/chess/Move'
 import type { Position } from '@domain/chess/Position'
 
 export interface EngineSearchLimits {
-  /** Hard cap on thinking time. Present at every difficulty so the UI stays
-   *  responsive even at full strength. */
+  /**
+   * Thinking time for a position with no clock behind it — an untimed game, a
+   * hint, a generated puzzle.
+   *
+   * Not used in a timed game. There the clock itself is sent and the engine
+   * budgets its own thinking, because a fixed figure cannot: two seconds a move
+   * forfeits a one-minute game on time around move thirty however good the
+   * moves are, and spends two seconds a move in a ninety-minute game that was
+   * asking for the engine's best.
+   */
   readonly moveTimeMs: number
   /** Optional depth ceiling. Capping depth is what makes a weak level play
-   *  shallowly rather than merely quickly. */
+   *  shallowly rather than merely quickly, and it holds however much time the
+   *  engine is given. */
   readonly maxDepth?: number
 }
 
@@ -31,6 +40,51 @@ export interface EngineConfiguration {
 }
 
 /**
+ * What both sides have left, and what each gains per move.
+ *
+ * Handed over whole rather than as "my time" and "their time" because that is
+ * what a time manager needs: an engine two moves from flagging against an
+ * opponent with half an hour should play differently from one in a level race,
+ * and it cannot know which it is in from its own clock alone.
+ */
+export interface EngineTimeBudget {
+  readonly whiteMs: number
+  readonly blackMs: number
+  readonly whiteIncrementMs: number
+  readonly blackIncrementMs: number
+}
+
+export interface EngineSearchRequest {
+  readonly position: Position
+  /**
+   * The game that led to `position`.
+   *
+   * Absent for an isolated position — a hint on a loaded FEN, a composed
+   * puzzle — and supplied for a game in progress, because a bare FEN carries no
+   * repetition history and an engine given one cannot see that it is about to
+   * repeat a position for the third time.
+   */
+  readonly history?: MoveSequence
+  /** Absent when no clock is running, or when a side has already flagged.
+   *  `searchLimits.moveTimeMs` is what gets used then. */
+  readonly timeBudget?: EngineTimeBudget
+}
+
+/**
+ * The engine cannot be reached: it failed to start, or the worker running it
+ * died. Terminal — an errored worker cannot be restarted, only replaced.
+ *
+ * Declared beside the port rather than in the adapter so the application can
+ * tell this apart from an abandoned search without importing infrastructure.
+ * The distinction is the whole point: one means the game cannot continue and
+ * must say so, the other is the ordinary result of pressing undo.
+ */
+export class EngineUnavailable extends Error {}
+
+/** The search was given up on — superseded, cancelled, or disposed. */
+export class SearchAbandoned extends Error {}
+
+/**
  * A computer opponent's move-choosing ability.
  *
  * Narrow on purpose: the application needs a move, not evaluations, principal
@@ -38,9 +92,19 @@ export interface EngineConfiguration {
  */
 export interface ChessEngine {
   init(): Promise<void>
+  /**
+   * Starts a new game, clearing whatever the last one left behind.
+   *
+   * Separate from `configure` because the two have different rhythms: a
+   * difficulty is set once per game, while an engine playing both seats of a
+   * self-play game is reconfigured every ply and must *not* lose its tables
+   * each time. Only the caller knows which it is doing.
+   */
+  newGame(): Promise<void>
   configure(configuration: EngineConfiguration): Promise<void>
-  /** Rejects if the search is abandoned via `stop()` or `dispose()`. */
-  chooseMove(position: Position): Promise<MoveIntent>
+  /** Rejects with `SearchAbandoned` if the search is given up on, or
+   *  `EngineUnavailable` if the engine has gone away. */
+  chooseMove(request: EngineSearchRequest): Promise<MoveIntent>
   stop(): void
   dispose(): void
 }

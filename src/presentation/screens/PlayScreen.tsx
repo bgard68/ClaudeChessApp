@@ -177,6 +177,7 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
   const durabilityWarning = describeDurability(durability)
   const currentStatus = statusForGame({
     gameOver,
+    engineFailure: state.engineFailure,
     advice: currentAdvice,
     isCheck: state.isCheck,
     awaitingKind: state.awaiting?.kind ?? null,
@@ -370,6 +371,11 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
           {saveButton}
         </OutcomeBanner>
 
+        {state.engineFailure !== null ? (
+          <p className="notice notice--error">
+            {state.engineFailure} Your moves so far are safe on this device.
+          </p>
+        ) : null}
         {saveState === 'error' ? (
           <p className="notice notice--error">The game could not be saved.</p>
         ) : null}
@@ -402,18 +408,31 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
 /** Exported for its own tests, as `adviceFor` is and for the same reason. */
 export function statusForGame({
   gameOver,
+  engineFailure,
   advice,
   isCheck,
   awaitingKind,
   awaitingName,
 }: {
   readonly gameOver: boolean
+  readonly engineFailure: string | null
   readonly advice: Advice
   readonly isCheck: boolean
   readonly awaitingKind: 'human' | 'engine' | null
   readonly awaitingName: string | null
 }): { readonly icon: AppIconName; readonly label: string; readonly tone: string } {
   if (gameOver) return { icon: 'check', label: 'The game is complete.', tone: 'complete' }
+  // Above check, and above whose turn it is: both describe a game that can
+  // continue, and this one cannot. Said here because the alternative — which is
+  // what happened — is a board that claims the computer is still thinking for
+  // as long as the page stays open.
+  if (engineFailure !== null) {
+    return {
+      icon: 'warning',
+      label: 'The engine stopped responding. Save or start a new game.',
+      tone: 'warning',
+    }
+  }
   if (isCheck) return { icon: 'warning', label: 'Check — respond to the attack.', tone: 'warning' }
   if (advice.kind === 'thinking') {
     return { icon: 'sparkles', label: 'Stockfish is finding a useful idea…', tone: 'thinking' }

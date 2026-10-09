@@ -33,10 +33,14 @@ export class HintAdviser {
       this.configured = false
     }
     if (!this.configured) {
+      await this.engine.newGame()
       await this.engine.configure(HINT_CONFIGURATION)
       this.configured = true
     }
-    return this.engine.chooseMove(position)
+    // No history and no clock: a hint is advice about the position in front of
+    // the player, and thinking time for one comes from `HINT_CONFIGURATION`
+    // rather than from a clock the hint is not playing against.
+    return this.engine.chooseMove({ position })
   }
 
   dispose(): void {

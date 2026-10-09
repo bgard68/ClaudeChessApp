@@ -5,6 +5,17 @@ export interface ClockSnapshot {
   /** Remaining milliseconds, or `null` when the game is untimed. */
   readonly whiteMs: number | null
   readonly blackMs: number | null
+  /**
+   * What finishing the current move will add, per side, or `null` when untimed.
+   *
+   * Read per side rather than once for the control because a staged control can
+   * have the two players in different stages, and because an engine budgeting
+   * its own time needs the increment it will actually receive — an engine told
+   * there is no increment plays a one-minute game as though it were sudden
+   * death, and spends time it was about to be given back.
+   */
+  readonly whiteIncrementMs: number | null
+  readonly blackIncrementMs: number | null
   readonly running: PieceColor | null
   readonly flagged: PieceColor | null
 }
@@ -110,9 +121,17 @@ export class Clock {
     return {
       whiteMs: this.white.remainingMs,
       blackMs: this.black.remainingMs,
+      whiteIncrementMs: this.incrementMs('white'),
+      blackIncrementMs: this.incrementMs('black'),
       running: this.running,
       flagged: this.flagged,
     }
+  }
+
+  /** The increment this side gains for finishing a move in its current stage. */
+  private incrementMs(color: PieceColor): number | null {
+    const stage = this.stageAt(this.playerFor(color).stageIndex)
+    return stage?.incrementMs ?? null
   }
 
   private stageAt(index: number): TimeStage | undefined {

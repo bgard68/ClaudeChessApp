@@ -1,15 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import type { MoveIntent } from '@domain/chess/Move'
 import type { Position } from '@domain/chess/Position'
-import type { ChessEngine, EngineConfiguration } from './ports/ChessEngine'
+import type {
+  ChessEngine,
+  EngineConfiguration,
+  EngineSearchRequest,
+} from './ports/ChessEngine'
 import { HINT_CONFIGURATION, HintAdviser } from './HintAdviser'
 
 class RecordingEngine implements ChessEngine {
   configurations: EngineConfiguration[] = []
   askedFens: string[] = []
+  newGames = 0
   disposed = false
 
   init(): Promise<void> {
+    return Promise.resolve()
+  }
+
+  newGame(): Promise<void> {
+    this.newGames += 1
     return Promise.resolve()
   }
 
@@ -18,8 +28,8 @@ class RecordingEngine implements ChessEngine {
     return Promise.resolve()
   }
 
-  chooseMove(position: Position): Promise<MoveIntent> {
-    this.askedFens.push(position.fen)
+  chooseMove(request: EngineSearchRequest): Promise<MoveIntent> {
+    this.askedFens.push(request.position.fen)
     return Promise.resolve({ from: 'e2', to: 'e4' })
   }
 
