@@ -37,6 +37,30 @@ npm run verify
 `verify` is typecheck + unit tests + `npm audit`. It does **not** build or open
 a browser, so it is the fast loop.
 
+`verify` audits the **whole** tree and fails on anything moderate or above. The
+CI gate deliberately does not: it audits only `--omit=dev`. The difference is
+who can act on the answer. A person about to commit can fix an advisory, so
+stopping them is useful. A pull request cannot be held responsible for the state
+of the branch it came from — Dependabot #81 went red over `source-map-js`, a
+package it does not touch and could not fix, native auto-merge correctly
+declined to merge a red branch, and every other dependency update queued behind
+it for a day. **A gate that fails for a reason its author cannot act on is not
+strict, it is stuck.**
+
+So the gate keeps the question it can fairly ask of a branch — does this ship
+something vulnerable? — and the other two questions belong to things that
+already existed:
+
+| question | who answers it | blocking |
+|---|---|---|
+| Does this change *add* a vulnerable dependency? | `Dependency review`, per pull request | yes |
+| Does this branch ship a vulnerable dependency? | the gate, `npm audit --omit=dev` | yes |
+| Does the tree *carry* a vulnerable dependency today? | Dependabot security updates, which open the fixing pull request | no — it files a PR |
+
+A scheduled audit workflow of our own sat here for a day between those last two
+and was deleted: Dependabot already watches the same advisory data and does more
+with it than a cron job could.
+
 The browser scripts need a build first. Each one serves `dist/` exactly as
 production would:
 
