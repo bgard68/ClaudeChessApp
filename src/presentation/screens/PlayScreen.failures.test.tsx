@@ -49,6 +49,7 @@ const game = (): LiveGame =>
       awaiting: { kind: 'human', name: 'You' },
       isCheck: false,
       canUndo: true,
+      engineFailure: null,
       timeControl: RAPID,
       clock: { whiteMs: 600_000, blackMs: 600_000, running: 'white' },
     },
