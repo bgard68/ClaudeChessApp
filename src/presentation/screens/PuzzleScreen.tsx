@@ -260,13 +260,21 @@ export function PuzzleScreen() {
                 hint={hint}
                 onMove={tryMove}
               />
-              {status === 'solved' ? (
-                <span className="phase46-solved-badge" role="status">
-                  <AppIcon name="check" size={18} />
-                  Solved
-                </span>
-              ) : null}
             </div>
+            {/* Below the board, not over it. This sat inside the frame above,
+                absolutely positioned at its top-right corner, where it covered
+                two squares of whichever rank happened to be drawn there — and
+                when Black is to move the board is flipped, so that is rank 1:
+                the back rank, which is where a mate usually is. The phone
+                layout had already met this and answered it by hiding the badge
+                outright; the wider layout kept the overlap. One position now,
+                at every size, so there is nothing left to special-case. */}
+            {status === 'solved' ? (
+              <p className="phase46-solved-badge" role="status">
+                <AppIcon name="check" size={18} />
+                Solved
+              </p>
+            ) : null}
           </section>
 
           <aside className="phase2-puzzle-panel phase46-puzzle-panel">

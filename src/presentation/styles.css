@@ -2491,15 +2491,18 @@ body {
   color: var(--p2-accent-strong);
 }
 
+/* In flow beneath the board, never over it. Absolutely positioned at the
+   frame's top-right corner this covered two squares of whichever rank was
+   drawn there, and a flipped board puts rank 1 there — the back rank, where
+   the mate is. The `auto` side margins centre it under the board rather than
+   letting it sit against whichever edge the column aligns to. */
 .phase46-solved-badge {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  z-index: 4;
-  display: inline-flex;
+  margin: 12px auto 0;
+  display: flex;
+  width: fit-content;
   align-items: center;
   gap: 7px;
-  padding: 9px 12px;
+  padding: 9px 14px;
   border: 1px solid rgba(207, 255, 226, 0.32);
   border-radius: 999px;
   color: #07190f;
@@ -6676,15 +6679,6 @@ because the board is the thing being
 
   .phase46-puzzle .phase46-board-frame {
     width: min(100%, 44vh);
-  }
-
-  /* Never place status UI over a puzzle square on phones. When Black is to
-     move, rank 1 is the board's top row, so the absolutely positioned solved
-     badge hid part of exactly the row the player needed to inspect. The board
-     meta immediately above already changes to "Solved", preserving the
-     message without obscuring any of the eight ranks. */
-  .phase46-puzzle .phase46-solved-badge {
-    display: none;
   }
 
   /* The objective card states the side to move and the mate length, and the
