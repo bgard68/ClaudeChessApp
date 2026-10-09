@@ -552,12 +552,86 @@ rather than on `uciok`: ready, not merely introduced.
 because `engines` mode runs two searches at once and the hint adviser can make a
 third, so the figure that matters is three times one engine's.
 
+**What the clock change did to the difficulty levels, measured rather than
+assumed.** Sending the clock narrows `untimedMoveTimeMs` to searches with no
+clock behind them, which raises a fair question about the ratings the setup
+screen quotes. Driving the shipped engine with exactly the commands the adapter
+builds answers it — thinking time and depth reached, per level, at four
+controls:
+
+| level | untimed | 1+0 | 5+3 | 90+30 |
+|---|---|---|---|---|
+| beginner | 10ms / d2 | 2ms / d2 | 1ms / d2 | 1ms / d2 |
+| casual | 56ms / d8 | 46ms / d8 | 44ms / d8 | 45ms / d8 |
+| club | 267ms / d12 | 302ms / d12 | 324ms / d12 | 317ms / d12 |
+| expert | 1202ms / d16 | 3534ms / d16 | 3630ms / d16 | 3420ms / d16 |
+| maximum | 2002ms / d20 | 3054ms / d21 | clock-managed | clock-managed |
+
+For the three weakest levels the time figure never bound anything: a depth-2
+search finishes in a millisecond, not in the 300 it was allowed. Their ratings
+rest on the depth cap and are exactly as grounded as they were. Expert reaches
+its depth-16 cap in about 3.5s given a clock, where the old fixed 1.2s cut it
+off early — stronger in timed play than it was, and still bounded by depth.
+Maximum has no cap and takes a fraction of remaining time, which is
+self-limiting: 60s decaying at that rate leaves about a second after sixty
+moves, which is what the browser game that ran 63 moves and finished with 2.4s
+on the clock actually did.
+
+**And a false alarm worth keeping.** A Node harness measuring the same `go`
+lines reported 12s for 1+0 and 84s for 5+3, which reads as a severe regression —
+an engine spending a fifth of its clock on one move. It was holding the clock at
+a constant 60s for every case, which no game does: the allocation is a fraction
+of what is *left*, so a measurement that never spends anything measures the
+first move of a game that never continues. **A harness that disagrees with the
+runtime that ships is wrong until proven otherwise**, and the browser agreed
+with the game that had already been watched.
+
 **How they survived.** Every published checklist for a React-plus-Stockfish app
 asks about worker lifecycles, stale closures, promotion strings and
 `bestmove (none)` — all of which this codebase already handled, two of them
 better than the checklists ask for. Three sections of approvals read as
 coverage. None of them asks whether the engine is being told what game it is
 playing, so nobody asked.
+
+## A failure path with tests, and nobody had ever looked at it
+
+The fix for the dead worker was right where it was tested and wrong where it
+was not. `LiveGame` set `engineFailure`, paused the clock and recorded no
+outcome; `statusForGame` led with the failure above check and above whose turn
+it was. Both were covered, both passed, and the change shipped described as
+verified at both layers with the honest caveat that the screen itself had never
+been seen in that state.
+
+Pointing `ENGINE_WORKER_URL` at a file that does not exist took about a minute
+and found two defects in the words:
+
+- **The turn pill still read "Starting…"**, because it keys off
+  `awaiting === null` — which is what a game that has not begun looks like, and
+  also what a failed engine leaves behind. Two causes, one appearance, and the
+  wrong one was named.
+- **The notice ran two sentences together**: "Unexpected token '<' Your moves so
+  far are safe on this device." A browser's error string ends wherever it ends,
+  and nothing added the full stop.
+
+Neither is reachable from the unit suite as it was written, because both live in
+JSX rather than in a function — the exact failure mode TESTING.md's own rule
+describes: *a timing decision belongs in a function, not in a component.* The
+decision about what a dead engine should *do* was extracted and tested. The
+decision about what it should *say* stayed inline and was not.
+
+A third fell out of fixing the second. `engineFailure` is typed `string | null`,
+but the screen's test fixtures build a partial state and cast it, so the field
+arrived as `undefined` — and `undefined !== null` is true. Interpolating that
+rendered nothing and looked fine; calling `.replace` on it crashed sixteen
+tests. **A cast fixture is a claim about a type that the type cannot check**, and
+it stays harmless exactly until the code does more than print the value.
+
+**The lesson is not "test the strings".** It is that "covered at both layers"
+was a true statement about the layers that had been given functions to test, and
+the gap it left was invisible because nothing in the suite could make a worker
+die. The cheapest check in the whole sequence — break the URL, read the screen —
+was the one that found the remaining defects, and it was available the whole
+time.
 
 ## A clock read as a move number
 
