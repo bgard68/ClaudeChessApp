@@ -9,12 +9,18 @@ const rules = new ChessJsRules()
 /** Plays a fixed script of moves, whatever it is asked. */
 class ScriptedEngine implements ChessEngine {
   readonly configurations: EngineConfiguration[] = []
+  newGames = 0
   disposed = false
   private index = 0
 
   constructor(private readonly moves: readonly MoveIntent[]) {}
 
   init(): Promise<void> {
+    return Promise.resolve()
+  }
+
+  newGame(): Promise<void> {
+    this.newGames += 1
     return Promise.resolve()
   }
 

@@ -88,6 +88,10 @@ export class PuzzleGenerator {
   ): Promise<GeneratedPuzzle | null> {
     const line = this.openings[seed % this.openings.length]!
 
+    // Each attempt is its own game. Without this the engine carries the last
+    // attempt's tables into the next, and the seed stops naming one search.
+    await engine.newGame()
+
     // The game so far: the position before each ply, and the move played.
     const before: Position[] = []
     const played: MoveIntent[] = []
@@ -111,7 +115,12 @@ export class PuzzleGenerator {
         // Re-sent each ply: the seats swap, and configure only sets options —
         // the position travels with the search itself.
         await engine.configure(position.sideToMove === attacker ? ATTACKER : DEFENDER)
-        intent = await engine.chooseMove(position)
+        // History included: an attacker that cannot see repetitions settles for
+        // them, and a repetition is one of the ways these games failed to end.
+        intent = await engine.chooseMove({
+          position,
+          history: { startPosition: history[0]!, moves: played },
+        })
       } catch {
         return null // Search abandoned: the generator was disposed mid-game.
       }

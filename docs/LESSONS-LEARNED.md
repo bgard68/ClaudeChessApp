@@ -509,6 +509,56 @@ character.** The bundled collections never triggered it, so the corpus test that
 sweeps 2,987 real games had nothing to say — the shipped data is clean, and the
 bug lives on the import path.
 
+## The engine was never told what game it was playing
+
+Four defects in one sweep, all in the same seam: everything the UCI protocol
+carries besides `go` and `bestmove`. The adapter was correct about the two
+commands it used and silent about the rest.
+
+**The clock was never sent.** `chooseMove` issued a constant `go movetime N`
+from the difficulty table. Stockfish therefore budgeted nothing, because it was
+given nothing to budget: at Maximum's two seconds a move it burned a
+one-minute game's entire clock by around move thirty and forfeited on time
+whatever it was playing — and in a ninety-minute game it spent those same two
+seconds on a position the player had granted it minutes for. "Full strength,
+capped only by thinking time" was weakest exactly where the most time was
+available. Fixed by sending `wtime`/`btime`/`winc`/`binc` and letting the
+engine's own time manager do the job it exists for. `movetime` now means what
+it says: the limit for a position with no clock behind it.
+
+The data was already in the right place and thrown away. `MoveRequest` has
+carried a `ClockSnapshot` all along; `EngineOpponent` received it and dropped
+it on the floor. Only the increment was genuinely missing, and only because
+`ClockSnapshot` did not carry one.
+
+**The move history was never sent.** Every search was `position fen <fen>` and
+nothing else, so the engine could not see repetitions and would walk into a
+threefold from a winning position — a draw this app then scored correctly,
+because `ChessJsRules` is handed the history the engine was not. That comment
+in `ChessJsRules` says chess.js can only judge repetition from moves it made
+itself, which is precisely why `rules.outcome` takes a caller-supplied history.
+The same limitation, understood and written down, was never carried across the
+wall to the engine. **A hazard documented in one adapter is a question to ask
+of every other one.**
+
+**There was no `isready` barrier and no `ucinewgame`.** `setoption` was followed
+straight by `go`, which worked because the sends happened to be ordered rather
+than because anything enforced it, and hash carried across games, hints and
+puzzle attempts — which also quietly undermined `PuzzleGenerator`'s premise
+that a seed names one search. Both now exist, and `init` resolves on `readyok`
+rather than on `uciok`: ready, not merely introduced.
+
+**`Threads` and `Hash` were whatever the build defaulted to.** Set explicitly,
+because `engines` mode runs two searches at once and the hint adviser can make a
+third, so the figure that matters is three times one engine's.
+
+**How they survived.** Every published checklist for a React-plus-Stockfish app
+asks about worker lifecycles, stale closures, promotion strings and
+`bestmove (none)` — all of which this codebase already handled, two of them
+better than the checklists ask for. Three sections of approvals read as
+coverage. None of them asks whether the engine is being told what game it is
+playing, so nobody asked.
+
 ## A clock read as a move number
 
 `summarise` counts moves by taking the highest move number in the movetext,
