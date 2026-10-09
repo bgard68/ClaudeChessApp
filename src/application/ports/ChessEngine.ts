@@ -4,7 +4,9 @@ import type { Position } from '@domain/chess/Position'
 export interface EngineSearchLimits {
   /**
    * Thinking time for a position with no clock behind it — an untimed game, a
-   * hint, a generated puzzle.
+   * hint, a generated puzzle. Named for that, because it is the whole of what
+   * it covers and a plainer name invited the reading that it governs every
+   * search.
    *
    * Not used in a timed game. There the clock itself is sent and the engine
    * budgets its own thinking, because a fixed figure cannot: two seconds a move
@@ -12,7 +14,7 @@ export interface EngineSearchLimits {
    * moves are, and spends two seconds a move in a ninety-minute game that was
    * asking for the engine's best.
    */
-  readonly moveTimeMs: number
+  readonly untimedMoveTimeMs: number
   /** Optional depth ceiling. Capping depth is what makes a weak level play
    *  shallowly rather than merely quickly, and it holds however much time the
    *  engine is given. */
@@ -66,7 +68,7 @@ export interface EngineSearchRequest {
    */
   readonly history?: MoveSequence
   /** Absent when no clock is running, or when a side has already flagged.
-   *  `searchLimits.moveTimeMs` is what gets used then. */
+   *  `searchLimits.untimedMoveTimeMs` is what gets used then. */
   readonly timeBudget?: EngineTimeBudget
 }
 

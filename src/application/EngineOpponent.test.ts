@@ -83,7 +83,7 @@ class SlowToConfigureEngine extends RecordingEngine {
 
 const CASUAL: EngineConfiguration = {
   strength: { kind: 'rated', elo: 1600 },
-  searchLimits: { moveTimeMs: 500 },
+  searchLimits: { untimedMoveTimeMs: 500 },
 }
 
 const UNTIMED: ClockSnapshot = {

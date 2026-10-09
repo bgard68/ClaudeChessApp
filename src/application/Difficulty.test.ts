@@ -85,7 +85,7 @@ describe('the levels', () => {
   })
 
   it('DIFFICULTY_LEVELS_ListOrder_GrantsLongerThinkingTimeAsTheyHarden', () => {
-    const times = DIFFICULTY_LEVELS.map((level) => level.configuration.searchLimits.moveTimeMs)
+    const times = DIFFICULTY_LEVELS.map((level) => level.configuration.searchLimits.untimedMoveTimeMs)
     expect([...times]).toEqual([...times].sort((a, b) => a - b))
   })
 

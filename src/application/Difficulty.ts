@@ -36,7 +36,7 @@ export const DIFFICULTY_LEVELS: readonly DifficultyLevel[] = [
     rating: `~${MINIMUM_RATED_ELO}`,
     configuration: {
       strength: { kind: 'rated', elo: MINIMUM_RATED_ELO },
-      searchLimits: { moveTimeMs: 300, maxDepth: 2 },
+      searchLimits: { untimedMoveTimeMs: 300, maxDepth: 2 },
     },
   },
   {
@@ -46,7 +46,7 @@ export const DIFFICULTY_LEVELS: readonly DifficultyLevel[] = [
     rating: '~1500',
     configuration: {
       strength: { kind: 'rated', elo: 1500 },
-      searchLimits: { moveTimeMs: 500, maxDepth: 8 },
+      searchLimits: { untimedMoveTimeMs: 500, maxDepth: 8 },
     },
   },
   {
@@ -56,7 +56,7 @@ export const DIFFICULTY_LEVELS: readonly DifficultyLevel[] = [
     rating: '~1800',
     configuration: {
       strength: { kind: 'rated', elo: 1800 },
-      searchLimits: { moveTimeMs: 800, maxDepth: 12 },
+      searchLimits: { untimedMoveTimeMs: 800, maxDepth: 12 },
     },
   },
   {
@@ -66,7 +66,7 @@ export const DIFFICULTY_LEVELS: readonly DifficultyLevel[] = [
     rating: '~2200',
     configuration: {
       strength: { kind: 'rated', elo: 2200 },
-      searchLimits: { moveTimeMs: 1_200, maxDepth: 16 },
+      searchLimits: { untimedMoveTimeMs: 1_200, maxDepth: 16 },
     },
   },
   {
@@ -78,7 +78,7 @@ export const DIFFICULTY_LEVELS: readonly DifficultyLevel[] = [
     rating: null,
     configuration: {
       strength: { kind: 'full' },
-      searchLimits: { moveTimeMs: 2_000 },
+      searchLimits: { untimedMoveTimeMs: 2_000 },
     },
   },
 ]

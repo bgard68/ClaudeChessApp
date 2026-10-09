@@ -9,7 +9,7 @@ import type { ChessEngine, EngineConfiguration } from './ports/ChessEngine'
  */
 export const HINT_CONFIGURATION: EngineConfiguration = {
   strength: { kind: 'full' },
-  searchLimits: { moveTimeMs: 1_200 },
+  searchLimits: { untimedMoveTimeMs: 1_200 },
 }
 
 /**
