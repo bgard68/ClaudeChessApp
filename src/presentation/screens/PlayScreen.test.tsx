@@ -233,12 +233,35 @@ describe('statusForGame', () => {
   const status = (advice: Advice, over: Record<string, unknown> = {}) =>
     statusForGame({
       gameOver: false,
+      engineFailure: null,
       advice,
       isCheck: false,
       awaitingKind: 'human',
       awaitingName: 'You',
       ...over,
     })
+
+  /*
+   * Above check, and above whose turn it is: both of those describe a game that
+   * can continue. A dead worker left the board claiming the computer was still
+   * thinking for as long as the page stayed open — no error, nothing to retry.
+   */
+  it('playStatus_EngineGone_SaysSoRatherThanThatItIsThinking', () => {
+    const shown = status(
+      { kind: 'none' },
+      { engineFailure: 'The engine stopped responding: out of memory', awaitingKind: 'engine' },
+    )
+
+    expect(shown.label).toContain('stopped responding')
+    expect(shown.tone).toBe('warning')
+  })
+
+  // The engine being gone outranks a check nobody can answer.
+  it('playStatus_EngineGoneWhileInCheck_StillLeadsWithTheEngine', () => {
+    expect(status({ kind: 'none' }, { engineFailure: 'gone', isCheck: true }).label).toContain(
+      'stopped responding',
+    )
+  })
 
   it('playStatus_SearchRunning_SaysTheEngineIsWorking', () => {
     expect(status({ kind: 'thinking', fen: START }).label).toContain('finding a useful idea')

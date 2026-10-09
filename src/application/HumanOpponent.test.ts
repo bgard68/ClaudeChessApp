@@ -37,6 +37,7 @@ const requestFor = (legalMoves: readonly LegalMove[]): MoveRequest => ({
   position: { fen: 'irrelevant' } as Position,
   legalMoves,
   clock: {} as ClockSnapshot,
+  history: { startPosition: { fen: 'irrelevant' } as Position, moves: [] },
 })
 
 /** Keeps an abandoned request from surfacing as an unhandled rejection. */

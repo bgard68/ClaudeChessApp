@@ -375,7 +375,7 @@ Committing the result removed them from the build path. See
 - **Famous games** are extracted from per-player collections on
   [pgnmentor.com](https://www.pgnmentor.com) by `npm run fetch-famous`, which
   locates each one by its players, year, and result.
-- **Stockfish 18**, the `lite-single` build (GPL-3.0), is copied out of
+- **Stockfish 19**, the `lite-single` build (GPL-3.0), is copied out of
   `node_modules` into `public/engine/` — 7.3 MB. The package ships four builds;
   the threaded ones need COOP/COEP headers this app deliberately does not set,
   and the full-net ones are 113 MB. See `scripts/copy-engine.mjs`.

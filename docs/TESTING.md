@@ -403,6 +403,22 @@ right. None of the eleven looked wrong.
    the resilience sweep found four such absences that three code audits had no
    way to see — [RESILIENCE-AUDIT.md](RESILIENCE-AUDIT.md).
 
+8. **Does this change cite another file as already handling the class
+   correctly?** Then that file is a subject of the review, not its standard.
+   The second sweep fixed `SqliteClient`'s missing `onerror` and recorded that
+   "`StockfishEngine` handled this correctly on the next file over" — comparing
+   at the level of *does an `onerror` exist*, which it did. It rejected only the
+   handshake, already settled by then, so a worker that died mid-search left the
+   search pending for the life of the page. The exemplar is the one file a sweep
+   never measures, because measuring others against it is what it is for. A
+   citation of correctness is a claim, and a claim needs a test: the SQLite fake
+   grew a method that fires `onerror`, while the Stockfish fake declared the
+   field and never called it.
+
+   The same applies to scope. Question 7 names "a worker dying" and was answered
+   for the screens; the worker that dies lives in `infrastructure`, which that
+   question's preamble does not cover.
+
 And one rule about where the answer goes: **a timing decision belongs in a
 function, not in a component.** `adviceFor`, `previewCaption` and
 `statusForGame` exist because the node suite cannot drive a re-render but can

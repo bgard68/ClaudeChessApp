@@ -7,6 +7,7 @@ import type { TimeControl } from '@domain/clock/TimeControl'
 import type { ChessRules } from '@domain/ports/ChessRules'
 import type { Ticker } from '@domain/ports/Ticker'
 import { Observable, type Unsubscribe } from './Observable'
+import { EngineUnavailable } from './ports/ChessEngine'
 import { isInteractive, type Opponent, type OpponentKind } from './Opponent'
 
 export interface LiveGameDependencies {
@@ -38,6 +39,17 @@ export interface LiveGameState {
   readonly timeControl: TimeControl
   /** Whether there is a move to take back. */
   readonly canUndo: boolean
+  /**
+   * Why the computer can no longer be asked for a move, or null while it can.
+   *
+   * Deliberately not an outcome. A crashed worker is not a chess result, and
+   * writing one into the archive would put a game the player never lost into
+   * their own permanent record — `GameOutcome` has no reason code for "the
+   * software broke" and should not grow one. The game stays in progress and
+   * unplayable, which is the honest description: resign, agree a draw, save
+   * what was played, or start again, all of which still work.
+   */
+  readonly engineFailure: string | null
 }
 
 /**
@@ -75,6 +87,8 @@ export class LiveGame {
   private generation = 0
   private started = false
   private disposed = false
+  /** Set once, and never cleared: an errored worker cannot be restarted. */
+  private engineFailure: string | null = null
 
   constructor(
     dependencies: LiveGameDependencies,
@@ -157,8 +171,12 @@ export class LiveGame {
 
     // Restarted from scratch: the ticker was stopped if the game had ended,
     // and this also drops the part-spent turn rather than charging it twice.
+    // Not restarted at all once the engine has gone: a clock that runs while
+    // nothing can move it charges the player for the engine's failure.
     this.ticker.stop()
-    if (!this.clock.isUntimed) this.ticker.start((elapsedMs) => this.onTick(elapsedMs))
+    if (!this.clock.isUntimed && this.engineFailure === null) {
+      this.ticker.start((elapsedMs) => this.onTick(elapsedMs))
+    }
 
     this.publish()
     void this.runTurnLoop()
@@ -188,7 +206,7 @@ export class LiveGame {
   }
 
   private async runTurnLoop(): Promise<void> {
-    while (!isOver(this.outcome) && !this.disposed) {
+    while (!isOver(this.outcome) && !this.disposed && this.engineFailure === null) {
       const generation = this.generation
       const color = this.position.sideToMove
       const opponent = this.opponentFor(color)
@@ -203,9 +221,20 @@ export class LiveGame {
           position: this.position,
           legalMoves: this.legalMoves,
           clock: this.clock.snapshot(),
+          history: { startPosition: this.positionHistory[0]!, moves: this.playedMoves },
         })
-      } catch {
-        return // Request abandoned: the game ended, restarted, or was disposed.
+      } catch (error) {
+        /*
+         * An engine that cannot be reached is not an abandoned request.
+         *
+         * Both arrive here as a rejection, and treating them alike is what made
+         * a dead worker look like a game still in progress: the loop returned,
+         * `awaiting` stayed set, and the screen said the computer was thinking
+         * for as long as the page stayed open. Abandonment is ordinary — it is
+         * what undo does — and needs no announcement. This does.
+         */
+        if (error instanceof EngineUnavailable) this.engineFailed(error)
+        return
       }
 
       if (generation !== this.generation || this.disposed || isOver(this.outcome)) return
@@ -254,6 +283,20 @@ export class LiveGame {
     return true
   }
 
+  /**
+   * Stops the game where it stands, without deciding it.
+   *
+   * The clock is paused first and matters most: without it the player flags
+   * against a worker that is already dead and loses to a failed allocation.
+   */
+  private engineFailed(error: Error): void {
+    this.engineFailure = error.message
+    this.awaiting = null
+    this.clock = this.clock.pause()
+    this.ticker.stop()
+    this.publish()
+  }
+
   private onTick(elapsedMs: number): void {
     const advanced = this.clock.advance(elapsedMs)
     if (advanced === this.clock) return
@@ -300,6 +343,7 @@ export class LiveGame {
       awaiting: this.awaiting,
       timeControl: this.setup.timeControl,
       canUndo: this.playedMoves.length > 0 && !this.disposed,
+      engineFailure: this.engineFailure,
     }
   }
 }

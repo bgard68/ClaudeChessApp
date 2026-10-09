@@ -4,7 +4,11 @@ import type { Position } from '@domain/chess/Position'
 import type { ClockSnapshot } from '@domain/clock/Clock'
 import { EngineOpponent } from './EngineOpponent'
 import type { MoveRequest } from './Opponent'
-import type { ChessEngine, EngineConfiguration } from './ports/ChessEngine'
+import type {
+  ChessEngine,
+  EngineConfiguration,
+  EngineSearchRequest,
+} from './ports/ChessEngine'
 
 /*
  * The adapter is deliberately thin, so there is little to get wrong — and
@@ -17,6 +21,10 @@ import type { ChessEngine, EngineConfiguration } from './ports/ChessEngine'
 class RecordingEngine implements ChessEngine {
   readonly configurations: EngineConfiguration[] = []
   readonly askedFens: string[] = []
+  readonly requests: EngineSearchRequest[] = []
+  /** Everything called on the engine, in order — `newGame` must precede the
+   *  options, and both must precede the first search. */
+  readonly calls: string[] = []
   initCalls = 0
   stopCalls = 0
   disposeCalls = 0
@@ -28,13 +36,21 @@ class RecordingEngine implements ChessEngine {
     return Promise.resolve()
   }
 
+  newGame(): Promise<void> {
+    this.calls.push('newGame')
+    return Promise.resolve()
+  }
+
   configure(configuration: EngineConfiguration): Promise<void> {
+    this.calls.push('configure')
     this.configurations.push(configuration)
     return Promise.resolve()
   }
 
-  chooseMove(position: Position): Promise<MoveIntent> {
-    this.askedFens.push(position.fen)
+  chooseMove(request: EngineSearchRequest): Promise<MoveIntent> {
+    this.calls.push('chooseMove')
+    this.requests.push(request)
+    this.askedFens.push(request.position.fen)
     const move = this.moves[this.askedFens.length - 1] ?? this.moves[0]!
     return Promise.resolve(move)
   }
@@ -70,10 +86,20 @@ const CASUAL: EngineConfiguration = {
   searchLimits: { moveTimeMs: 500 },
 }
 
-const requestAt = (fen: string): MoveRequest => ({
+const UNTIMED: ClockSnapshot = {
+  whiteMs: null,
+  blackMs: null,
+  whiteIncrementMs: null,
+  blackIncrementMs: null,
+  running: null,
+  flagged: null,
+}
+
+const requestAt = (fen: string, clock: ClockSnapshot = UNTIMED): MoveRequest => ({
   position: { fen } as Position,
   legalMoves: [],
-  clock: {} as ClockSnapshot,
+  clock,
+  history: { startPosition: { fen: 'start-fen' } as Position, moves: [{ from: 'e2', to: 'e4' }] },
 })
 
 describe('EngineOpponent.requestMove', () => {
@@ -120,6 +146,95 @@ describe('EngineOpponent.requestMove', () => {
     expect(engine.askedFens).toEqual(['position-a', 'position-b'])
   })
 
+  /*
+   * `ucinewgame` first, then the options, then the search.
+   *
+   * Order is the whole content of this test: an engine told to start a new game
+   * *after* being configured keeps the previous game's tables and loses the
+   * options it was just given to the reset.
+   */
+  it('requestMove_FirstCall_StartsANewGameBeforeConfiguringAndSearching', async () => {
+    const engine = new RecordingEngine()
+    const opponent = new EngineOpponent(engine, CASUAL)
+
+    await opponent.requestMove(requestAt('first-fen'))
+
+    expect(engine.calls).toEqual(['newGame', 'configure', 'chooseMove'])
+  })
+
+  it('requestMove_AnyCall_ForwardsTheHistorySoTheEngineCanSeeRepetitions', async () => {
+    const engine = new RecordingEngine()
+    const opponent = new EngineOpponent(engine, CASUAL)
+
+    await opponent.requestMove(requestAt('any-fen'))
+
+    expect(engine.requests[0]?.history).toEqual({
+      startPosition: { fen: 'start-fen' },
+      moves: [{ from: 'e2', to: 'e4' }],
+    })
+  })
+
+  /*
+   * A fixed thinking time ignores the clock it is playing against, which is how
+   * the engine came to forfeit one-minute games on time at the stronger levels
+   * however well it was playing. The budget is what lets it manage itself.
+   */
+  it('requestMove_TimedGame_HandsTheEngineBothClocksAndTheIncrement', async () => {
+    const engine = new RecordingEngine()
+    const opponent = new EngineOpponent(engine, CASUAL)
+
+    await opponent.requestMove(
+      requestAt('any-fen', {
+        whiteMs: 41_000,
+        blackMs: 38_500,
+        whiteIncrementMs: 1_000,
+        blackIncrementMs: 1_000,
+        running: 'white',
+        flagged: null,
+      }),
+    )
+
+    expect(engine.requests[0]?.timeBudget).toEqual({
+      whiteMs: 41_000,
+      blackMs: 38_500,
+      whiteIncrementMs: 1_000,
+      blackIncrementMs: 1_000,
+    })
+  })
+
+  // No clock, no budget to divide: the configured thinking time is the limit.
+  it('requestMove_UntimedGame_SendsNoTimeBudgetAtAll', async () => {
+    const engine = new RecordingEngine()
+    const opponent = new EngineOpponent(engine, CASUAL)
+
+    await opponent.requestMove(requestAt('any-fen'))
+
+    expect(engine.requests[0]?.timeBudget).toBeUndefined()
+  })
+
+  /*
+   * A side already at zero has nothing to budget. Told it has no time, the
+   * engine answers with a move chosen at no depth — a worse way to lose the
+   * game than playing on at the configured time and flagging anyway.
+   */
+  it('requestMove_ASideHasFlagged_FallsBackToTheConfiguredThinkingTime', async () => {
+    const engine = new RecordingEngine()
+    const opponent = new EngineOpponent(engine, CASUAL)
+
+    await opponent.requestMove(
+      requestAt('any-fen', {
+        whiteMs: 0,
+        blackMs: 12_000,
+        whiteIncrementMs: 0,
+        blackIncrementMs: 0,
+        running: 'white',
+        flagged: 'white',
+      }),
+    )
+
+    expect(engine.requests[0]?.timeBudget).toBeUndefined()
+  })
+
   // Construction must stay inert: the factory builds both seats up front, and
   // an engine configured then would be configured for a game not yet started.
   it('constructor_BeforeAnyRequest_TouchesTheEngineNotAtAll', () => {
@@ -130,6 +245,7 @@ describe('EngineOpponent.requestMove', () => {
     expect(opponent.kind).toBe('engine')
     expect(engine.configurations).toEqual([])
     expect(engine.askedFens).toEqual([])
+    expect(engine.calls).toEqual([])
     expect(engine.initCalls).toBe(0)
   })
 })

@@ -1,4 +1,4 @@
-import type { LegalMove, MoveIntent } from '@domain/chess/Move'
+import type { LegalMove, MoveIntent, MoveSequence } from '@domain/chess/Move'
 import type { Position } from '@domain/chess/Position'
 import type { ClockSnapshot } from '@domain/clock/Clock'
 
@@ -8,6 +8,14 @@ export interface MoveRequest {
   readonly position: Position
   readonly legalMoves: readonly LegalMove[]
   readonly clock: ClockSnapshot
+  /**
+   * The game that led to `position`.
+   *
+   * Offered to every opponent even though only a search engine reads it: a
+   * person can see the board, while an engine handed a lone position cannot see
+   * that the game has been here twice before.
+   */
+  readonly history: MoveSequence
 }
 
 /**

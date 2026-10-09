@@ -32,6 +32,18 @@ export interface PlayedMove extends LegalMove {
   readonly clockAfterMs: number | null
 }
 
+/**
+ * A game as UCI wants to hear it: where it started, and what has been played.
+ *
+ * Grouped rather than passed as two arguments because the pair is only ever
+ * meaningful together — a move list without the position it starts from is not
+ * a game, and the engine adapter needs both to say `position fen ... moves ...`.
+ */
+export interface MoveSequence {
+  readonly startPosition: Position
+  readonly moves: readonly MoveIntent[]
+}
+
 export function sameIntent(a: MoveIntent, b: MoveIntent): boolean {
   return a.from === b.from && a.to === b.to && a.promotion === b.promotion
 }

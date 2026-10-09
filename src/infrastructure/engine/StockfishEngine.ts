@@ -1,9 +1,17 @@
 import type { MoveIntent } from '@domain/chess/Move'
-import type { Position } from '@domain/chess/Position'
 import { toSquare } from '@domain/chess/Square'
-import type { ChessEngine, EngineConfiguration } from '@application/ports/ChessEngine'
-import { promotionPieceFromSymbol } from '../chess/pieceMapping'
+import {
+  EngineUnavailable,
+  SearchAbandoned,
+  type ChessEngine,
+  type EngineConfiguration,
+  type EngineSearchLimits,
+  type EngineSearchRequest,
+} from '@application/ports/ChessEngine'
+import { promotionPieceFromSymbol, SYMBOL_BY_PROMOTION_PIECE } from '../chess/pieceMapping'
 import type { PieceSymbol } from 'chess.js'
+
+export { EngineUnavailable, SearchAbandoned }
 
 interface Deferred<T> {
   readonly promise: Promise<T>
@@ -21,10 +29,23 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve, reject }
 }
 
-export class EngineUnavailable extends Error {}
-export class SearchAbandoned extends Error {}
-
 const BEST_MOVE_PATTERN = /^bestmove\s+(\S+)/
+
+/**
+ * The engine's own resources, stated rather than inherited.
+ *
+ * `Threads 1` says out loud what this build already is — the `single` build,
+ * which has no thread support, because the threaded ones need COOP/COEP headers
+ * this app does not set. Setting it means a future swap to a threaded build
+ * cannot quietly start spawning threads the page cannot support.
+ *
+ * `Hash 16` is Stockfish's own default, pinned deliberately rather than
+ * inherited: `engines` mode runs two searches at once and the hint adviser can
+ * make a third, so the figure that matters is three times this one, on whichever
+ * device has the least memory to spare.
+ */
+const ENGINE_THREADS = 1
+const ENGINE_HASH_MB = 16
 
 /**
  * Speaks UCI to a Stockfish web worker.
@@ -40,6 +61,14 @@ export class StockfishEngine implements ChessEngine {
   private worker: Worker | null = null
   private initialisation: Promise<void> | null = null
   private uciHandshake: Deferred<void> | null = null
+  /**
+   * `isready` round trips still awaiting their `readyok`, oldest first.
+   *
+   * A queue rather than a single slot because `readyok` carries no indication of
+   * which `isready` it answers, so the only safe reading is first in, first out
+   * — which is exactly what the protocol guarantees.
+   */
+  private pendingReady: Deferred<void>[] = []
   private search: Deferred<MoveIntent> | null = null
   /**
    * How many `bestmove` lines the engine still owes for searches nobody wants.
@@ -59,18 +88,36 @@ export class StockfishEngine implements ChessEngine {
    */
   private owedBestMoves = 0
   private configuration: EngineConfiguration | null = null
+  /**
+   * Why the engine is gone, once it is.
+   *
+   * Terminal rather than retried, and the same reason is handed to every later
+   * caller: an errored `Worker` cannot be restarted, only replaced, and this
+   * object owns exactly one for its lifetime.
+   */
+  private failure: Error | null = null
   private disposed = false
 
   constructor(private readonly workerUrl: string) {}
 
   init(): Promise<void> {
     if (this.disposed) return Promise.reject(new EngineUnavailable('Engine disposed'))
+    if (this.failure !== null) return Promise.reject(this.failure)
     this.initialisation ??= this.startWorker()
     return this.initialisation
   }
 
+  async newGame(): Promise<void> {
+    await this.ready()
+    // Clears the hash and the repetition table. Without it a search is informed
+    // by a position from a game that is over — a strength artefact in play, and
+    // in the puzzle generator the reason the same seed is a different search.
+    this.send('ucinewgame')
+    await this.sync()
+  }
+
   async configure(configuration: EngineConfiguration): Promise<void> {
-    await this.init()
+    await this.ready()
     this.configuration = configuration
 
     // UCI_Elo is only consulted while UCI_LimitStrength is on, and the engine
@@ -83,10 +130,24 @@ export class StockfishEngine implements ChessEngine {
     } else {
       this.send('setoption name UCI_LimitStrength value false')
     }
+
+    // An option is set once the engine says it has read it. A `go` sent in
+    // between searches at the strength in force before this call, which is a
+    // difficulty setting silently not applying to one move.
+    await this.sync()
   }
 
-  async chooseMove(position: Position): Promise<MoveIntent> {
-    await this.init()
+  async chooseMove(request: EngineSearchRequest): Promise<MoveIntent> {
+    await this.ready()
+
+    const limits = this.configuration?.searchLimits ?? { moveTimeMs: 1_000 }
+    const position = positionCommand(request)
+    const go = goCommand(request, limits)
+
+    // Built and checked before anything is sent or recorded, so a refused
+    // command cannot leave a search registered that will never be made.
+    assertSingleLine(position)
+    assertSingleLine(go)
 
     // Only one search may be in flight; a new request supersedes the old.
     this.stop()
@@ -94,11 +155,8 @@ export class StockfishEngine implements ChessEngine {
     const search = deferred<MoveIntent>()
     this.search = search
 
-    const limits = this.configuration?.searchLimits ?? { moveTimeMs: 1_000 }
-    const depthClause = limits.maxDepth === undefined ? '' : ` depth ${limits.maxDepth}`
-
-    this.send(`position fen ${position.fen}`)
-    this.send(`go movetime ${limits.moveTimeMs}${depthClause}`)
+    this.send(position)
+    this.send(go)
 
     return search.promise
   }
@@ -125,13 +183,12 @@ export class StockfishEngine implements ChessEngine {
     if (this.disposed) return
     this.disposed = true
     this.stop()
-    this.uciHandshake?.reject(new EngineUnavailable('Engine disposed'))
-    this.uciHandshake = null
+    this.abandonWaiters(new EngineUnavailable('Engine disposed'))
     this.worker?.terminate()
     this.worker = null
   }
 
-  private startWorker(): Promise<void> {
+  private async startWorker(): Promise<void> {
     const handshake = deferred<void>()
     this.uciHandshake = handshake
 
@@ -140,20 +197,89 @@ export class StockfishEngine implements ChessEngine {
       // Emscripten bundle that locates its .wasm file relative to itself.
       const worker = new Worker(this.workerUrl)
       worker.onmessage = (event: MessageEvent) => this.handleLine(String(event.data))
-      worker.onerror = () => {
-        handshake.reject(new EngineUnavailable(`Could not start engine at ${this.workerUrl}`))
-      }
+      /*
+       * A worker can die at any point, not only while starting.
+       *
+       * This used to reject the handshake and nothing else, which covered a
+       * worker that never started and missed one that stopped — because after
+       * `uciok` the handshake is already settled, and rejecting a settled
+       * promise does nothing at all. The search in flight then stayed pending
+       * for the life of the page. A `movetime` is only a promise to answer, and
+       * a dead engine does not keep it: the turn loop waited forever and the
+       * board said "thinking" until the page was reloaded.
+       */
+      worker.onerror = (event: ErrorEvent) =>
+        this.fail(
+          new EngineUnavailable(
+            `The engine stopped responding: ${event.message || `could not start ${this.workerUrl}`}`,
+          ),
+        )
+      worker.onmessageerror = () =>
+        this.fail(new EngineUnavailable('The engine sent a message that could not be read'))
       this.worker = worker
       this.send('uci')
     } catch (error) {
-      handshake.reject(
+      this.fail(
         new EngineUnavailable(
           `Could not start engine: ${error instanceof Error ? error.message : String(error)}`,
         ),
       )
     }
 
-    return handshake.promise
+    await handshake.promise
+
+    // The rest of the GUI's side of the boot sequence: state the engine's
+    // resources, then wait to be told they have been read. `init` resolving now
+    // means ready, rather than merely "has introduced itself".
+    this.send(`setoption name Threads value ${ENGINE_THREADS}`)
+    this.send(`setoption name Hash value ${ENGINE_HASH_MB}`)
+    await this.sync()
+  }
+
+  /**
+   * `init`, plus the checks that only hold *after* awaiting it.
+   *
+   * Every caller queues behind the same initialisation, and the worker can die
+   * while they wait. Re-checking here is what stops a call that started before
+   * the failure from sending into a terminated worker and waiting for an answer.
+   */
+  private async ready(): Promise<void> {
+    await this.init()
+    if (this.disposed) throw new EngineUnavailable('Engine disposed')
+    if (this.failure !== null) throw this.failure
+  }
+
+  /** One `isready`/`readyok` round trip — UCI's only barrier. */
+  private sync(): Promise<void> {
+    const ready = deferred<void>()
+    this.pendingReady.push(ready)
+    this.send('isready')
+    return ready.promise
+  }
+
+  /**
+   * Fails everything in flight, and everything after it.
+   *
+   * The same shape `SqliteClient` reached, for the same reason: a hang is the
+   * worst available symptom, because it presents as work still in progress and
+   * offers nothing to retry. Rejecting turns it into a message.
+   */
+  private fail(error: Error): void {
+    this.failure ??= error
+    const search = this.search
+    this.search = null
+    this.abandonWaiters(this.failure)
+    search?.reject(this.failure)
+  }
+
+  /** Rejects the handshake and every pending `isready` with one reason. */
+  private abandonWaiters(reason: Error): void {
+    const handshake = this.uciHandshake
+    const waiting = this.pendingReady
+    this.uciHandshake = null
+    this.pendingReady = []
+    handshake?.reject(reason)
+    for (const waiter of waiting) waiter.reject(reason)
   }
 
   private handleLine(line: string): void {
@@ -168,6 +294,11 @@ export class StockfishEngine implements ChessEngine {
     if (line.startsWith('uciok')) {
       this.uciHandshake?.resolve()
       this.uciHandshake = null
+      return
+    }
+
+    if (line.startsWith('readyok')) {
+      this.pendingReady.shift()?.resolve()
       return
     }
 
@@ -205,11 +336,62 @@ export class StockfishEngine implements ChessEngine {
    * class rather than the instance.
    */
   private send(command: string): void {
-    if (/[\r\n]/.test(command)) {
-      throw new Error('Refusing to send a UCI command containing a line break')
-    }
+    assertSingleLine(command)
     this.worker?.postMessage(command)
   }
+}
+
+function assertSingleLine(command: string): void {
+  if (/[\r\n]/.test(command)) {
+    throw new Error('Refusing to send a UCI command containing a line break')
+  }
+}
+
+/**
+ * The `position` command for one search.
+ *
+ * The move list is not decoration. A bare FEN carries no repetition history, so
+ * an engine handed one cannot see that it is about to repeat a position for the
+ * third time — it will walk into a draw from a winning position, a draw this app
+ * then scores correctly, because `ChessJsRules` is given the history the engine
+ * was not. The same limitation is documented there; it now has the same fix on
+ * both sides of the wall.
+ */
+export function positionCommand(request: EngineSearchRequest): string {
+  const history = request.history
+  if (history === undefined || history.moves.length === 0) {
+    return `position fen ${history?.startPosition.fen ?? request.position.fen}`
+  }
+  const moves = history.moves.map(toLongAlgebraic).join(' ')
+  return `position fen ${history.startPosition.fen} moves ${moves}`
+}
+
+/**
+ * The `go` command for one search.
+ *
+ * Given a clock, the engine is told what both sides have left and budgets its
+ * own thinking. That is the only arrangement in which it does not flag itself: a
+ * fixed `movetime` of two seconds forfeits a one-minute game around move thirty
+ * however good the moves are, and spends two seconds a move in a ninety-minute
+ * game that was asking for the engine's best.
+ *
+ * `movetime` is still what an untimed position gets, because there is no budget
+ * to divide. The two are mutually exclusive on purpose — Stockfish reads
+ * `movetime` as a fixed allowance and would ignore a clock sent beside it.
+ *
+ * `depth` rides along either way: it is the difficulty's own cap, and the engine
+ * stops at whichever limit it reaches first.
+ */
+export function goCommand(request: EngineSearchRequest, limits: EngineSearchLimits): string {
+  const depth = limits.maxDepth === undefined ? '' : ` depth ${limits.maxDepth}`
+  const budget = request.timeBudget
+  if (budget === undefined) return `go movetime ${limits.moveTimeMs}${depth}`
+
+  const ms = (value: number) => Math.max(0, Math.round(value))
+  return (
+    `go wtime ${ms(budget.whiteMs)} btime ${ms(budget.blackMs)}` +
+    ` winc ${ms(budget.whiteIncrementMs)} binc ${ms(budget.blackIncrementMs)}${depth}`
+  )
 }
 
 /** Converts UCI's "e2e4" / "e7e8q" into a move intent. */
@@ -222,4 +404,10 @@ export function parseLongAlgebraic(token: string): MoveIntent | null {
     to: toSquare(token.slice(2, 4)),
     promotion: promotionPieceFromSymbol(promotion as PieceSymbol | undefined),
   }
+}
+
+/** The inverse: "e7e8q" from a move intent, for a `position ... moves` list. */
+export function toLongAlgebraic(move: MoveIntent): string {
+  const promotion = move.promotion === undefined ? '' : SYMBOL_BY_PROMOTION_PIECE[move.promotion]
+  return `${move.from}${move.to}${promotion}`
 }
