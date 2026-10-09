@@ -140,7 +140,7 @@ export class StockfishEngine implements ChessEngine {
   async chooseMove(request: EngineSearchRequest): Promise<MoveIntent> {
     await this.ready()
 
-    const limits = this.configuration?.searchLimits ?? { moveTimeMs: 1_000 }
+    const limits = this.configuration?.searchLimits ?? { untimedMoveTimeMs: 1_000 }
     const position = positionCommand(request)
     const go = goCommand(request, limits)
 
@@ -385,7 +385,7 @@ export function positionCommand(request: EngineSearchRequest): string {
 export function goCommand(request: EngineSearchRequest, limits: EngineSearchLimits): string {
   const depth = limits.maxDepth === undefined ? '' : ` depth ${limits.maxDepth}`
   const budget = request.timeBudget
-  if (budget === undefined) return `go movetime ${limits.moveTimeMs}${depth}`
+  if (budget === undefined) return `go movetime ${limits.untimedMoveTimeMs}${depth}`
 
   const ms = (value: number) => Math.max(0, Math.round(value))
   return (

@@ -47,6 +47,7 @@ const game = (over: Record<string, unknown> = {}): LiveGame =>
       isCheck: false,
       canUndo: false,
       timeControl: RAPID,
+      engineFailure: null,
       clock: { whiteMs: 600_000, blackMs: 600_000, running: 'white' },
       ...over,
     },
@@ -109,6 +110,26 @@ describe('PlayScreen', () => {
   describe('whose turn it is', () => {
     it('PlayScreen_TurnIndicator_NamesTheSideToMove', () => {
       expect(render({ awaiting: { kind: 'human', name: 'You' } })).toContain('You to move')
+    })
+
+    /*
+     * Both of these were found by pointing the engine at a file that does not
+     * exist and looking at the screen. The state was right and the words were
+     * not: the turn pill still read "Starting..." for a game that would never
+     * start, and the notice ran the engine's message straight into the next
+     * sentence, because a browser error string does not end in a full stop.
+     */
+    it('playScreen_EngineGone_StopsSayingTheGameIsStarting', () => {
+      const markup = render({ engineFailure: 'The engine stopped responding: boom', awaiting: null })
+
+      expect(markup).toContain('Engine unavailable')
+      expect(markup).not.toContain('Starting')
+    })
+
+    it('playScreen_EngineGone_PunctuatesTheEngineMessageBeforeTheReassurance', () => {
+      const markup = render({ engineFailure: "Uncaught SyntaxError: Unexpected token '<'", awaiting: null })
+
+      expect(markup).toContain('Unexpected token &#x27;&lt;&#x27;. Your moves so far are')
     })
 
     it('PlayScreen_BeforeEitherSideIsAsked_SaysTheGameIsStarting', () => {

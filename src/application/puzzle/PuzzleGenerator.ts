@@ -24,7 +24,7 @@ import { OPENING_LINES } from './openings'
  */
 const ATTACKER: EngineConfiguration = {
   strength: { kind: 'full' },
-  searchLimits: { moveTimeMs: 1_000, maxDepth: 12 },
+  searchLimits: { untimedMoveTimeMs: 1_000, maxDepth: 12 },
 }
 
 /**
@@ -34,7 +34,7 @@ const ATTACKER: EngineConfiguration = {
  */
 const DEFENDER: EngineConfiguration = {
   strength: { kind: 'rated', elo: 1320 },
-  searchLimits: { moveTimeMs: 150, maxDepth: 2 },
+  searchLimits: { untimedMoveTimeMs: 150, maxDepth: 2 },
 }
 
 /** A game refusing to end is a draw in the making; reseed instead of waiting. */

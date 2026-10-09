@@ -92,6 +92,10 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
     autoFlip && !isOver(state.outcome) ? state.position.sideToMove : manualOrientation
 
   const gameOver = isOver(state.outcome)
+  // Normalised once: the type says `string | null`, and treating an absent
+  // field as "no failure" keeps one reading of it across the three places
+  // below rather than three subtly different ones.
+  const engineFailure = state.engineFailure ?? null
   const isHumanToMove = state.awaiting?.kind === 'human'
   const lastMove = state.history.at(-1) ?? null
   const isWatching = configuration.opponent === 'engines'
@@ -177,7 +181,7 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
   const durabilityWarning = describeDurability(durability)
   const currentStatus = statusForGame({
     gameOver,
-    engineFailure: state.engineFailure,
+    engineFailure,
     advice: currentAdvice,
     isCheck: state.isCheck,
     awaitingKind: state.awaiting?.kind ?? null,
@@ -245,9 +249,11 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
             <span className="phase46-live-dot" aria-hidden="true" />
             {gameOver
               ? 'Game complete'
-              : state.awaiting === null
-                ? 'Starting…'
-                : `${state.awaiting.name} to move`}
+              : engineFailure !== null
+                ? 'Engine unavailable'
+                : state.awaiting === null
+                  ? 'Starting…'
+                  : `${state.awaiting.name} to move`}
           </span>
         </div>
 
@@ -371,9 +377,13 @@ export function PlayScreen({ game, configuration, onNewGame }: PlayScreenProps) 
           {saveButton}
         </OutcomeBanner>
 
-        {state.engineFailure !== null ? (
+        {engineFailure !== null ? (
           <p className="notice notice--error">
-            {state.engineFailure} Your moves so far are safe on this device.
+            {/* Punctuated here because the engine's own message is not: it ends
+                wherever the browser's error text ends, and the sentence after it
+                ran straight on from "Unexpected token '<'". */}
+            {engineFailure.replace(/[.\s]*$/, '')}. Your moves so far are
+            safe on this device.
           </p>
         ) : null}
         {saveState === 'error' ? (

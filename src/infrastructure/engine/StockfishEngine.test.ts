@@ -197,7 +197,7 @@ describe('StockfishEngine', () => {
 
     await engine.configure({
       strength: { kind: 'rated', elo: 1320.4 },
-      searchLimits: { moveTimeMs: 150, maxDepth: 2 },
+      searchLimits: { untimedMoveTimeMs: 150, maxDepth: 2 },
     })
 
     expect(worker.sent).toContain('setoption name UCI_LimitStrength value true')
@@ -209,7 +209,7 @@ describe('StockfishEngine', () => {
   it('stockfishEngine_FullStrength_TurnsTheLimitOffExplicitly', async () => {
     const { engine, worker } = await engineAndWorker()
 
-    await engine.configure({ strength: { kind: 'full' }, searchLimits: { moveTimeMs: 1_000 } })
+    await engine.configure({ strength: { kind: 'full' }, searchLimits: { untimedMoveTimeMs: 1_000 } })
 
     expect(worker.sent).toContain('setoption name UCI_LimitStrength value false')
   })
@@ -218,7 +218,7 @@ describe('StockfishEngine', () => {
     const { engine, worker } = await engineAndWorker()
     await engine.configure({
       strength: { kind: 'full' },
-      searchLimits: { moveTimeMs: 900, maxDepth: 12 },
+      searchLimits: { untimedMoveTimeMs: 900, maxDepth: 12 },
     })
 
     void engine.chooseMove(search(START)).catch(() => {})
@@ -279,7 +279,7 @@ describe('StockfishEngine', () => {
     const { engine, worker } = await engineAndWorker()
     worker.sent.length = 0
 
-    await engine.configure({ strength: { kind: 'full' }, searchLimits: { moveTimeMs: 900 } })
+    await engine.configure({ strength: { kind: 'full' }, searchLimits: { untimedMoveTimeMs: 900 } })
 
     expect(worker.sent).toEqual(['setoption name UCI_LimitStrength value false', 'isready'])
   })
@@ -293,7 +293,7 @@ describe('StockfishEngine', () => {
     const { engine, worker } = await engineAndWorker()
     await engine.configure({
       strength: { kind: 'full' },
-      searchLimits: { moveTimeMs: 2_000 },
+      searchLimits: { untimedMoveTimeMs: 2_000 },
     })
 
     void engine
@@ -312,7 +312,7 @@ describe('StockfishEngine', () => {
     const { engine, worker } = await engineAndWorker()
     await engine.configure({
       strength: { kind: 'rated', elo: 1320 },
-      searchLimits: { moveTimeMs: 300, maxDepth: 2 },
+      searchLimits: { untimedMoveTimeMs: 300, maxDepth: 2 },
     })
 
     void engine
