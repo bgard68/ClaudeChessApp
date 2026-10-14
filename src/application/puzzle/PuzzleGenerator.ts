@@ -2,7 +2,7 @@ import type { MoveIntent } from '@domain/chess/Move'
 import type { PieceColor } from '@domain/chess/Piece'
 import type { Position } from '@domain/chess/Position'
 import type { ChessRules } from '@domain/ports/ChessRules'
-import type { ChessEngine, EngineConfiguration } from '../ports/ChessEngine'
+import { SearchAbandoned, type ChessEngine, type EngineConfiguration } from '../ports/ChessEngine'
 import { moveNumberForPly } from '@domain/chess/Move'
 import { matingMoves, solvesMateWithin } from './mate'
 import type { GeneratedPuzzle } from './DailyPuzzle'
@@ -121,8 +121,22 @@ export class PuzzleGenerator {
           position,
           history: { startPosition: history[0]!, moves: played },
         })
-      } catch {
-        return null // Search abandoned: the generator was disposed mid-game.
+      } catch (error) {
+        /*
+         * A reseed and a broken engine are not the same answer.
+         *
+         * Both arrive here as a rejection, and catching them alike made every
+         * engine failure look like a game that merely failed to produce a
+         * mate: the loop reseeded, and on the last attempt the player was told
+         * "The engine could not compose a puzzle today. Try again." — beside a
+         * Try again button that cannot work, because an errored worker is
+         * errored for good and the reason it gave was discarded here.
+         *
+         * `ChessEngine` declares the two separately for exactly this, and
+         * `LiveGame` already draws the line. This is the same line.
+         */
+        if (error instanceof SearchAbandoned) return null
+        throw error
       }
       const result = this.rules.play(position, intent)
       if (result === null) return null

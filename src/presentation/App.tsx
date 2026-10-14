@@ -24,6 +24,43 @@ type View =
 
 type ShellTarget = 'setup' | 'puzzle' | 'archive' | 'mine'
 
+/** What the shell shows while a view is on screen. */
+interface ViewChrome {
+  readonly title: string
+  readonly context: string
+  /** Which nav item reads as current. */
+  readonly shell: ShellTarget
+}
+
+/**
+ * One entry per view, and the compiler requires all of them.
+ *
+ * These three facts used to be decided in three places — two switches and a
+ * ternary chain — which is three edits per new screen and no way to be told
+ * when one was missed. The chain was the one that bit: every name it did not
+ * name fell through to `setup`, so `mine` highlighted "Play chess" and the
+ * "My games" nav item could never be the current one, `aria-current` included.
+ * A record keyed by `View['name']` cannot fall through; a missing key is a
+ * type error.
+ *
+ * Exported for its own tests, which is also the cheapest way to assert the
+ * table is complete without rendering five screens.
+ */
+export const VIEW_CHROME: Readonly<Record<View['name'], ViewChrome>> = {
+  setup: { title: 'New game', context: 'Local chess studio', shell: 'setup' },
+  play: { title: 'Live game', context: 'Match room', shell: 'setup' },
+  puzzle: { title: 'Puzzle of the day', context: 'Daily training', shell: 'puzzle' },
+  archive: { title: 'Championships', context: 'Reference library', shell: 'archive' },
+  mine: { title: 'My games', context: 'Games you have saved', shell: 'mine' },
+  replay: { title: 'Game replay', context: 'Analysis room', shell: 'archive' },
+  // Both are stages of opening an archived game, which is what their context
+  // line and the error view's own back button already say. Previously they
+  // reached `setup` by falling off the end of the chain rather than by anyone
+  // deciding they should.
+  loading: { title: 'Loading replay', context: 'Championship archive', shell: 'archive' },
+  error: { title: 'Replay unavailable', context: 'Championship archive', shell: 'archive' },
+}
+
 /**
  * Owns screen selection and the lifetime of resources driven by each screen.
  * AppShell receives navigation callbacks only; it does not know about services,
@@ -102,18 +139,13 @@ export function App() {
     [services.archive, factory, goTo],
   )
 
-  const shellActive: ShellTarget =
-    view.name === 'archive' || view.name === 'replay'
-      ? 'archive'
-      : view.name === 'puzzle'
-        ? 'puzzle'
-        : 'setup'
+  const chrome = VIEW_CHROME[view.name]
 
   return (
     <AppShell
-      active={shellActive}
-      title={shellTitle(view)}
-      context={shellContext(view)}
+      active={chrome.shell}
+      title={chrome.title}
+      context={chrome.context}
       onNavigate={navigate}
     >
       {/* Keyed by screen so a crash in one does not leave the boundary tripped
@@ -186,53 +218,52 @@ export function App() {
             </div>
           </section>
         )
+
+      default:
+        return unhandledView(view)
     }
   }
 }
 
+/**
+ * Refuses a view nobody has handled, at compile time.
+ *
+ * `never` is what makes this work: a new variant in `View` no longer matches
+ * the parameter, so every switch that forgot it fails to type. The throw is
+ * only the fallback for a value that got past the type system.
+ */
+function unhandledView(view: never): never {
+  throw new Error(`Unhandled view: ${JSON.stringify(view)}`)
+}
+
+/**
+ * Releases whatever the view being left owns.
+ *
+ * Exhaustive on purpose. This was two `if`s against a union inside a `void`
+ * function, so nothing checked it: a new screen holding an engine worker or a
+ * ticker could be added, forget to be listed here, and leak one per visit
+ * without a single test or type error to say so. The screens that own nothing
+ * are therefore named rather than defaulted — the cost of a new view is one
+ * line here, and the compiler asks for it.
+ */
 function disposeView(view: View | null): void {
   if (view === null) return
-  if (view.name === 'play') view.game.dispose()
-  if (view.name === 'replay') view.session.dispose()
-}
 
-function shellTitle(view: View): string {
-  switch (view.name) {
-    case 'setup':
-      return 'New game'
-    case 'play':
-      return 'Live game'
-    case 'puzzle':
-      return 'Puzzle of the day'
-    case 'archive':
-      return 'Championships'
-    case 'mine':
-      return 'My games'
-    case 'replay':
-      return 'Game replay'
-    case 'loading':
-      return 'Loading replay'
-    case 'error':
-      return 'Replay unavailable'
-  }
-}
-
-function shellContext(view: View): string {
   switch (view.name) {
     case 'play':
-      return 'Match room'
+      view.game.dispose()
+      return
     case 'replay':
-      return 'Analysis room'
-    case 'archive':
-      return 'Reference library'
-    case 'mine':
-      return 'Games you have saved'
+      view.session.dispose()
+      return
+    case 'setup':
     case 'puzzle':
-      return 'Daily training'
+    case 'archive':
+    case 'mine':
     case 'loading':
     case 'error':
-      return 'Championship archive'
-    case 'setup':
-      return 'Local chess studio'
+      return
+    default:
+      return unhandledView(view)
   }
 }

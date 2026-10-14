@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { MoveIntent } from '@domain/chess/Move'
-import type { ChessEngine, EngineConfiguration } from '../ports/ChessEngine'
+import {
+  EngineUnavailable,
+  SearchAbandoned,
+  type ChessEngine,
+  type EngineConfiguration,
+} from '../ports/ChessEngine'
 import { ChessJsRules } from '@infrastructure/chess/ChessJsRules'
 import { PuzzleGenerator } from './PuzzleGenerator'
 
@@ -53,6 +58,9 @@ const SCHOLARS_FINISH: readonly MoveIntent[] = [
 ]
 
 const BOOK = [['e4', 'e5']] as const
+
+/** `PuzzleGenerator`'s own reseed ceiling, restated so the test can count. */
+const MAX_ATTEMPTS = 6
 
 describe('PuzzleGenerator', () => {
   it('generate_SelfPlayReachesMate_ReturnsThePuzzleAndDisposesItsEngine', async () => {
@@ -109,5 +117,45 @@ describe('PuzzleGenerator', () => {
 
     const puzzle = await generator.generate(0)
     expect(puzzle.mateIn).toBe(1)
+  })
+
+  /*
+   * A failing search and a failing engine used to be the same thing here, and
+   * the engine always lost the argument: every rejection reseeded, so a dead
+   * worker spent the remaining attempts and then reported that the engine had
+   * composed nothing — with the worker's own reason thrown away and a Try
+   * again button that could only fail the same way.
+   */
+  describe('when the search rejects', () => {
+    /** Rejects every search with one reason, after the opening book. */
+    class FailingEngine extends ScriptedEngine {
+      constructor(private readonly reason: Error) {
+        super([])
+      }
+
+      override chooseMove(): Promise<MoveIntent> {
+        return Promise.reject(this.reason)
+      }
+    }
+
+    it('generate_EngineGoneAway_ReportsWhyRatherThanReseeding', async () => {
+      const engine = new FailingEngine(new EngineUnavailable('The engine stopped responding'))
+      const generator = new PuzzleGenerator(rules, () => engine, BOOK)
+
+      await expect(generator.generate(0)).rejects.toThrow('The engine stopped responding')
+      // One game attempted, not six: there is nothing a seventh seed can fix.
+      expect(engine.newGames).toBe(1)
+      // Still released — the engine is this call's to clean up either way.
+      expect(engine.disposed).toBe(true)
+    })
+
+    it('generate_SearchAbandoned_StillReseeds', async () => {
+      // Abandonment is ordinary and says nothing about the engine's health.
+      const engine = new FailingEngine(new SearchAbandoned('Search abandoned'))
+      const generator = new PuzzleGenerator(rules, () => engine, BOOK)
+
+      await expect(generator.generate(0)).rejects.toThrow('could not compose a puzzle')
+      expect(engine.newGames).toBe(MAX_ATTEMPTS)
+    })
   })
 })
