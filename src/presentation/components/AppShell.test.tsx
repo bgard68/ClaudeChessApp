@@ -30,7 +30,7 @@ describe('AppShell', () => {
     expect(markup.match(/aria-current="page"/g)).toHaveLength(1)
     // The current item is the one named for the active target, not merely the
     // first that happens to render.
-    expect(markup).toContain('aria-current="page" aria-label="Championships"')
+    expect(markup).toContain('aria-current="page" aria-label="Championship titles"')
   })
 
   it.each([

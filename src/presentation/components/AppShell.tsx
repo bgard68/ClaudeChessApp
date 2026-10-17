@@ -21,7 +21,7 @@ interface NavItem {
 const navItems: readonly NavItem[] = [
   { target: 'setup', label: 'Play chess', shortLabel: 'Play', icon: 'play' },
   { target: 'puzzle', label: 'Puzzle of the day', shortLabel: 'Puzzle', icon: 'puzzle' },
-  { target: 'archive', label: 'Championships', shortLabel: 'Titles', icon: 'trophy' },
+  { target: 'archive', label: 'Championship titles', shortLabel: 'Titles', icon: 'trophy' },
   { target: 'mine', label: 'My games', shortLabel: 'My games', icon: 'save' },
 ]
 
@@ -49,7 +49,6 @@ export function AppShell({
         <button
           type="button"
           className="app-brand"
-          aria-label="ClaudeChess home"
           onClick={() => onNavigate('setup')}
         >
           <span className="app-brand__mark" aria-hidden="true">♞</span>

@@ -83,7 +83,7 @@ async function main() {
 
   /* Destinations are reached from the bottom bar by their accessible name.
      Matching on visible text does not work here: the bar shows "Titles" and
-     the button is labelled "Championships". */
+     the button is labelled "Championship titles". */
   const goTo = async (label) => {
     await page.locator(`button[aria-label="${label}"]`).first().click()
     await page.waitForTimeout(700)
@@ -125,7 +125,7 @@ async function main() {
   await shot('5-puzzle')
 
   // --- Archive and replay ---------------------------------------------------
-  await goTo('Championships')
+  await goTo('Championship titles')
   await page.waitForSelector('.game-table__row', { timeout: 30_000 })
   await page.waitForTimeout(600)
   await shot('6-championships')
