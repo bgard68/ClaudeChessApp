@@ -129,7 +129,7 @@ try {
 
   /* -------------------------------------------------------------- archive */
 
-  await railButton(page, 'Championships').click()
+  await railButton(page, 'Championship titles').click()
   await page.waitForSelector('tbody tr', { timeout: 30_000 })
   await page.waitForTimeout(600)
 

@@ -56,7 +56,7 @@ const VIEWPORTS = [
 const SCREENS = [
   { name: 'Play', rail: null, ready: '.setup__options' },
   { name: 'Puzzle', rail: 'Puzzle of the day', ready: '.screen--puzzle' },
-  { name: 'Championships', rail: 'Championships', ready: 'table' },
+  { name: 'Championships', rail: 'Championship titles', ready: 'table' },
   { name: 'My games', rail: 'My games', ready: '.screen--archive' },
 ]
 
