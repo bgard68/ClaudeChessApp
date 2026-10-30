@@ -17,8 +17,8 @@ them exists because something got through.
 | Renders with | `renderToStaticMarkup` | Testing Library, real effects | The real thing, from `dist/` |
 | Sees | The first commit of a component | Effects, state, clicks — with services it controls | Effects, state, interaction, layout, contrast |
 | Blind to | Anything an effect does | Layout, geometry, real breakpoints | Nothing much — but cannot inject failure |
-| Speed | 810 tests in ~7s | included above, ~2s of it | ~30s per script |
-| Files | 59 under `src/**/*.test.ts(x)` | 2, by docblock | 4 under `scripts/` |
+| Speed | 873 tests in ~7s | included above, ~2s of it | ~30s per script |
+| Files | 64 under `src/**/*.test.ts(x)` | 2, by docblock | 4 under `scripts/` |
 
 The middle column is new and deliberately small — two files, both named
 `*.failures.test.tsx`. Its reason for existing is the one thing neither other
@@ -77,6 +77,19 @@ still rejects what it must — is what CI runs:
 ```bash
 pwsh scripts/test-gate.ps1
 ```
+
+## The module graph
+
+`npm run depcruise` cruises the resolved import graph against
+`.dependency-cruiser.mjs`, locally and as its own step in the CI gate. It asks
+the three questions `src/architecture.test.ts` structurally cannot — that test
+reads one file at a time against a regex, so an import cycle, a shipped module
+importing a test or a fake, and a specifier that resolves to nothing are all
+invisible to it. dependency-cruiser's own TypeScript parser stops short of the
+TypeScript 7 this repo compiles with, so the config parses with swc instead;
+without a working parser the tool finds zero modules and exits 0, which is why
+the CI step also greps the cruised-module count — a gate that passes by seeing
+nothing is the one failure mode a gate may not have.
 
 ---
 
@@ -177,7 +190,7 @@ smoke test — extended to cover behaviour and accessibility.
 
 ### What it costs
 
-- **Seconds, not milliseconds.** A browser script is ~30s against ~7s for 810
+- **Seconds, not milliseconds.** A browser script is ~30s against ~7s for 873
   unit tests. Fine at four scripts; it would not be fine at four hundred tests.
 - **Failure cannot be injected.** This was the real loss, and it is the one that
   eventually justified a third environment — the node suite could take a
@@ -192,7 +205,7 @@ smoke test — extended to cover behaviour and accessibility.
 jsdom is now here, for failure injection only, and the advice this section used
 to give about *how* to add it turned out to be right and was followed: it is
 opted into per file rather than by flipping `environment` in `vite.config.ts`, so
-the other 59 files stay on node and keep their speed.
+the other 64 files stay on node and keep their speed.
 
 What has not changed is the argument against using it for general component
 work — there is a real Chrome two columns over, and a fake DOM has no layout
@@ -239,7 +252,7 @@ Two files run under jsdom instead of node:
 ```
 
 — which is the entire configuration. The suite default stays `node`, so the
-other 59 files are unaffected and pay nothing for this.
+other 64 files are unaffected and pay nothing for this.
 
 ### Why it exists
 
