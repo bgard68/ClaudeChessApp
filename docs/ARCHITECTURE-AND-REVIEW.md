@@ -829,6 +829,7 @@ Everything above was checked rather than assumed.
 | --- | --- |
 | `npm run typecheck` | clean |
 | `npm test` | 873 passing, 66 files — including the architecture and game-identity guards; `architecture.test.ts` now asserts five rules |
+| `npm run depcruise` | clean — 170 modules, 553 dependencies cruised, 0 violations |
 | `npm run build` | clean; CSP meta tag present in output |
 | `npm audit` | 0 vulnerabilities |
 | `npm run audit-pgn` | 130,565 games, 0 duplicates, 11,142,485 half-moves replayed |

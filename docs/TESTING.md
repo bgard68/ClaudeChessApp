@@ -78,6 +78,19 @@ still rejects what it must — is what CI runs:
 pwsh scripts/test-gate.ps1
 ```
 
+## The module graph
+
+`npm run depcruise` cruises the resolved import graph against
+`.dependency-cruiser.mjs`, locally and as its own step in the CI gate. It asks
+the three questions `src/architecture.test.ts` structurally cannot — that test
+reads one file at a time against a regex, so an import cycle, a shipped module
+importing a test or a fake, and a specifier that resolves to nothing are all
+invisible to it. dependency-cruiser's own TypeScript parser stops short of the
+TypeScript 7 this repo compiles with, so the config parses with swc instead;
+without a working parser the tool finds zero modules and exits 0, which is why
+the CI step also greps the cruised-module count — a gate that passes by seeing
+nothing is the one failure mode a gate may not have.
+
 ---
 
 ## The browser scripts
