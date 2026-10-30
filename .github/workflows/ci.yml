@@ -56,3 +56,16 @@ jobs:
           rm "$archive"
 
       - run: pwsh scripts/test-gate.ps1
+
+      # The dependency rules the hand-rolled architecture test cannot see:
+      # cycles, test code reached from shipped code, imports that resolve to
+      # nothing. Which rules and why: .dependency-cruiser.mjs. The count check
+      # is the vacuity guard — without a working TypeScript parser
+      # dependency-cruiser finds 0 modules and still exits 0, a verdict on an
+      # empty graph, which is exactly how it behaved against this repo's
+      # TypeScript 7 until the config switched the parser to swc.
+      - name: Architecture rules
+        run: |
+          npm run depcruise 2>&1 | tee "$RUNNER_TEMP/depcruise.out"
+          test "${PIPESTATUS[0]}" -eq 0
+          grep -qE '\([1-9][0-9]* modules' "$RUNNER_TEMP/depcruise.out"
