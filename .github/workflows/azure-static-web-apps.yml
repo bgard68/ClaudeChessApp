@@ -14,12 +14,19 @@ permissions:
 
 # Two pushes to main in quick succession would otherwise race, and the older
 # build can finish last — leaving production on the earlier commit while the
-# newer run reports success. Superseded runs are cancelled rather than queued:
-# there is nothing to gain from publishing a commit that main has already
-# moved past.
+# newer run reports success. Runs are therefore serialised.
+#
+# They queue rather than cancel. Cancelling also solves that race, and skips
+# the pointless publish of a commit main has moved past — but this group is
+# shared with workflow_dispatch, so it also let a merge kill a deploy someone
+# had just started by hand, and the reverse. A cancelled run is not a failed
+# run: nothing goes red, and production quietly keeps serving the older build
+# until a person notices and re-runs it. ToDoApp lost four weeks of frontend
+# deploys to exactly that shape. Queueing still ends on the newest commit,
+# because the later run finishes last; the cost is one superseded publish.
 concurrency:
   group: deploy-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
