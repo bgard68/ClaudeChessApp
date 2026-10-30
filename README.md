@@ -264,7 +264,7 @@ size.
 
 ## Testing
 
-494 tests covering the clock (increments, stage transitions, flag fall), the turn
+873 tests covering the clock (increments, stage transitions, flag fall), the turn
 loop (checkmate, timeout, resignation, illegal-move rejection, late moves after
 the game ends), rules adaptation, PGN parsing, import limits, player identity,
 replay stepping and clock alignment, the archive's query and paging rules,
